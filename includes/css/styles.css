@@ -1,0 +1,510 @@
+/**
+ * Static CSS styles
+ */
+
+html {
+  -webkit-box-sizing: border-box;
+          box-sizing: border-box;
+  /* These are to prevent some 'spam site' complaints. */
+  background-color: #FFFFFE;
+  color: #000001;
+}
+*,
+*:before,
+*:after {
+  -webkit-box-sizing: inherit;
+          box-sizing: inherit;
+}
+html,
+body {
+  position:relative;
+  width:100%;
+  margin:0;
+  padding:0;
+  padding-bottom: 0.5em;
+}
+body{
+/*
+  background-color: var(--bgcolor);
+  color: var(--textcolor);
+  font: var(--def-font-size)/1.5 var(--def-font-family);
+*/
+  background-color: #ffffff;
+  color: #000000;
+}
+div.container-fluid, div.container, nav.navbar,
+  div.dropdown-menu, ul.dropdown-menu, .list-group, .list-group-item,
+  .sectioncontent {
+  /*background-color: var(--bgcolor)!important;*/
+  background-color: #ffffff !important;
+  /*color: var(--textcolor)!important;*/
+  color: #000000 !important;
+}
+div.dropdown-divider {
+  border-top: 1px solid var(--box-default-color)!important;
+}
+li.nav-link {
+  border-top: 1px solid var(--box-default-color)!important;
+}
+*/
+label.text-info {
+  color: var(--textcolor)!important;
+  font: var(--def-font-size)/1.5 var(--def-font-family)!important;
+}
+a {
+  color: var(--textcolor);
+  text-decoration:none;
+}
+a.weekcell {
+  color: var(--weeknumber);
+}
+abbr {
+  cursor:help;
+}
+div {
+  border:0;
+}
+h2 {
+  color: var(--h2color);
+  font-size:1.875rem;
+}
+h3 {
+  font-size:1.500rem;
+}
+fieldset {
+  width:96%;
+}
+label {
+  font-weight:bold;
+}
+textarea {
+  /*font-size:.75rem;*/
+  overflow:auto;
+}
+table {
+  border:0;
+  border-collapse:collapse;
+  border-spacing:0;
+  table-layout:fixed;
+}
+th,
+td {
+  margin:0;
+  border:0;
+  padding:0;
+}
+th,
+.layertable th {
+  background-color: var(--thbg);
+  color: var(--thfg);
+}
+th {
+  /*font-size:.8125rem;*/
+}
+td {
+  /*font-size:.6875rem;*/
+}
+.nav-link, li.nav-item.dropdown.show, li.nav-item.dropdown.show > ul,
+  #nav-project-menu > a {
+  font-size:.75rem !important;
+}
+ul,
+ul a {
+  /*font-size:.75rem;*/
+}
+.alt {
+  background-color: var(--cellbg);
+}
+.main {
+  clear:both;
+  width:100%;
+  border-right:1px solid var(--tablebg);
+  border-bottom:1px solid var(--tablebg);
+}
+.main th,
+.main td {
+  width:14%;
+  border-top: 1px solid var(--tablebg);
+  border-left: 1px solid var(--tablebg);
+  vertical-align:top;
+}
+.underline {
+ text-decoration:underline;
+}
+.fixed {
+  width:10rem;
+  margin-right:0;
+}
+.cursoradd a, .clickable {
+  cursor:pointer;
+}
+.task {
+  color: var(--textcolor);
+}
+.warningBox {
+  background-color: #FFC0C0;
+  border: 1px solid #A04040;
+  color: #000;
+  margin: 20px;
+}
+img {
+  border:0;
+}
+img.color {
+  width:.9375rem;
+  height:.9375rem;
+}
+#trailer {
+  margin:0;
+  padding:0;
+}
+#dateselector form {
+  float:left;
+  width:33%;
+  margin-top:.3125rem;
+  margin-bottom:1.5625rem;
+  padding-top:.3125rem;
+}
+#dateselector label,
+#trailer label {
+  margin:0;
+  padding:0;
+}
+#weekmenu,
+#monthmenu,
+#yearmenu {
+  margin-bottom:0;
+  /*font-size: small;*/
+  text-align:right;
+}
+#menu {
+  clear:both;
+}
+#menu,
+#menu a,
+.prefix,
+.printer {
+  color: var(--textcolor);
+  font-size:.875rem;
+}
+.prefix {
+  font-weight:bold;
+}
+a#programname {
+  margin-top:.625rem;
+  font-size:.625rem;
+}
+.printer {
+  clear:both;
+  width:15ex;
+  display:block;
+  text-decoration:none;
+}
+.new {
+  float:right;
+}
+.next img,
+#activitylog .next {
+  float:right;
+}
+.prev img,
+#activitylog .prev {
+  float:left;
+}
+.next img,
+.prev img {
+  margin-top:.4375rem;
+  margin-right:.1875rem;
+}
+#activitylog .next,
+#activitylog .prev {
+  border:0;
+  font-weight:bold;
+  font-size:.875rem;
+}
+.nav {
+  color: var(--textcolor);
+  font-size:.875rem;
+  text-decoration:none;
+}
+.popup {
+  position:absolute;
+  top:0;
+  left:0;
+  color: var(--popupfg);
+  border:2px solid var(--popupfg);
+  background-color: var(--popupbg);
+  padding:1.0rem;
+  font-size:.75rem;
+  text-decoration:none;
+  visibility:hidden;
+  z-index:20;
+  border-radius:8px;
+  -moz-border-radius:8px;
+  box-shadow: 5px 5px 5px var(--box-default-color);
+}
+.popup dl,
+.popup dt {
+  margin:0;
+  padding:0;
+}
+.popup dt {
+  font-weight:bold;
+}
+.popup dd {
+  margin-left:1.25rem;
+}
+.tooltip,
+.tooltipselect {
+  cursor:help;
+  font-weight:bold;
+  font-size:.6875rem;
+  text-decoration:none;
+}
+.tooltip {
+  width:7.5rem;
+}
+.tooltipselect {
+  vertical-align:top;
+}
+.help {
+  font-weight:bold;
+  vertical-align:top;
+}
+.helpbody {
+  margin-bottom:1rem;
+  font-weight:normal;
+  vertical-align:top;
+}
+.helpbody div {
+  border:1px solid #000;
+}
+.helpbody label {
+  font-size:1.1rem;
+  vertical-align:top;
+}
+.helpbody p {
+  margin:1rem;
+}
+.helplist {
+  border:0;
+  font-weight:bold;
+  font-size:1.2rem;
+  text-align:center;
+}
+.helplist a {
+  font-weight:normal;
+  text-decoration:underline;
+}
+.helplist a.current {
+  font-weight:bold;
+  text-decoration:none;
+}
+#helpbug form {
+  margin-bottom:1rem;
+}
+#helpbug label {
+  clear:left;
+  float:left;
+  width:32%;
+}
+#helpbug p {
+  margin:0 1rem;
+}
+img.help {
+  cursor:help;
+}
+.sample {
+  text-align:left;
+  width:1rem;
+}
+.standard {
+  background-color: var(--cellbg);
+  border:1px solid var(--tablebg);
+  font-size:.75rem;
+}
+.standard th {
+  border:0;
+  border-bottom:1px solid var(--tablebg);
+  padding:0;
+  font-size:1.125rem;
+}
+#pref form-group {
+  text-align: left;
+}
+.menuhref {
+  font-family:arial, verdana, sans-serif;
+}
+.topnav {
+  border:0;
+}
+.title {
+  width:99%;
+  text-align:center;
+}
+#login table {
+  border:1px solid var(--tablebg);
+  font-size:.75rem;
+}
+#login #save-cookies {
+  font-size:.66rem;
+  font-weight: normal;
+}
+.cookies {
+  font-size:.8125rem;
+}
+.strikethrough {
+  text-decoration:line-through;
+}
+.pub {
+  background-color:#80FF80;
+  text-align:center;
+}
+.boxtop {
+  border-top:1px solid var(--box-default-color);
+}
+.boxright {
+  border-right:1px solid var(--box-default-color);
+}
+.boxbottom {
+  border-bottom:1px solid var(--box-default-color);
+}
+.boxleft {
+  border-left:1px solid var(--box-default-color);
+}
+.boxall {
+  border:1px solid var(--box-default-color);
+  padding-left:.1875rem;
+}
+.leftpadded {
+  padding-left:3.125rem;
+  text-align:left;
+}
+.location {
+ font-size:.625rem;
+}
+.icon_text {
+  width:.625rem;
+  height:.625rem;
+  border:0;
+}
+.alignbottom {
+  vertical-align:bottom;
+}
+.aligncenter {
+  text-align:center;
+}
+.alignleft,
+.minitask td.name {
+  text-align:left;
+}
+.alignmiddle {
+  vertical-align:middle;
+}
+.alignright,
+.minitask td.pct {
+  text-align:right;
+}
+.aligntop {
+  vertical-align:top;
+}
+.bold {
+  font-weight:bold;
+}
+#about p {
+  margin:.0625rem;
+}
+#scroller {
+  position:absolute;
+  width:100%;
+}
+.note {
+  color: var(--tablebg);
+  margin:0 1.5625rem;
+  border:1px solid var(--tablebg);
+  padding:.625rem;
+}
+.fakebutton {
+   border:2px #d0d0d0 outset;
+   /*border-color:#e0e0e0 #808080 #808080 #e0e0e0;*/
+   padding-right:.3125rem;
+   padding-left:.3125rem;
+   padding:.25rem;
+   background-color:#d0d0d0;
+   color:#000;
+   font-size:11pt;
+}
+.fakebutton:hover {
+   background-color:#a0a0a0;
+   border:2px #c0c0c0 outset;
+}
+#login label,
+#login textarea,
+#login tr,
+#login td {
+  font-size:1rem;
+}
+a:hover {
+  color:#00f;
+}
+table.ThemeMenubar {
+  table-layout:auto;
+  font-size: 80% !important;
+}
+.button-icon {
+  width: 14px;
+  height: 14px;
+  filter: invert(1);
+  margin-right: 10px;
+}
+.button-icon-inverse {
+  width: 14px;
+  height: 14px;
+  margin-right: 10px;
+}
+
+.bullet {
+  width: 0.3em;
+  height: 0.3em;
+}
+
+<?php
+// No 2nd level submenu built into Bootstrap v4.
+// Got this from here: https://ricard.dev/bootstrap-4-second-level-menu-nav/
+?>
+
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu a::after {
+  transform: rotate(-90deg);
+  position: absolute;
+  right: 6px;
+  top: .8em;
+}
+
+.dropdown-submenu .dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-left: .1rem;
+  margin-right: .1rem;
+}
+
+.medications-table .name-col { width: 30%; }
+.medications-table .dosage-col { width: 40%; }
+.medications-table .frequency-col, .custom-table .unit-per-dose-col { width: 15%; }
+@media (max-width: 768px) {
+  .medications-table .name-col,
+  .medications-table .dosage-col,
+  .medications-table .frequency-col,
+  .medications-table .unit-per-dose-col { width: auto; }
+}
+.edit-icon {
+  visibility: hidden;
+  float: right;
+  margin-right: 10px;
+}
+tr:hover .edit-icon {
+  visibility: visible;
+}
