@@ -508,3 +508,92 @@ table.ThemeMenubar {
 tr:hover .edit-icon {
   visibility: visible;
 }
+
+/* ── Schedule page ── */
+
+/* Sticky patient header below navbar */
+.schedule-sticky-header {
+  position: sticky;
+  top: 56px; /* navbar height */
+  z-index: 1019;
+  background: #fff;
+  border-bottom: 1px solid #dee2e6;
+  padding: .5rem 0;
+}
+
+/* Status stripe (left border) */
+.status-overdue  { border-left: 4px solid #dc3545 !important; }
+.status-due-soon { border-left: 4px solid #ffc107 !important; }
+.status-ok       { border-left: 4px solid #28a745 !important; }
+.status-done     { border-left: 4px solid #6c757d !important; }
+
+/* Section headers */
+.schedule-section-header {
+  font-size: .95rem;
+  font-weight: 600;
+  padding: .5rem .75rem;
+  margin-top: 1rem;
+  margin-bottom: .25rem;
+  border-radius: .25rem;
+}
+.section-overdue  { background: #f8d7da; color: #721c24; }
+.section-due-soon { background: #fff3cd; color: #856404; }
+.section-ok       { background: #d4edda; color: #155724; }
+.section-done     { background: #e2e3e5; color: #383d41; }
+
+/* Desktop table tweaks */
+.schedule-table th { vertical-align: middle; }
+.schedule-table td { vertical-align: middle; padding: .55rem .75rem; }
+.schedule-table .actions-cell { white-space: nowrap; }
+
+/* Card view (mobile) */
+.schedule-card {
+  border-radius: .375rem;
+  margin-bottom: .5rem;
+  padding: .75rem 1rem;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.schedule-card .card-med-name {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.schedule-card .card-meta {
+  font-size: .85rem;
+  color: #6c757d;
+  margin-top: .15rem;
+}
+.schedule-card .card-due {
+  font-size: .95rem;
+  margin-top: .35rem;
+}
+.schedule-card .card-remaining {
+  font-size: .8rem;
+  color: #6c757d;
+  margin-top: .25rem;
+}
+.schedule-card .card-actions {
+  margin-top: .5rem;
+}
+
+/* Toggle controls bar */
+.schedule-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Print styles for schedule page */
+@media print {
+  .schedule-sticky-header,
+  .schedule-controls,
+  .actions-cell,
+  .card-actions,
+  .btn,
+  .noprint { display: none !important; }
+  .schedule-card { box-shadow: none; border: 1px solid #ccc; }
+  .d-md-none { display: block !important; }
+  .d-none.d-md-block { display: none !important; }
+}

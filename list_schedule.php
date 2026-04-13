@@ -8,33 +8,41 @@ $patient = getPatient($patient_id);
 $patientName = $patient['name'];
 $showCompletedParam = getIntValue('show_completed');
 $showCompleted = !empty($showCompletedParam);
-$assumePastIntake = getIntValue('assume_past_intake'); // Checkbox state
+$assumePastIntake = getIntValue('assume_past_intake');
 
-$dueInNextHour = 1800; // 1/2 hour in seconds
+$dueInNextHour = 1800; // 30 minutes in seconds
 
-echo "<h2>Medication Schedule: " . htmlentities($patientName) . "</h2>\n";
+// ── Sticky patient header ──
+echo '<div class="schedule-sticky-header noprint">';
+echo '<div class="d-flex justify-content-between align-items-center">';
+echo '<h5 class="mb-0">Schedule: ' . htmlentities($patientName) . '</h5>';
+echo '<a href="add_to_schedule.php?patient_id=' . htmlspecialchars($patient_id) . '" class="btn btn-primary btn-sm">+ Add Medication</a>';
+echo '</div>';
+echo '</div>';
 
-// Checkbox form
-echo "<form action='list_schedule.php' method='GET'>\n";
-echo "<input type='hidden' name='patient_id' value='" . htmlspecialchars($patient_id) . "'>\n";
-if ($showCompleted) {
-    echo "<input type='hidden' name='show_completed' value='1'>\n";
-}
-echo "<div class='form-check mb-3'>\n";
-echo "<input class='form-check-input' type='checkbox' name='assume_past_intake' value='1' id='assumePastIntake'" . ($assumePastIntake ? " checked" : "") . ">\n";
-echo "<label class='form-check-label' for='assumePastIntake'>Assume past scheduled doses were taken on time</label>\n";
-echo "</div>\n";
-echo "<button type='submit' class='btn btn-primary mb-3'>Update</button>\n";
-echo "</form>\n";
+// ── Toggle controls (auto-submit, no button needed) ──
+$baseUrl = 'list_schedule.php?patient_id=' . urlencode($patient_id);
+echo '<div class="schedule-controls noprint mt-3">';
+// Assume past intake toggle
+$assumeChecked = $assumePastIntake ? ' checked' : '';
+$assumeUrl = $baseUrl . ($showCompleted ? '&show_completed=1' : '');
+echo '<div class="custom-control custom-switch">';
+echo '<input type="checkbox" class="custom-control-input" id="assumePastIntake"' . $assumeChecked;
+echo ' onchange="toggleParam(this, \'assume_past_intake\')">';
+echo '<label class="custom-control-label" for="assumePastIntake">Assume past doses taken</label>';
+echo '</div>';
+// Show completed toggle
+$completedChecked = $showCompleted ? ' checked' : '';
+echo '<div class="custom-control custom-switch">';
+echo '<input type="checkbox" class="custom-control-input" id="showCompleted"' . $completedChecked;
+echo ' onchange="toggleParam(this, \'show_completed\')">';
+echo '<label class="custom-control-label" for="showCompleted">Show completed</label>';
+echo '</div>';
+// Print button
+echo '<button class="btn btn-outline-secondary btn-sm ml-auto" onclick="window.print()">Print</button>';
+echo '</div>';
 
-echo "<div class='table-responsive'>\n";
-echo "<table class='table table-bordered table-striped'>\n";
-echo "<thead class='thead-dark'>";
-echo "<tr><th>Medication Name</th><th>Frequency</th><th>Last Taken</th><th>Next Due</th><th>Remaining</th><th>Action</th></tr>";
-echo "</thead>\n";
-echo "<tbody>\n";
-
-// Fetch patient's medication schedule
+// ── Fetch schedule data ──
 if (!$showCompleted) {
     $includeCompletedSql = ' AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())';
 } else {
@@ -49,113 +57,377 @@ $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medic
 
 $rows = dbi_get_cached_rows($sql, [$patient_id]);
 
-$medicationRows = [];
+// ── Build medication data and group by urgency ──
+$groups = [
+    'overdue'  => [],
+    'due_soon' => [],
+    'ok'       => [],
+    'done'     => [],
+];
 
 foreach ($rows as $row) {
-    $schedule_id = $row[0];
-    $medicationName = $row[1];
-    $frequency = $row[2];
-    $start_date = $row[3];
-    $end_date = $row[4];
-    $medicine_id = $row[5];
-    $lastTaken = $row[6] ? $row[6] : null;
+    $schedule_id  = $row[0];
+    $medName      = $row[1];
+    $frequency    = $row[2];
+    $start_date   = $row[3];
+    $end_date     = $row[4];
+    $medicine_id  = $row[5];
+    $lastTaken    = $row[6] ? $row[6] : null;
     $lastTakenNicely = formatDateNicely($lastTaken);
-    $nextDue = "Not Yet Taken ";
-    $nextDueTime = "0000-" . $medicationName;
-    $nextDueTimeString = '';
-    $nextDueClass = '';
-    $warningIcon = '';
 
-    // Calculate remaining doses, considering assumed past intake if enabled
+    $secondsUntilDue = null;
+    $nextDueLabel    = 'Not Yet Taken';
+    $nextDueDetail   = '';
+    $sortKey         = '0000-' . $medName;
+    $statusGroup     = 'ok';
+    $isCompleted     = false;
+
     $remainingDoses = dosesRemaining($medicine_id, $schedule_id, $assumePastIntake, $start_date, $frequency);
 
     if ($lastTaken) {
         $secondsUntilDue = calculateSecondsUntilDue($lastTaken, $frequency);
-        $hours = floor($secondsUntilDue / 3600);
+        $hours   = floor($secondsUntilDue / 3600);
         $minutes = floor(($secondsUntilDue % 3600) / 60);
+        $sortKey = sprintf("%06d-%06d", (60 * $hours) + $minutes, $schedule_id);
 
-        $nextDue = $hours > 0 ? "$hours hours " : "";
-        $nextDue .= "$minutes minutes";
-        $nextDueTime = sprintf("%06d-%06d", (60 * $hours) + $minutes, $schedule_id);
+        $nextDueDateTime = calculateNextDueDate($lastTaken, $frequency);
+        $nextDueDetail   = formatDateNicely($nextDueDateTime);
 
-        $nextDueTimeString = calculateNextDueDate($lastTaken, $frequency);
         if ($secondsUntilDue <= 0) {
-            $nextDue = "Overdue";
-            $nextDueClass = 'bg-danger';
-            $warningIcon = '<img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="Warning">';
+            $nextDueLabel = 'Overdue';
+            $statusGroup  = 'overdue';
         } elseif ($secondsUntilDue <= $dueInNextHour) {
-            $nextDueClass = 'bg-warning';
+            $nextDueLabel = $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
+            $statusGroup  = 'due_soon';
+        } else {
+            $nextDueLabel = $hours > 0 ? "{$hours}h {$minutes}m" : "{$minutes}m";
+            $statusGroup  = 'ok';
         }
-        $nextDueNicely = formatDateNicely($nextDueTimeString);
-        $nextDueTimeString = "<br>" . $nextDueNicely;
 
+        // Check if completed
         if (!empty($end_date) && $end_date < date('Y-m-d')) {
-            $nextDueTime = sprintf("999999-%06d", (60 * $hours) + $minutes, $schedule_id);
-            $nextDue = "Completed";
-            $nextDueTimeString = '';
-            $warningIcon = '';
-            $nextDueClass = '';
-        } else if (!empty($end_date) && $end_date == date('Y-m-d')) {
+            $isCompleted   = true;
+            $statusGroup   = 'done';
+            $nextDueLabel  = 'Completed';
+            $nextDueDetail = '';
+            $sortKey       = sprintf("999999-%06d", $schedule_id);
+        } elseif (!empty($end_date) && $end_date == date('Y-m-d')) {
             if ($secondsUntilDue > secondsUntilMidnight()) {
                 if (!$showCompleted) {
                     continue;
                 }
-                $nextDueTime = sprintf("999999-%06d", (60 * $hours) + $minutes, $schedule_id);
-                $nextDue = "Completed";
-                $nextDueTimeString = '';
-                $warningIcon = '';
-                $nextDueClass = '';
+                $isCompleted   = true;
+                $statusGroup   = 'done';
+                $nextDueLabel  = 'Completed';
+                $nextDueDetail = '';
+                $sortKey       = sprintf("999999-%06d", $schedule_id);
             }
         }
     }
 
-    $icon = '<img src="images/bootstrap-icons/journal-medical.svg" alt="Medicine Intake">';
-    $editLink = '<a href="add_to_schedule.php?patient_id=' . htmlentities($patient_id) .
-        '&schedule_id=' . htmlentities($schedule_id) .
-        '&medicine_id=' . htmlentities($medicine_id) .
-        '"><img src="images/bootstrap-icons/pencil.svg" alt="Edit"></a>';
-    $recordIntakeLink = "<a href='record_intake.php?schedule_id=" . $row[0] . "&patient_id=" . $patient_id . "' title='Record Intake'>$icon</i></a>";
-
+    // Build remaining display
     $days = $remainingDoses['remainingDays'];
     $futureDate = date('M j, Y', strtotime("+$days days"));
     if (empty($remainingDoses['remainingDoses'])) {
-        $remain = translate('None');
+        $remainShort  = translate('None');
+        $remainDetail = '';
     } else {
-        $remain = sprintf("%s doses, %d days,<br>Until %s", $remainingDoses['remainingDoses'], $remainingDoses['remainingDays'], $futureDate);
+        $doseCount    = $remainingDoses['remainingDoses'];
+        $remainShort  = sprintf("%s doses (%d days)", $doseCount, $days);
+        $remainDetail = 'Until ' . $futureDate;
         if ($assumePastIntake) {
-            $remain .= "<br>(Assuming past doses taken)";
+            $remainDetail .= ' (est.)';
         }
     }
 
-    $medicationRows[$nextDueTime] .= "<tr class='" . $nextDueClass . "'>" .
-        "<td>" . htmlspecialchars($row[1]) . "</td>" .
-        "<td>" . htmlspecialchars($row[2]) . "</td>" .
-        "<td>" . htmlspecialchars($lastTakenNicely) . "</td>" .
-        "<td>" . $warningIcon . htmlspecialchars($nextDue) . $nextDueTimeString . "</td>" .
-        "<td>$remain</td>" .
-        "<td>$recordIntakeLink $editLink </td>" .
-        "</tr>\n";
+    // Action URLs
+    $recordUrl = 'record_intake.php?schedule_id=' . urlencode($schedule_id) . '&patient_id=' . urlencode($patient_id);
+    $editUrl   = 'add_to_schedule.php?patient_id=' . urlencode($patient_id) . '&schedule_id=' . urlencode($schedule_id) . '&medicine_id=' . urlencode($medicine_id);
+    $adjustUrl = 'adjust_dosage.php?patient_id=' . urlencode($patient_id) . '&schedule_id=' . urlencode($schedule_id);
+
+    $entry = [
+        'sortKey'         => $sortKey,
+        'medName'         => $medName,
+        'frequency'       => $frequency,
+        'lastTakenNicely' => $lastTakenNicely,
+        'nextDueLabel'    => $nextDueLabel,
+        'nextDueDetail'   => $nextDueDetail,
+        'secondsUntilDue' => $secondsUntilDue,
+        'remainShort'     => $remainShort,
+        'remainDetail'    => $remainDetail,
+        'recordUrl'       => $recordUrl,
+        'editUrl'         => $editUrl,
+        'adjustUrl'       => $adjustUrl,
+        'statusGroup'     => $statusGroup,
+        'isCompleted'     => $isCompleted,
+    ];
+
+    $groups[$statusGroup][] = $entry;
 }
 
-// Sort the array by key (the "Next Due" time)
-ksort($medicationRows);
+// Sort each group by sortKey
+foreach ($groups as &$g) {
+    usort($g, function ($a, $b) {
+        return strcmp($a['sortKey'], $b['sortKey']);
+    });
+}
+unset($g);
 
-// Print the sorted rows
-foreach ($medicationRows as $medicationRow) {
-    echo $medicationRow;
+// ── Section config ──
+$sectionConfig = [
+    'overdue'  => ['label' => 'Overdue',   'sectionClass' => 'section-overdue',  'statusClass' => 'status-overdue',  'icon' => 'exclamation-triangle-fill'],
+    'due_soon' => ['label' => 'Due Soon',  'sectionClass' => 'section-due-soon', 'statusClass' => 'status-due-soon', 'icon' => 'clock'],
+    'ok'       => ['label' => 'Upcoming',  'sectionClass' => 'section-ok',       'statusClass' => 'status-ok',       'icon' => ''],
+    'done'     => ['label' => 'Completed', 'sectionClass' => 'section-done',     'statusClass' => 'status-done',     'icon' => 'check-circle'],
+];
+
+// Count completed for collapse label
+$completedCount = count($groups['done']);
+
+// ── Helper to render a table row ──
+function renderTableRow($entry, $statusClass) {
+    $warningIcon = '';
+    if ($entry['nextDueLabel'] === 'Overdue') {
+        $warningIcon = '<img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="Warning" class="mr-1"> ';
+    }
+    $dueAttr = $entry['secondsUntilDue'] !== null && !$entry['isCompleted']
+        ? ' data-due-seconds="' . intval($entry['secondsUntilDue']) . '"'
+        : '';
+
+    $html  = '<tr class="' . $statusClass . '">';
+    $html .= '<td>' . htmlspecialchars($entry['medName']) . '</td>';
+    $html .= '<td>' . htmlspecialchars($entry['frequency']) . '</td>';
+    $html .= '<td>' . htmlspecialchars($entry['lastTakenNicely']) . '</td>';
+    $html .= '<td class="js-countdown"' . $dueAttr . '>' . $warningIcon . htmlspecialchars($entry['nextDueLabel']);
+    if ($entry['nextDueDetail']) {
+        $html .= '<br><small class="text-muted">' . htmlspecialchars($entry['nextDueDetail']) . '</small>';
+    }
+    $html .= '</td>';
+    $html .= '<td>' . htmlspecialchars($entry['remainShort']);
+    if ($entry['remainDetail']) {
+        $html .= '<br><small class="text-muted">' . htmlspecialchars($entry['remainDetail']) . '</small>';
+    }
+    $html .= '</td>';
+    $html .= '<td class="actions-cell">';
+    if (!$entry['isCompleted']) {
+        $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success mr-1" title="Record Intake">';
+        $html .= '<img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a>';
+        $html .= '<a href="' . htmlspecialchars($entry['adjustUrl']) . '" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a>';
+    }
+    $html .= '<a href="' . htmlspecialchars($entry['editUrl']) . '" class="btn btn-sm btn-outline-secondary" title="Edit">';
+    $html .= '<img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a>';
+    $html .= '</td>';
+    $html .= '</tr>';
+    return $html;
 }
 
-echo "</tbody>";
-echo "</table>\n";
-echo "</div>\n";
+// ── Helper to render a card (mobile) ──
+function renderCard($entry, $statusClass) {
+    $warningIcon = '';
+    if ($entry['nextDueLabel'] === 'Overdue') {
+        $warningIcon = '<img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="Warning" class="mr-1"> ';
+    }
+    $dueAttr = $entry['secondsUntilDue'] !== null && !$entry['isCompleted']
+        ? ' data-due-seconds="' . intval($entry['secondsUntilDue']) . '"'
+        : '';
 
-echo "<p>";
-if ($showCompleted) {
-    echo "<a href=\"list_schedule.php?patient_id=" . htmlspecialchars($patient_id) . "\" class='btn btn-secondary'>Hide Completed Medications</a>\n";
-} else {
-    echo "<a href=\"list_schedule.php?patient_id=" . htmlspecialchars($patient_id) . "&show_completed=1\" class='btn btn-secondary'>Show Completed Medications</a>\n";
+    $html  = '<div class="schedule-card ' . $statusClass . '">';
+    $html .= '<div class="d-flex justify-content-between align-items-start">';
+    $html .= '<span class="card-med-name">' . htmlspecialchars($entry['medName']) . '</span>';
+    if (!$entry['isCompleted']) {
+        $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success" title="Record Intake">';
+        $html .= '<img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a>';
+    }
+    $html .= '</div>';
+    $html .= '<div class="card-meta">Every ' . htmlspecialchars($entry['frequency']);
+    if ($entry['lastTakenNicely']) {
+        $html .= ' &middot; Last: ' . htmlspecialchars($entry['lastTakenNicely']);
+    }
+    $html .= '</div>';
+    $html .= '<div class="card-due js-countdown"' . $dueAttr . '>' . $warningIcon;
+    if ($entry['isCompleted']) {
+        $html .= 'Completed';
+    } else {
+        $html .= htmlspecialchars($entry['nextDueLabel'] === 'Overdue' ? 'Overdue' : 'Due in ' . $entry['nextDueLabel']);
+        if ($entry['nextDueDetail']) {
+            $html .= ' <small class="text-muted">(' . htmlspecialchars($entry['nextDueDetail']) . ')</small>';
+        }
+    }
+    $html .= '</div>';
+    if ($entry['remainShort'] && $entry['remainShort'] !== translate('None')) {
+        $html .= '<div class="card-remaining">' . htmlspecialchars($entry['remainShort']);
+        if ($entry['remainDetail']) {
+            $html .= ' &middot; ' . htmlspecialchars($entry['remainDetail']);
+        }
+        $html .= '</div>';
+    }
+    $html .= '<div class="card-actions">';
+    if (!$entry['isCompleted']) {
+        $html .= '<a href="' . htmlspecialchars($entry['adjustUrl']) . '" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a>';
+    }
+    $html .= '<a href="' . htmlspecialchars($entry['editUrl']) . '" class="btn btn-sm btn-outline-secondary" title="Edit">';
+    $html .= '<img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a>';
+    $html .= '</div>';
+    $html .= '</div>';
+    return $html;
 }
-echo "<a href=\"add_to_schedule.php?patient_id=" . htmlspecialchars($patient_id) . "\" class='btn btn-primary'>Add Medication to Schedule</a></p>\n";
 
+// ══════════════════════════════════════════
+// ── DESKTOP TABLE VIEW (hidden on mobile) ──
+// ══════════════════════════════════════════
+echo '<div class="d-none d-md-block">';
+
+foreach (['overdue', 'due_soon', 'ok', 'done'] as $groupKey) {
+    $entries = $groups[$groupKey];
+    if (empty($entries)) {
+        continue;
+    }
+    $cfg = $sectionConfig[$groupKey];
+
+    // Completed section: collapsible
+    if ($groupKey === 'done') {
+        echo '<div class="schedule-section-header ' . $cfg['sectionClass'] . '">';
+        echo '<a data-toggle="collapse" href="#completedTableSection" role="button" aria-expanded="false" class="text-decoration-none" style="color:inherit;">';
+        if ($cfg['icon']) {
+            echo '<img src="images/bootstrap-icons/' . $cfg['icon'] . '.svg" alt="" class="mr-1" style="width:16px;height:16px;"> ';
+        }
+        echo $cfg['label'] . ' (' . $completedCount . ')';
+        echo ' <small>&#9660;</small></a></div>';
+        echo '<div class="collapse" id="completedTableSection">';
+    } else {
+        echo '<div class="schedule-section-header ' . $cfg['sectionClass'] . '">';
+        if ($cfg['icon']) {
+            echo '<img src="images/bootstrap-icons/' . $cfg['icon'] . '.svg" alt="" class="mr-1" style="width:16px;height:16px;"> ';
+        }
+        echo $cfg['label'] . ' (' . count($entries) . ')</div>';
+    }
+
+    echo '<div class="table-responsive">';
+    echo '<table class="table table-hover schedule-table mb-2">';
+    echo '<thead class="thead-light"><tr>';
+    echo '<th>Medication</th><th>Frequency</th><th>Last Taken</th><th>Next Due</th><th>Remaining</th><th class="actions-cell">Actions</th>';
+    echo '</tr></thead><tbody>';
+
+    foreach ($entries as $entry) {
+        echo renderTableRow($entry, $cfg['statusClass']);
+    }
+
+    echo '</tbody></table></div>';
+
+    if ($groupKey === 'done') {
+        echo '</div>'; // close collapse
+    }
+}
+
+// If all groups empty
+$totalEntries = count($groups['overdue']) + count($groups['due_soon']) + count($groups['ok']) + count($groups['done']);
+if ($totalEntries === 0) {
+    echo '<div class="alert alert-info mt-3">No medications scheduled for this patient.</div>';
+}
+
+echo '</div>'; // close d-none d-md-block
+
+
+// ══════════════════════════════════════════
+// ── MOBILE CARD VIEW (hidden on desktop) ──
+// ══════════════════════════════════════════
+echo '<div class="d-md-none">';
+
+foreach (['overdue', 'due_soon', 'ok', 'done'] as $groupKey) {
+    $entries = $groups[$groupKey];
+    if (empty($entries)) {
+        continue;
+    }
+    $cfg = $sectionConfig[$groupKey];
+
+    if ($groupKey === 'done') {
+        echo '<div class="schedule-section-header ' . $cfg['sectionClass'] . '">';
+        echo '<a data-toggle="collapse" href="#completedCardSection" role="button" aria-expanded="false" class="text-decoration-none" style="color:inherit;">';
+        if ($cfg['icon']) {
+            echo '<img src="images/bootstrap-icons/' . $cfg['icon'] . '.svg" alt="" class="mr-1" style="width:16px;height:16px;"> ';
+        }
+        echo $cfg['label'] . ' (' . $completedCount . ')';
+        echo ' <small>&#9660;</small></a></div>';
+        echo '<div class="collapse" id="completedCardSection">';
+    } else {
+        echo '<div class="schedule-section-header ' . $cfg['sectionClass'] . '">';
+        if ($cfg['icon']) {
+            echo '<img src="images/bootstrap-icons/' . $cfg['icon'] . '.svg" alt="" class="mr-1" style="width:16px;height:16px;"> ';
+        }
+        echo $cfg['label'] . ' (' . count($entries) . ')</div>';
+    }
+
+    foreach ($entries as $entry) {
+        echo renderCard($entry, $cfg['statusClass']);
+    }
+
+    if ($groupKey === 'done') {
+        echo '</div>';
+    }
+}
+
+if ($totalEntries === 0) {
+    echo '<div class="alert alert-info mt-3">No medications scheduled for this patient.</div>';
+}
+
+echo '</div>'; // close d-md-none
+
+// ── Bottom actions ──
+echo '<div class="mt-3 noprint">';
+echo '<a href="add_to_schedule.php?patient_id=' . htmlspecialchars($patient_id) . '" class="btn btn-primary">+ Add Medication to Schedule</a>';
+echo '</div>';
+
+?>
+<script>
+// Toggle URL parameter and reload
+function toggleParam(el, param) {
+    var url = new URL(window.location.href);
+    if (el.checked) {
+        url.searchParams.set(param, '1');
+    } else {
+        url.searchParams.delete(param);
+    }
+    window.location.href = url.toString();
+}
+
+// Live countdown: update every 60 seconds
+(function() {
+    function updateCountdowns() {
+        var els = document.querySelectorAll('.js-countdown[data-due-seconds]');
+        els.forEach(function(el) {
+            var secs = parseInt(el.getAttribute('data-due-seconds'), 10) - 60;
+            el.setAttribute('data-due-seconds', secs);
+
+            if (secs <= 0) {
+                // Switch to overdue styling
+                el.innerHTML = '<img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="Warning" class="mr-1"> Overdue';
+                var row = el.closest('tr');
+                var card = el.closest('.schedule-card');
+                if (row) {
+                    row.className = row.className.replace(/status-\w+/g, '') + ' status-overdue';
+                }
+                if (card) {
+                    card.className = card.className.replace(/status-\w+/g, '') + ' status-overdue';
+                }
+            } else {
+                var h = Math.floor(secs / 3600);
+                var m = Math.floor((secs % 3600) / 60);
+                var label = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+                // Preserve any existing <small> detail
+                var small = el.querySelector('small');
+                var detailHtml = small ? '<br>' + small.outerHTML : '';
+                // Check if this is a card (uses "Due in" prefix)
+                if (el.closest('.schedule-card')) {
+                    el.innerHTML = 'Due in ' + label + (small ? ' <small class="text-muted">' + small.textContent + '</small>' : '');
+                } else {
+                    el.innerHTML = label + detailHtml;
+                }
+            }
+        });
+    }
+    setInterval(updateCountdowns, 60000);
+})();
+</script>
+<?php
 echo print_trailer();
 ?>

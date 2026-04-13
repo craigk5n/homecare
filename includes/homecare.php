@@ -164,6 +164,13 @@ function dosesRemaining($medicine_id, $schedule_id, $assumePastIntake = false, $
         $ret['unitPerDose'] = $medicineDetailsRows[0][1];
     }
 
+    // Check for schedule-level unit_per_dose override
+    $scheduleUpdSql = "SELECT unit_per_dose FROM hc_medicine_schedules WHERE id = ?";
+    $scheduleUpdRows = dbi_get_cached_rows($scheduleUpdSql, [$schedule_id]);
+    if (!empty($scheduleUpdRows) && !empty($scheduleUpdRows[0][0])) {
+        $ret['unitPerDose'] = $scheduleUpdRows[0][0];
+    }
+
     // Fetch the most recent inventory for this medicine
     $inventorySql = "SELECT current_stock, recorded_at FROM hc_medicine_inventory 
                      WHERE medicine_id = ? ORDER BY recorded_at DESC LIMIT 1";
@@ -175,7 +182,8 @@ function dosesRemaining($medicine_id, $schedule_id, $assumePastIntake = false, $
         $ret['lastInventory'] = $lastInventoryQuantity;
 
         // Fetch the total quantity of medicine consumed since the last inventory, accounting for unit per dose
-        $intakeSql = "SELECT SUM(m.unit_per_dose) AS total_consumed
+        // Use schedule-level unit_per_dose when set, otherwise fall back to medicine-level
+        $intakeSql = "SELECT SUM(COALESCE(s.unit_per_dose, m.unit_per_dose)) AS total_consumed
                       FROM hc_medicine_intake i
                       JOIN hc_medicine_schedules s ON s.id = i.schedule_id
                       JOIN hc_medicines m ON m.id = s.medicine_id

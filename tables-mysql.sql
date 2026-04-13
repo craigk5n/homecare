@@ -62,6 +62,7 @@ CREATE TABLE `hc_medicine_schedules` (
   `start_date` DATE NOT NULL,
   `end_date` DATE,
   `frequency` VARCHAR(255) NOT NULL,
+  `unit_per_dose` DECIMAL(10, 2) DEFAULT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`patient_id`) REFERENCES `hc_patients`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`medicine_id`) REFERENCES `hc_medicines`(`id`) ON DELETE CASCADE
