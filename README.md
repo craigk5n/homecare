@@ -1,120 +1,236 @@
 # HomeCare
 
-<!-- HC-051 CI badge. The owner/repo placeholder below is a guess based on
-     CLAUDE.md's WebCalendar reference; replace `craigk5n/homecare` with
-     the real GitHub path before pushing the workflow. -->
-[![tests](https://github.com/craigk5n/homecare/actions/workflows/tests.yml/badge.svg)](https://github.com/craigk5n/homecare/actions/workflows/tests.yml)
+[![Tests](https://github.com/craigk5n/homecare/actions/workflows/tests.yml/badge.svg)](https://github.com/craigk5n/homecare/actions/workflows/tests.yml)
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.1-blue)](https://www.php.net/)
+[![License: GPL v2+](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
 
-A small PHP + MySQL web app for tracking a patient's medication schedule,
-intake, inventory, and caregiver notes.
+Self-hosted medication tracker for home caregivers. Manages
+per-patient schedules, intake history, inventory, and caregiver notes
+for one or more dependents — built for the reality that someone is
+already juggling multiple medications, refill windows, and "did we
+give it this morning?" across a household.
 
-This README documents how to run HomeCare; for the broader project
-backlog, design notes, and progress tracking see [`STATUS.md`](STATUS.md)
-and [`CLAUDE.md`](CLAUDE.md).
+## Features
 
-## Run with Docker (HC-050)
+- **Scheduling** — per-patient medication schedules with arbitrary
+  frequencies (`1d`, `12h`, `8h`, `6h`, `4h`). Start and end dates,
+  per-schedule dose units, soft-discontinue rather than delete so
+  history stays intact.
+- **Intake tracking** — one-tap "Record Dose" on a mobile-friendly
+  today-view, edit-in-place for corrections, free-text notes per
+  intake.
+- **Inventory** — current-stock checkpoints and remaining-doses math
+  driven by recorded intakes, so "how many days until we run out of
+  Sildenafil?" is always available.
+- **Reports**
+  - *Adherence:* 7/30/90-day rolling percentages plus a custom-range
+    view, with partial-schedule handling that distinguishes
+    *not-active-in-this-window* from *active-but-zero-adherence*.
+  - *Intake history:* month view with inline notes, CSV, HL7 FHIR R4
+    (`MedicationAdministration` bundle), and print-ready PDF exports.
+  - *Missed medications* and *medication supply* roll-ups.
+- **PDF archive** — `generate_monthly_pdf.php` is a cron-friendly CLI
+  that renders letter-paper intake reports per patient, per period.
+  Accepts arbitrary windows (`--start`/`--end` in `YYYY-MM-DD` or
+  `YYYYMMDD`) and writes atomically to an archive directory.
+- **Push reminders** — `send_reminders.php` pushes due-soon and
+  low-supply alerts to an [ntfy](https://ntfy.sh/) topic.
+- **Calendar feed** — `schedule_ics.php` emits an iCalendar feed per
+  patient so caregivers can subscribe from their phone's calendar app.
+- **API** — small REST surface under `/api/v1/` (patients, schedules,
+  intakes, inventory) for integration with home-automation scripts.
+- **Auth** — session-based login with bcrypt password storage, remember-me
+  cookies, API-key auth for the REST surface, and an audit log of all
+  write operations.
 
-The fastest way to get a working install on a fresh machine is the
-bundled Docker Compose stack.
+## Tech stack
 
-### Prerequisites
+- **PHP 8.1+** with [Composer](https://getcomposer.org/) for the
+  namespaced `src/` code. No build step; Apache serves the top-level
+  `*.php` files directly.
+- **MySQL 8** for production, **SQLite 3.35+** for the integration
+  test path.
+- **Dompdf** for PDF rendering (vendored — no Composer install needed
+  at deploy time).
+- **PHPUnit 10** (~300 tests) and **PHPStan at max level** gate every
+  pull request.
 
-- Docker 20.10+
-- Docker Compose v2 (built into recent Docker Desktop / `docker-compose-plugin`)
+The infrastructure layer (`includes/init.php`, `includes/dbi4php.php`,
+`includes/functions.php`, `includes/translate.php`,
+`includes/formvars.php`, `includes/menu.php`, `pub/`) is adopted from
+[WebCalendar](https://github.com/craigk5n/webcalendar), which is why
+the license below is GPL.
 
-### One-shot bring-up
+## Quick start (Docker)
 
 ```bash
-# (Optional) adjust passwords / timezone — defaults work for local dev.
-cp .env.example .env
-
+git clone git@github.com:craigk5n/homecare.git
+cd homecare
+cp .env.example .env                # optional; adjust DB password / TZ
 docker compose up --build
 ```
 
-When you see Apache log lines, open <http://localhost:8080> in a
-browser. On a fresh database the container's entrypoint loads the
-schema from `tables-mysql.sql` automatically; subsequent restarts
-detect the existing schema and skip init.
+Open <http://localhost:8080>. On first boot the container loads
+`tables-mysql.sql` automatically; subsequent `up` cycles reuse the
+named `homecare_db_data` volume.
 
-### Services
-
-| Service | Image | Purpose |
-|---------|-------|---------|
-| `web`   | Built from `Dockerfile` (Apache + PHP 8.2) | Application server, port `8080`→`80` |
-| `db`    | `mysql:8.0` | Persistent database, volume `homecare_db_data` |
-
-### Configuration
-
-The `web` container reads connection settings from environment
-variables (no committed `settings.php`):
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `HC_DB_HOST` | `db` | MySQL host (set automatically by Compose) |
-| `HC_DB_PORT` | `3306` | MySQL port |
-| `HC_DB_NAME` | `homecare` | Database name |
-| `HC_DB_USER` | `homecare` | DB user |
-| `HC_DB_PASSWORD` | required | DB password |
-| `HC_DB_TYPE` | `mysqli` | dbi4php driver name |
-| `HC_TIMEZONE` | `America/New_York` | PHP timezone |
-
-The entrypoint script writes a fresh `includes/settings.php` from
-these on every container start.
-
-### Seeding a user
-
-The shipped DB starts empty. To create the default admin used in
-development (`cknudsen` / `cknudsen`):
+Seed a starter admin:
 
 ```bash
 docker compose exec db mysql -u homecare -phomecare homecare \
     < migrations/004_seed_cknudsen_user.sql
 ```
 
-Then visit <http://localhost:8080/login.php>.
+### Services
 
-### Persistent data
+| Service | Image | Purpose |
+| --- | --- | --- |
+| `web` | Built from `Dockerfile` (Apache + PHP 8.2) | Application (`8080` → `80`) |
+| `db` | `mysql:8.0` | Persistent database, volume `homecare_db_data` |
 
-The `homecare_db_data` named volume keeps your medication history
-between `docker compose down` / `up` cycles. To wipe it:
+### Environment variables
+
+The entrypoint writes `includes/settings.php` from these on every
+container start.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `HC_DB_HOST` | `db` | MySQL host (Compose wires this automatically) |
+| `HC_DB_PORT` | `3306` | MySQL port |
+| `HC_DB_NAME` | `homecare` | Database name |
+| `HC_DB_USER` | `homecare` | DB user |
+| `HC_DB_PASSWORD` | required | DB password |
+| `HC_DB_TYPE` | `mysqli` | `dbi4php` driver name |
+| `HC_TIMEZONE` | `America/New_York` | PHP timezone |
+
+Persistence is held in the `homecare_db_data` volume; wipe it with
+`docker compose down -v`.
+
+## Manual install (without Docker)
+
+If you already run Apache + PHP 8.1+ + MySQL 8:
 
 ```bash
-docker compose down -v
-```
+# Clone into your docroot
+git clone git@github.com:craigk5n/homecare.git /var/www/html/homecare
 
-### Building only the image
-
-```bash
-docker build -t homecare:local .
-```
-
-## Run on a host (no Docker)
-
-If you already have Apache + PHP 8.2 + MySQL 8 set up, deploy this
-repository under your docroot, populate `includes/settings.php` with
-your DB credentials, and load the schema:
-
-```bash
+# Load the schema and any pending migrations
 mysql <your-db> < tables-mysql.sql
+mysql <your-db> < migrations/009_normalize_frequency_2d_to_12h.sql
 
-# Run any migrations newer than your last upgrade:
-mysql <your-db> < migrations/00X_<name>.sql
+# Create includes/settings.php with DB credentials (see
+# includes/config.php for the expected keys).
+
+# Dompdf is vendored; only run composer if you plan to develop:
+#   composer install
 ```
 
-Composer dependencies are required for the namespaced `src/` code:
+The application is served directly by Apache — no build, no PHP-FPM
+tuning, no Node toolchain.
 
-```bash
-composer install --no-dev --optimize-autoloader
+## Usage highlights
+
+### Cron-driven monthly PDF archive
+
+```cron
+# 00:05 on the 1st of each month — archive the month that just ended.
+5 0 1 * * cd /var/www/html/homecare && php generate_monthly_pdf.php
+
+# 00:05 on January 1st — annual archive covering the full prior year.
+5 0 1 1 * cd /var/www/html/homecare && php generate_monthly_pdf.php \
+    --start=$(date -d "last year 01 01" +%Y%m%d) \
+    --end=$(date -d "last year 12 31" +%Y%m%d)
 ```
+
+Set the archive directory once:
+
+```sql
+INSERT INTO hc_config (setting, value)
+VALUES ('pdf_archive_dir', '/var/backups/homecare/pdf');
+```
+
+Or pass `--output-dir=/path` / set `$PDF_ARCHIVE_DIR` for the cron user.
+Flags: `--patient-id=N`, `--month=YYYY-MM`, `--start=…`, `--end=…`,
+`--dry-run`, `--verbose`, `--help`.
+
+### Due-dose reminders
+
+```cron
+# Check every 5 minutes; push any dose due in the next 5 minutes.
+*/5 * * * * cd /var/www/html/homecare && php send_reminders.php
+```
+
+Configure the ntfy topic through the Settings page (admin) or directly
+in `hc_config`.
 
 ## Development
 
 ```bash
-composer install      # includes phpunit + phpstan
-composer check        # runs PHPStan max + the full test suite
+composer install          # installs phpunit + phpstan
+composer check            # runs PHPStan (level: max) + the full suite
+composer test             # PHPUnit only
+composer analyse          # PHPStan only
 ```
 
-See [`STATUS.md`](STATUS.md) for the project backlog (Jira-style
-epics + stories), the per-story implementation notes, and the
-quality-gate requirements (PHPStan max, 80%+ coverage, parameterized
-SQL, etc.).
+Expectations on contributions:
+
+- PHPStan at `max` stays green.
+- Tests are the default; integration tests run against SQLite so the
+  suite is ~5 seconds end to end.
+- SQL is always parameterised via `dbi_*` (never string-concatenated).
+- Output is always HTML-escaped with `htmlspecialchars()`.
+- Request input is read via the helpers in `includes/formvars.php`
+  (`getGetValue`, `getPostValue`), not raw superglobals.
+
+See [`CLAUDE.md`](CLAUDE.md) for the fuller architecture guide
+(request model, module layout, schema, frequency convention,
+conventions).
+
+## Project layout
+
+```
+├── *.php                  Top-level pages and handlers served by Apache
+├── api/v1/                REST API surface
+├── docker/                Entrypoint + Apache config for the web image
+├── includes/              Bootstrap, DB layer, helpers, menu, CSS
+├── migrations/            Non-destructive schema migrations
+├── pub/                   Static assets (Bootstrap, Chart.js, icons)
+├── src/                   Namespaced HomeCare\ code (PSR-4)
+│   ├── Auth/
+│   ├── Database/
+│   ├── Domain/
+│   ├── Export/
+│   ├── Repository/
+│   ├── Report/
+│   └── Service/
+├── tables-mysql.sql       Canonical schema
+├── tests/                 PHPUnit unit + integration suite
+├── vendor/                Vendored runtime deps (Dompdf + friends)
+└── send_reminders.php     Cron: due-dose + low-supply notifications
+```
+
+## Contributing
+
+Issues and pull requests are welcome. Before opening a PR, please:
+
+1. Add or update tests that fail without your change.
+2. Run `composer check` locally and confirm it's green.
+3. Keep SQL parameterised and output escaped (see the Development
+   section).
+4. Match commit-message style from `git log` — conventional-commits
+   prefixes (`feat:`, `fix:`, `chore:`, `docs:`, etc.).
+
+## Acknowledgements
+
+- [WebCalendar](https://github.com/craigk5n/webcalendar) for the
+  `includes/init.php`, `dbi4php.php`, `functions.php`,
+  `translate.php`, `formvars.php`, `menu.php`, and `pub/` skeleton.
+- [Dompdf](https://github.com/dompdf/dompdf) for PDF rendering.
+- [Bootstrap 4](https://getbootstrap.com/) and
+  [Chart.js](https://www.chartjs.org/) for the front-end.
+- [ntfy](https://ntfy.sh/) for the push-notification transport.
+
+## License
+
+Distributed under the GNU General Public License version 2.0 (or any
+later version). See [`LICENSE`](LICENSE) for the full text.
