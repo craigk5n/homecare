@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- HomeCare PWA icon. Two-tone medical cross on a rounded teal tile.
+     Single source of truth — pub/icons/icon-192.png and icon-512.png
+     are rasterized from this via ImageMagick. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" ry="96" fill="#0d6efd"/>
+  <!-- Plus sign (medical cross) -->
+  <rect x="216" y="112" width="80" height="288" rx="16" ry="16" fill="#ffffff"/>
+  <rect x="112" y="216" width="288" height="80" rx="16" ry="16" fill="#ffffff"/>
+  <!-- Pill highlight: a small horizontal capsule overlaying the cross -->
+  <rect x="160" y="240" width="192" height="32" rx="16" ry="16" fill="#0d6efd" opacity="0.18"/>
+</svg>

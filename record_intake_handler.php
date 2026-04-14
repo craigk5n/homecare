@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/init.php';
+require_role('caregiver');
 
 $schedule_id = getPostValue('schedule_id');
 $patient_id = getPostValue('patient_id');
@@ -13,6 +14,11 @@ if (!empty($delete) && $delete === 'yes') {
   $deleteSql = "DELETE FROM hc_medicine_intake WHERE id = ?";
   if (!dbi_execute($deleteSql, [$edit_id])) {
       echo "Error deleting intake: " . dbi_error();
+  } else {
+      audit_log('intake.deleted', 'intake', (int) $edit_id, [
+          'schedule_id' => (int) $schedule_id,
+          'patient_id' => (int) $patient_id,
+      ]);
   }
 } elseif (empty($edit_id)) {
   // Insert intake record into database
@@ -20,6 +26,14 @@ if (!empty($delete) && $delete === 'yes') {
   $params = [$schedule_id, $taken_time, $note];
   if (!dbi_execute($insertSql, $params)) {
       echo "Error recording intake: " . dbi_error();
+  } else {
+      $newId = (int) mysqli_insert_id($GLOBALS['c']);
+      audit_log('intake.recorded', 'intake', $newId ?: null, [
+          'schedule_id' => (int) $schedule_id,
+          'patient_id' => (int) $patient_id,
+          'taken_time' => $taken_time,
+          'note' => $note,
+      ]);
   }
 } else {
   // Edit existing entry
@@ -28,6 +42,11 @@ if (!empty($delete) && $delete === 'yes') {
   //echo "SQL: $insertSql <br>Params: "; print_r($params); echo "<br>"; exit;
   if (!dbi_execute($insertSql, $params)) {
       echo "Error recording intake: " . dbi_error();
+  } else {
+      audit_log('intake.updated', 'intake', (int) $edit_id, [
+          'taken_time' => $taken_time,
+          'note' => $note,
+      ]);
   }
 }
 do_redirect("list_schedule.php?patient_id=" . urlencode($patient_id));

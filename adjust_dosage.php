@@ -22,8 +22,7 @@ $patient = getPatient($patient_id);
 
 // Fetch the current schedule with medicine details
 $sql = "SELECT ms.id, ms.medicine_id, ms.frequency, ms.start_date, ms.end_date,
-        COALESCE(ms.unit_per_dose, m.unit_per_dose) AS effective_unit_per_dose,
-        m.name, m.dosage, m.unit_per_dose AS medicine_unit_per_dose
+        ms.unit_per_dose, m.name, m.dosage
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
         WHERE ms.id = ? AND ms.patient_id = ?";
@@ -38,7 +37,6 @@ $startDate = $rows[0][3];
 $currentUnitPerDose = $rows[0][5];
 $medicineName = $rows[0][6];
 $dosageText = $rows[0][7];
-$medicineUnitPerDose = $rows[0][8];
 $medicine_id = $rows[0][1];
 
 $today = date('Y-m-d');
@@ -81,7 +79,6 @@ echo "<div class='form-group'>\n";
 echo "<label for='unit_per_dose'>Unit per dose:</label>\n";
 echo "<input type='number' name='unit_per_dose' id='unit_per_dose' class='form-control' step='0.01' min='0.01' required";
 echo " value='" . htmlspecialchars($currentUnitPerDose) . "'>\n";
-echo "<small class='form-text text-muted'>Medicine default: " . htmlspecialchars($medicineUnitPerDose) . "</small>\n";
 echo "</div>\n";
 
 echo "<div class='form-group'>\n";

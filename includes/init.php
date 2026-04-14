@@ -45,6 +45,12 @@ do_config ();
 
 date_default_timezone_set('America/New_York');
 
+// Native HomeCare auth: resolves $login from the session or the
+// remember-me cookie, or redirects to login.php. Public endpoints
+// (CLI, login.php, logout.php, schedule_ics.php, css_cacher.php)
+// short-circuit inside hc_validate().
+hc_validate();
+
 // Return the toplevel URL (no path) of the current URL.
 function get_server_top_url () {
   if(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
@@ -255,6 +261,22 @@ function print_header( $includes = '', $HeadX = '', $BodyX = '',
      ' . $HeadX : '' ) . '
     <link type="image/x-icon" href="favicon.ico?'
    . filemtime( 'favicon.ico' ) . '" rel="shortcut icon">
+    <!-- HC-060: PWA. manifest + theme color + apple-touch-icon so iOS
+         "Add to Home Screen" picks up our icon, and a tiny inline
+         registration of /sw.js. The SW caches static assets only; PHP
+         pages and API JSON are network-only. -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <link rel="apple-touch-icon" href="pub/icons/icon-192.png">
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").catch(function (e) {
+            console.warn("HomeCare SW registration failed:", e);
+          });
+        });
+      }
+    </script>
   </head>
   <body'
   // Determine the page direction (left-to-right or right-to-left).

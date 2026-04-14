@@ -47,7 +47,10 @@ $patients = getPatients();
           <?php if (!empty($new_med_url)) { ?>
             <a class="dropdown-item" href="<?php echo $new_med_url; ?>"><?php etranslate('Add New Medication'); ?></a>
           <?php } ?>
-          <a class="dropdown-item" href="edit_inventory.php"><?php etranslate('Update Inventory'); ?></a>
+          <a class="dropdown-item" href="inventory_dashboard.php"><?php etranslate('Inventory Dashboard'); ?></a>
+          <?php if (!empty($is_admin) && $is_admin) { ?>
+            <a class="dropdown-item" href="merge_medicines.php"><?php etranslate('Merge Medicines'); ?></a>
+          <?php } ?>
         </div>
       </li>
 
@@ -115,6 +118,7 @@ $patients = getPatients();
             print_menu_item('Intake History', 'report_intake.php?patient_id=' . $patient['id']);
             print_menu_item('Missed Medications', 'report_missed.php?patient_id=' . $patient['id']);
             print_menu_item('Medication Supply', 'report_medications.php?patient_id=' . $patient['id']);
+            print_menu_item('Adherence', 'report_adherence.php?patient_id=' . $patient['id']);
           }
           ?>
         </div>
@@ -129,17 +133,14 @@ $patients = getPatients();
             <?php
             // Normal User Settings.
             echo '<h6 class="dropdown-header">' . translate('Your Settings') . '</h6>';
-            //if (!$is_admin)
-            //  print_menu_item(translate('My Profile'), 'user_mgmt.php');
+            print_menu_item(translate('Account & API key'), 'settings.php');
 
-            // print_menu_item(translate('Preferences'), 'pref.php');
-
-            // Admin-only settings
+            // Admin-only settings (the same settings.php page surfaces
+            // the ntfy / notification config block when canAdmin()).
             if ($is_admin) {
               echo '<div class="dropdown-divider"></div>';
               echo '<h6 class="dropdown-header">' . translate('Admin Settings') . '</h6>';
-              //print_menu_item(translate('System Settings'), 'admin.php');
-              //print_menu_item(translate('Users'), 'user_mgmt.php');
+              print_menu_item(translate('Notifications (ntfy)'), 'settings.php#notifications');
             }
             ?>
           </div>

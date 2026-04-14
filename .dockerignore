@@ -1,0 +1,41 @@
+# HC-050: keep the build context lean and the image free of dev-only state.
+
+# Composer + test artefacts
+vendor/
+composer.lock
+.phpunit.cache/
+.phpunit.result.cache
+phpunit.xml
+phpstan.neon
+
+# Local config + DB dumps (settings.php is generated at container start).
+# tables-mysql.sql and migrations/*.sql MUST remain in the image so the
+# entrypoint can load the schema on first boot.
+includes/settings.php
+homecare-dump.sql
+intranet_hc_tables.sql
+
+# VCS + IDE
+.git/
+.gitignore
+.gitattributes
+.idea/
+.vscode/
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docs that don't belong in the runtime image
+STATUS.md
+COMPETITIVE_ANALYSIS.md
+AGENTS.md
+CLAUDE.md
+
+# The compose stack itself
+docker-compose.yml
+.dockerignore
+Dockerfile

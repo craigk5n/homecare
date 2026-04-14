@@ -1,0 +1,58 @@
+# HomeCare local stack (HC-050)
+#
+# `docker compose up --build` brings up:
+#   - web: Apache + PHP 8.2 image built from ./Dockerfile, serving on
+#     http://localhost:8080
+#   - db:  MySQL 8 with persistent volume `homecare_db_data`
+#
+# Credentials default to homecare/homecare for local dev. Override via
+# a .env file or `docker compose up -e ...` for anything beyond a
+# single-machine evaluation.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      # Override with HC_WEB_PORT in .env if 8080 is taken on your host.
+      - "${HC_WEB_PORT:-8080}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HC_DB_HOST: db
+      HC_DB_PORT: 3306
+      HC_DB_NAME: ${MYSQL_DATABASE:-homecare}
+      HC_DB_USER: ${MYSQL_USER:-homecare}
+      HC_DB_PASSWORD: ${MYSQL_PASSWORD:-homecare}
+      HC_DB_TYPE: mysqli
+      HC_TIMEZONE: ${TZ:-America/New_York}
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpw}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-homecare}
+      MYSQL_USER: ${MYSQL_USER:-homecare}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-homecare}
+    volumes:
+      - homecare_db_data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - -h
+        - localhost
+        - -u
+        - root
+        - -p${MYSQL_ROOT_PASSWORD:-rootpw}
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  homecare_db_data:

@@ -6,46 +6,138 @@
  * not be useful to other projects.
  */
 
+// Load Composer autoload for namespaced domain classes when available.
+// Pages include this file before any DB call, so we pull the autoloader in
+// here once. When Composer has not been bootstrapped (e.g. initial install
+// before `composer install`) the wrappers below still work via a local fallback.
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require_once __DIR__ . '/../vendor/autoload.php';
+}
+
+use HomeCare\Audit\AuditLogger;
+use HomeCare\Auth\Authorization;
+use HomeCare\Database\DbiAdapter;
+use HomeCare\Domain\ScheduleCalculator;
+use HomeCare\Repository\InventoryRepository;
+use HomeCare\Repository\ScheduleRepository;
+use HomeCare\Service\InventoryService;
+
+/**
+ * Look up the current user's role from hc_user.
+ *
+ * Returns 'admin' when `is_admin = 'Y'` even if the role column has not
+ * been migrated yet, so the helper keeps working during the HC-010
+ * transition. Unknown logins fall back to 'viewer' -- the most
+ * restrictive role -- so fail-closed is the default.
+ */
+function getCurrentUserRole(): string
+{
+    $login = $GLOBALS['login'] ?? null;
+    if (!is_string($login) || $login === '') {
+        return Authorization::ROLE_VIEWER;
+    }
+
+    $rows = dbi_get_cached_rows(
+        'SELECT role, is_admin FROM hc_user WHERE login = ?',
+        [$login]
+    );
+    if (empty($rows) || empty($rows[0])) {
+        return Authorization::ROLE_VIEWER;
+    }
+
+    $role = (string) ($rows[0][0] ?? '');
+    $isAdmin = (string) ($rows[0][1] ?? '');
+    // Legacy is_admin='Y' always promotes, regardless of stored role. Once
+    // HC-013/HC-014 land and all writes go through the role column we can
+    // drop this bridge and trust the column.
+    if ($isAdmin === 'Y') {
+        return Authorization::ROLE_ADMIN;
+    }
+
+    return $role === '' ? Authorization::ROLE_CAREGIVER : $role;
+}
+
+/**
+ * Enforce role-based access on a handler or admin page.
+ *
+ * Calls `die_miserable_death()` when the current user's role does not
+ * satisfy the minimum. Typical usage at the top of a handler:
+ *
+ *     require_once 'includes/init.php';
+ *     require_role('caregiver');
+ */
+function require_role(string $minimumRole): void
+{
+    $auth = new Authorization(getCurrentUserRole());
+    if (!$auth->satisfies($minimumRole)) {
+        die_miserable_death(
+            translate('Access denied') . ': '
+            . translate('this action requires the') . ' ' . htmlspecialchars($minimumRole) . ' '
+            . translate('role')
+        );
+    }
+}
+
+/**
+ * Record one audit event against the live dbi4php connection.
+ *
+ * Convenience wrapper over {@see AuditLogger}: reads `$login` and
+ * `$_SERVER['REMOTE_ADDR']` for context so handlers can simply call
+ * `audit_log('intake.recorded', 'schedule', $scheduleId, [...])`
+ * without re-wiring the graph each time.
+ *
+ * @param array<string,mixed> $details
+ */
+function audit_log(string $action, string $entityType = '', ?int $entityId = null, array $details = []): void
+{
+    static $logger = null;
+    if ($logger === null) {
+        $logger = new AuditLogger(
+            new DbiAdapter(),
+            static function (): ?string {
+                $login = $GLOBALS['login'] ?? null;
+                return is_string($login) && $login !== '' ? $login : null;
+            },
+            static function (): ?string {
+                $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+                return is_string($ip) && $ip !== '' ? $ip : null;
+            }
+        );
+    }
+
+    $logger->log($action, $entityType, $entityId, $details);
+}
+
+/**
+ * Build the InventoryService against the live dbi4php connection.
+ *
+ * Kept inline rather than in a container because HomeCare has no DI
+ * framework; every request already bootstraps a single mysqli connection
+ * via init.php, and DbiAdapter is a thin wrapper over it.
+ */
+function homecare_inventory_service(): InventoryService
+{
+    static $service = null;
+    if ($service === null) {
+        $db = new DbiAdapter();
+        $service = new InventoryService(
+            new InventoryRepository($db),
+            new ScheduleRepository($db),
+        );
+    }
+
+    return $service;
+}
+
 // $lastTaken is the DateTime object of the last time the medication was taken
 // $frequency is how often to take it (1d, 8h, 12h, etc.)
 function calculateSecondsUntilDue($lastTaken, $frequency, $showNegative = false)
 {
-    // Parse the frequency to extract the number and unit
-    $amount = intval($frequency);  // Extracts the integer value from the start of the frequency
-    $unit = substr($frequency, -1);  // Gets the last character to determine the unit (d, h, or m)
-
-    // Calculate the next due time from the last taken time
-    $lastTakenTimestamp = strtotime($lastTaken);
-
-    // Calculate the additional seconds based on the frequency
-    switch ($unit) {
-        case 'd':  // Days
-            $secondsToAdd = $amount * 86400;  // 86400 seconds in a day
-            break;
-        case 'h':  // Hours
-            $secondsToAdd = $amount * 3600;  // 3600 seconds in an hour
-            break;
-        case 'm':  // Minutes
-            $secondsToAdd = $amount * 60;  // 60 seconds in a minute
-            break;
-        default:
-            throw new Exception("Invalid frequency unit $unit");
-    }
-
-    // Compute the next due timestamp
-    $nextDueTimestamp = $lastTakenTimestamp + $secondsToAdd;
-
-    // Get the current timestamp
-    $currentTimestamp = time();
-
-    // Calculate seconds until due
-    if ($nextDueTimestamp > $currentTimestamp || $showNegative) {
-        // Future due
-        return $nextDueTimestamp - $currentTimestamp;
-    } else {
-        // Past due or due now
-        return 0;
-    }
+    return ScheduleCalculator::calculateSecondsUntilDue(
+        (string) $lastTaken,
+        (string) $frequency,
+        (bool) $showNegative
+    );
 }
 
 function getDueDateTimeInSeconds($patient_id, $schedule_id, $medicine_id, $show_negative = false)
@@ -109,141 +201,113 @@ function getPatients($includeDisabled = false)
 
 // Calculate the next due date and time and return in iso8601 format.
 function calculateNextDueDate($lastTaken, $frequency) {
-    $date = new DateTime($lastTaken);
-    $intervalSpec = getIntervalSpecFromFrequency($frequency);
-    if ($intervalSpec) {
-        $interval = new DateInterval($intervalSpec);
-        $date->add($interval);
-        return $date->format('Y-m-d H:i');
-    }
-    return "Frequency error";
+    return ScheduleCalculator::calculateNextDueDate((string) $lastTaken, (string) $frequency);
 }
 
 function getIntervalSpecFromFrequency($frequency) {
-    $unit = substr($frequency, -1);
-    $number = intval($frequency);
-    
-    if ($unit === 'h') {
-        return 'PT' . $number . 'H';
-    } elseif ($unit === 'd') {
-        return 'P' . $number . 'D';
-    }
-    return null;
+    return ScheduleCalculator::getIntervalSpecFromFrequency((string) $frequency);
 }
 
 function frequencyToSeconds($frequency) {
-    // Extract the number from the frequency string
-    $amount = intval($frequency);
-
-    // Extract the last character to determine the unit (d, h, or m)
-    $unit = substr($frequency, -1);
-
-    // Calculate the number of seconds based on the unit
-    switch ($unit) {
-        case 'd': // Days
-            return $amount * 86400; // 86400 seconds in a day
-        case 'h': // Hours
-            return $amount * 3600;  // 3600 seconds in an hour
-        case 'm': // Minutes
-            return $amount * 60;    // 60 seconds in a minute
-        default:
-            throw new Exception("Invalid frequency unit provided: " . $unit);
-    }
+    return ScheduleCalculator::frequencyToSeconds((string) $frequency);
 }
 
 // Return an array of what remains of a medication
-// [ 'remainingDays' => 100, 'remainingDoses' => 50, 'lastInventory' => 70, 'quantityTakenSince' => 30, 'unitPerDose' => 0, 'medicineName' => '' ]
+// [ 'remainingDays' => 100, 'remainingDoses' => 50, 'lastInventory' => 70,
+//   'quantityTakenSince' => 30, 'unitPerDose' => 0, 'medicineName' => '' ]
 function dosesRemaining($medicine_id, $schedule_id, $assumePastIntake = false, $start_date = null, $frequency = null) {
-    $ret = ['remainingDays' => 0, 'remainingDoses' => 0, 'lastInventory' => null, 'quantityTakenSince' => 0, 'unitPerDose' => 0, 'medicineName' => ''];
+    return homecare_inventory_service()->calculateRemaining(
+        (int) $medicine_id,
+        (int) $schedule_id,
+        (bool) $assumePastIntake,
+        $start_date === null ? null : (string) $start_date,
+        $frequency === null ? null : (string) $frequency
+    );
+}
 
-    // Get the medicine details including unit per dose
-    $medicineDetailsSql = "SELECT name, unit_per_dose FROM hc_medicines WHERE id = ?";
-    $medicineDetailsRows = dbi_get_cached_rows($medicineDetailsSql, [$medicine_id]);
-    if ($medicineDetailsRows && !empty($medicineDetailsRows[0])) {
-        $ret['medicineName'] = $medicineDetailsRows[0][0];
-        $ret['unitPerDose'] = $medicineDetailsRows[0][1];
-    }
+// Returns an array of medicines with current stock, last updated, and days-of-supply.
+function getInventoryDashboardData() {
+    $sql = "SELECT m.id, m.name, m.dosage,
+            inv.current_stock, inv.recorded_at
+            FROM hc_medicines m
+            LEFT JOIN hc_medicine_inventory inv ON inv.medicine_id = m.id
+              AND inv.recorded_at = (
+                SELECT MAX(inv2.recorded_at) FROM hc_medicine_inventory inv2
+                WHERE inv2.medicine_id = m.id
+              )
+            ORDER BY m.name ASC";
+    $rows = dbi_get_cached_rows($sql);
 
-    // Check for schedule-level unit_per_dose override
-    $scheduleUpdSql = "SELECT unit_per_dose FROM hc_medicine_schedules WHERE id = ?";
-    $scheduleUpdRows = dbi_get_cached_rows($scheduleUpdSql, [$schedule_id]);
-    if (!empty($scheduleUpdRows) && !empty($scheduleUpdRows[0][0])) {
-        $ret['unitPerDose'] = $scheduleUpdRows[0][0];
-    }
+    $results = [];
+    foreach ($rows as $row) {
+        $medicine_id = $row[0];
+        $currentStock = $row[3] !== null ? floatval($row[3]) : null;
 
-    // Fetch the most recent inventory for this medicine
-    $inventorySql = "SELECT current_stock, recorded_at FROM hc_medicine_inventory 
-                     WHERE medicine_id = ? ORDER BY recorded_at DESC LIMIT 1";
-    $inventoryRows = dbi_get_cached_rows($inventorySql, [$medicine_id]);
-
-    if ($inventoryRows && !empty($inventoryRows[0])) {
-        $lastInventoryQuantity = $inventoryRows[0][0];
-        $lastInventoryDate = $inventoryRows[0][1];
-        $ret['lastInventory'] = $lastInventoryQuantity;
-
-        // Fetch the total quantity of medicine consumed since the last inventory, accounting for unit per dose
-        // Use schedule-level unit_per_dose when set, otherwise fall back to medicine-level
-        $intakeSql = "SELECT SUM(COALESCE(s.unit_per_dose, m.unit_per_dose)) AS total_consumed
-                      FROM hc_medicine_intake i
-                      JOIN hc_medicine_schedules s ON s.id = i.schedule_id
-                      JOIN hc_medicines m ON m.id = s.medicine_id
-                      WHERE s.medicine_id = ? AND i.taken_time > ?";
-        $intakeParams = [$medicine_id, $lastInventoryDate];
-        $intakeRows = dbi_get_cached_rows($intakeSql, $intakeParams);
-
-        $totalConsumed = 0;
-        if (!empty($intakeRows) && !empty($intakeRows[0])) {
-            $totalConsumed = $intakeRows[0][0] ?? 0;
-            $ret['quantityTakenSince'] = $totalConsumed;
-        }
-
-        // Calculate assumed doses if enabled
-        $assumedConsumed = 0;
-        if ($assumePastIntake && $start_date && $frequency) {
-            $startDate = new DateTime($start_date);
-            $yesterday = (new DateTime())->modify('-1 day');
-            // Use end_date or yesterday, whichever is earlier
-            $endDate = $yesterday;
-            $sql = "SELECT end_date FROM hc_medicine_schedules WHERE id = ?";
-            $endDateRows = dbi_get_cached_rows($sql, [$schedule_id]);
-            if (!empty($endDateRows) && !empty($endDateRows[0][0])) {
-                $scheduleEndDate = new DateTime($endDateRows[0][0]);
-                if ($scheduleEndDate < $yesterday) {
-                    $endDate = $scheduleEndDate;
-                }
-            }
-
-            if ($startDate <= $endDate) {
-                $days = $startDate->diff($endDate)->days + 1; // Include start and end days
-                $secondsPerDose = frequencyToSeconds($frequency);
-                $dosesPerDay = 86400 / $secondsPerDose; // Doses per day
-                $assumedDoses = $dosesPerDay * $days;
-                $assumedConsumed = $assumedDoses * $ret['unitPerDose'];
+        // Calculate daily consumption from all active schedules for this medicine
+        $dailyConsumption = 0;
+        $schedSql = "SELECT unit_per_dose, frequency FROM hc_medicine_schedules
+                     WHERE medicine_id = ? AND (end_date IS NULL OR end_date >= CURDATE())";
+        $schedRows = dbi_get_cached_rows($schedSql, [$medicine_id]);
+        foreach ($schedRows as $sched) {
+            $upd = floatval($sched[0]);
+            $freq = $sched[1];
+            try {
+                $secondsPerDose = frequencyToSeconds($freq);
+                $dosesPerDay = 86400 / $secondsPerDose;
+                $dailyConsumption += $upd * $dosesPerDay;
+            } catch (Exception $e) {
+                // skip invalid frequencies
             }
         }
 
-        // Calculate the remaining amount and doses considering the unit per dose
-        $remainingAmount = $lastInventoryQuantity - ($totalConsumed + $assumedConsumed);
-
-        // Calculate remaining doses based on unit per dose
-        $remainingDoses = $remainingAmount / $ret['unitPerDose'];
-
-        // Get frequency information from the schedule if not provided
-        if (!$frequency) {
-            $frequencySql = "SELECT frequency FROM hc_medicine_schedules WHERE id = ?";
-            $frequencyRow = dbi_get_cached_rows($frequencySql, [$schedule_id]);
-            $frequency = !empty($frequencyRow) ? $frequencyRow[0][0] : '1d'; // Default to 1 day
+        $daysSupply = null;
+        if ($currentStock !== null && $dailyConsumption > 0) {
+            $daysSupply = floor($currentStock / $dailyConsumption);
         }
 
-        // Calculate remaining days based on doses per day
-        $secondsPerDose = frequencyToSeconds($frequency);
-        $dosesPerDay = 86400 / $secondsPerDose; // Calculate how many doses are supposed to be taken in a day
-        $remainingDays = $remainingDoses / $dosesPerDay;
-
-        $ret['remainingDoses'] = max(0, $remainingDoses); // Ensure it doesn't go below zero
-        $ret['remainingDays'] = max(0, floor($remainingDays)); // Ensure it doesn't go below zero and round down to complete days
+        $results[] = [
+            'medicine_id' => $medicine_id,
+            'name' => $row[1],
+            'dosage' => $row[2],
+            'current_stock' => $currentStock,
+            'last_updated' => $row[4],
+            'daily_consumption' => $dailyConsumption,
+            'days_supply' => $daysSupply,
+        ];
     }
 
-    return $ret;
+    return $results;
+}
+
+/**
+ * Parse a date parameter for the intake exporters.
+ *
+ * Accepts both YYYY-MM-DD (the on-page date picker's native format) and
+ * YYYYMMDD (shell-friendly, emitted by `date +%Y%m%d` without needing
+ * extra quoting). Everything else falls back to $default so a typo in
+ * the URL never produces a silent empty export — you get 30-days-ago or
+ * today, which is at least obviously-wrong.
+ *
+ * Normalised to YYYY-MM-DD either way so IntakeExportQuery's SQL
+ * parameter handling stays simple.
+ */
+function parse_export_date($raw, string $default): string
+{
+    if (!is_string($raw)) {
+        return $default;
+    }
+    $raw = trim($raw);
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $raw, $m)) {
+        $y = (int) $m[1]; $mo = (int) $m[2]; $d = (int) $m[3];
+    } elseif (preg_match('/^(\d{4})(\d{2})(\d{2})$/', $raw, $m)) {
+        $y = (int) $m[1]; $mo = (int) $m[2]; $d = (int) $m[3];
+    } else {
+        return $default;
+    }
+    if (!checkdate($mo, $d, $y)) {
+        return $default;
+    }
+
+    return sprintf('%04d-%02d-%02d', $y, $mo, $d);
 }
 ?>

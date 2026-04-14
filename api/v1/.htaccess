@@ -1,0 +1,19 @@
+# Apache + mod_php strips the Authorization header by default (to avoid
+# leaking credentials to CGI scripts). Re-inject it so PHP can read it as
+# $_SERVER['HTTP_AUTHORIZATION'].
+#
+# Works with both mod_rewrite (CGIPassAuth fallback) and the simpler
+# SetEnvIf form. Either one being active is enough.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP:Authorization} ^(.*)$
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+</IfModule>
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
+</IfModule>
+
+# Hide the bootstrap file from direct HTTP access.
+<Files "_bootstrap.php">
+    Require all denied
+</Files>

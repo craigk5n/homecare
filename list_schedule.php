@@ -12,35 +12,10 @@ $assumePastIntake = getIntValue('assume_past_intake');
 
 $dueInNextHour = 1800; // 30 minutes in seconds
 
-// ── Sticky patient header ──
-echo '<div class="schedule-sticky-header noprint">';
-echo '<div class="d-flex justify-content-between align-items-center">';
-echo '<h5 class="mb-0">Schedule: ' . htmlentities($patientName) . '</h5>';
-echo '<a href="add_to_schedule.php?patient_id=' . htmlspecialchars($patient_id) . '" class="btn btn-primary btn-sm">+ Add Medication</a>';
-echo '</div>';
-echo '</div>';
-
-// ── Toggle controls (auto-submit, no button needed) ──
-$baseUrl = 'list_schedule.php?patient_id=' . urlencode($patient_id);
-echo '<div class="schedule-controls noprint mt-3">';
-// Assume past intake toggle
-$assumeChecked = $assumePastIntake ? ' checked' : '';
-$assumeUrl = $baseUrl . ($showCompleted ? '&show_completed=1' : '');
-echo '<div class="custom-control custom-switch">';
-echo '<input type="checkbox" class="custom-control-input" id="assumePastIntake"' . $assumeChecked;
-echo ' onchange="toggleParam(this, \'assume_past_intake\')">';
-echo '<label class="custom-control-label" for="assumePastIntake">Assume past doses taken</label>';
-echo '</div>';
-// Show completed toggle
-$completedChecked = $showCompleted ? ' checked' : '';
-echo '<div class="custom-control custom-switch">';
-echo '<input type="checkbox" class="custom-control-input" id="showCompleted"' . $completedChecked;
-echo ' onchange="toggleParam(this, \'show_completed\')">';
-echo '<label class="custom-control-label" for="showCompleted">Show completed</label>';
-echo '</div>';
-// Print button
-echo '<button class="btn btn-outline-secondary btn-sm ml-auto" onclick="window.print()">Print</button>';
-echo '</div>';
+// NOTE: the sticky patient header and the toggle controls used to be echoed
+// here, at the top of the page. They now live further down — after the
+// grouping loop — so the header can show live "N overdue / N due soon"
+// badges computed from the same data the sections render.
 
 // ── Fetch schedule data ──
 if (!$showCompleted) {
@@ -172,6 +147,77 @@ foreach ($groups as &$g) {
     });
 }
 unset($g);
+
+// ── Sticky patient header (enriched) ──
+// Rendered here (not at the top) so we can show counts from $groups.
+$overdueCount  = count($groups['overdue']);
+$dueSoonCount  = count($groups['due_soon']);
+$okCount       = count($groups['ok']);
+
+$patientNameEsc = htmlspecialchars($patientName, ENT_QUOTES, 'UTF-8');
+$patientIdEsc   = htmlspecialchars((string) $patient_id, ENT_QUOTES, 'UTF-8');
+
+echo '<div class="schedule-sticky-header noprint" role="region" aria-label="Patient schedule header" id="scheduleStickyHeader">';
+echo '<div class="d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">';
+
+// Left: patient name + status badges
+echo '<div class="d-flex align-items-center flex-wrap" style="gap:.6rem;">';
+echo '<h1 class="hc-patient-name">' . $patientNameEsc . '</h1>';
+echo '<div class="hc-status-badges" aria-label="Schedule status summary">';
+if ($overdueCount > 0) {
+    echo '<span class="hc-badge hc-badge-overdue" title="Overdue doses">'
+       . '<span class="hc-badge-dot" aria-hidden="true"></span>'
+       . $overdueCount . ' overdue</span>';
+}
+if ($dueSoonCount > 0) {
+    echo '<span class="hc-badge hc-badge-due-soon" title="Due within 30 minutes">'
+       . '<span class="hc-badge-dot" aria-hidden="true"></span>'
+       . $dueSoonCount . ' due soon</span>';
+}
+if ($overdueCount === 0 && $dueSoonCount === 0 && $okCount > 0) {
+    echo '<span class="hc-badge hc-badge-ok" title="No overdue or due-soon doses">'
+       . '<span class="hc-badge-dot" aria-hidden="true"></span>'
+       . 'all caught up</span>';
+}
+echo '</div>';
+echo '</div>';
+
+// Right: header actions (labels collapse when .is-compact)
+echo '<div class="hc-header-actions">';
+echo '<a href="medication_summary.php?patient_id=' . $patientIdEsc
+   . '" class="btn btn-outline-secondary btn-sm" title="One-page printable summary">'
+   . '<span class="hc-label-full">Print Summary</span>'
+   . '<span class="hc-label-compact" aria-hidden="true">Print</span>'
+   . '<span class="sr-only hc-label-compact">Print Summary</span>'
+   . '</a>';
+echo '<a href="add_to_schedule.php?patient_id=' . $patientIdEsc
+   . '" class="btn btn-primary btn-sm" title="Add medication to this schedule">'
+   . '<span class="hc-label-full">+ Add Medication</span>'
+   . '<span class="hc-label-compact" aria-hidden="true">+ Add</span>'
+   . '<span class="sr-only hc-label-compact">Add Medication</span>'
+   . '</a>';
+echo '</div>';
+
+echo '</div>'; // flex row
+echo '</div>'; // sticky header
+
+// ── Toggle controls (auto-submit, no button needed) ──
+$baseUrl = 'list_schedule.php?patient_id=' . urlencode($patient_id);
+echo '<div class="schedule-controls noprint mt-3">';
+$assumeChecked = $assumePastIntake ? ' checked' : '';
+echo '<div class="custom-control custom-switch">';
+echo '<input type="checkbox" class="custom-control-input" id="assumePastIntake"' . $assumeChecked;
+echo ' onchange="toggleParam(this, \'assume_past_intake\')">';
+echo '<label class="custom-control-label" for="assumePastIntake">Assume past doses taken</label>';
+echo '</div>';
+$completedChecked = $showCompleted ? ' checked' : '';
+echo '<div class="custom-control custom-switch">';
+echo '<input type="checkbox" class="custom-control-input" id="showCompleted"' . $completedChecked;
+echo ' onchange="toggleParam(this, \'show_completed\')">';
+echo '<label class="custom-control-label" for="showCompleted">Show completed</label>';
+echo '</div>';
+echo '<button class="btn btn-outline-secondary btn-sm ml-auto" onclick="window.print()">Print</button>';
+echo '</div>';
 
 // ── Section config ──
 $sectionConfig = [
@@ -389,6 +435,38 @@ function toggleParam(el, param) {
     }
     window.location.href = url.toString();
 }
+
+// Shrink-on-scroll for the sticky patient header.
+// Collapses the header to .is-compact once the user has scrolled past the
+// threshold; a 16px hysteresis band prevents flapping when the scroll
+// position sits right on the boundary. rAF-throttled so we don't thrash
+// on scroll events.
+(function() {
+    var header = document.getElementById('scheduleStickyHeader');
+    if (!header) return;
+    var COLLAPSE_AT = 80;
+    var EXPAND_AT   = 64;
+    var ticking = false;
+    var compact = false;
+    function update() {
+        var y = window.scrollY || window.pageYOffset || 0;
+        if (!compact && y > COLLAPSE_AT) {
+            header.classList.add('is-compact');
+            compact = true;
+        } else if (compact && y < EXPAND_AT) {
+            header.classList.remove('is-compact');
+            compact = false;
+        }
+        ticking = false;
+    }
+    window.addEventListener('scroll', function() {
+        if (!ticking) {
+            window.requestAnimationFrame(update);
+            ticking = true;
+        }
+    }, { passive: true });
+    update();
+})();
 
 // Live countdown: update every 60 seconds
 (function() {

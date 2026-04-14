@@ -1,0 +1,134 @@
+<?php
+
+declare(strict_types=1);
+
+namespace HomeCare\Domain;
+
+use DateInterval;
+use DateTime;
+use InvalidArgumentException;
+
+/**
+ * Pure, side-effect-free math for the HomeCare medication schedule.
+ *
+ * Frequencies are short strings: `Nd` (days), `Nh` (hours), `Nm` (minutes).
+ * These helpers are the canonical parsers and throw on unknown units so
+ * callers fail fast instead of silently computing the wrong due time.
+ */
+final class ScheduleCalculator
+{
+    /**
+     * Convert a frequency string ("8h", "1d", "30m") to whole seconds.
+     *
+     * @throws InvalidArgumentException If the unit is not d/h/m or the amount is not positive.
+     */
+    public static function frequencyToSeconds(string $frequency): int
+    {
+        [$amount, $unit] = self::parseFrequency($frequency);
+
+        return match ($unit) {
+            'd' => $amount * 86400,
+            'h' => $amount * 3600,
+            'm' => $amount * 60,
+        };
+    }
+
+
+    /**
+     * Seconds from "now" until the next dose after $lastTaken is due.
+     *
+     * When the due time is already in the past, returns 0 unless $showNegative
+     * is true -- in which case the negative offset is returned so callers can
+     * display how overdue a dose is.
+     *
+     * @throws InvalidArgumentException If $lastTaken is not parseable or frequency is invalid.
+     */
+    public static function calculateSecondsUntilDue(
+        string $lastTaken,
+        string $frequency,
+        bool $showNegative = false
+    ): int {
+        $lastTakenTimestamp = strtotime($lastTaken);
+        if ($lastTakenTimestamp === false) {
+            throw new InvalidArgumentException("Invalid lastTaken timestamp: {$lastTaken}");
+        }
+
+        $nextDueTimestamp = $lastTakenTimestamp + self::frequencyToSeconds($frequency);
+        $delta = $nextDueTimestamp - time();
+
+        if ($delta > 0 || $showNegative) {
+            return $delta;
+        }
+
+        return 0;
+    }
+
+    /**
+     * ISO date (Y-m-d H:i) of the next due dose, or the string "Frequency error"
+     * when the unit has no DateInterval spec (e.g. minutes). The sentinel is
+     * preserved from the legacy behavior so existing pages render identically.
+     *
+     * @throws InvalidArgumentException If $lastTaken is not parseable or frequency amount is invalid.
+     */
+    public static function calculateNextDueDate(string $lastTaken, string $frequency): string
+    {
+        $intervalSpec = self::getIntervalSpecFromFrequency($frequency);
+        if ($intervalSpec === null) {
+            return 'Frequency error';
+        }
+
+        try {
+            $date = new DateTime($lastTaken);
+        } catch (\Exception $e) {
+            throw new InvalidArgumentException("Invalid lastTaken timestamp: {$lastTaken}", 0, $e);
+        }
+
+        $date->add(new DateInterval($intervalSpec));
+
+        return $date->format('Y-m-d H:i');
+    }
+
+    /**
+     * Translate a frequency string to a DateInterval spec.
+     *
+     * Returns null for minute-scale frequencies (no 'PT30M'-style path in the
+     * legacy code); callers treat that as "no ISO next-due date is possible".
+     *
+     * @throws InvalidArgumentException If the frequency amount is not positive or unit is unknown.
+     */
+    public static function getIntervalSpecFromFrequency(string $frequency): ?string
+    {
+        [$amount, $unit] = self::parseFrequency($frequency);
+
+        return match ($unit) {
+            'h' => 'PT' . $amount . 'H',
+            'd' => 'P' . $amount . 'D',
+            'm' => null,
+        };
+    }
+
+    /**
+     * @return array{0:positive-int,1:'d'|'h'|'m'} [amount, unit]
+     *
+     * @throws InvalidArgumentException
+     */
+    private static function parseFrequency(string $frequency): array
+    {
+        if ($frequency === '') {
+            throw new InvalidArgumentException('Frequency must not be empty');
+        }
+
+        $amount = (int) $frequency;
+        $unit = substr($frequency, -1);
+
+        if ($amount <= 0) {
+            throw new InvalidArgumentException("Frequency amount must be positive: {$frequency}");
+        }
+
+        if ($unit !== 'd' && $unit !== 'h' && $unit !== 'm') {
+            throw new InvalidArgumentException("Invalid frequency unit: {$unit}");
+        }
+
+        return [$amount, $unit];
+    }
+}

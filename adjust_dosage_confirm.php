@@ -19,7 +19,7 @@ $overlap_count = getPostValue('overlap_count');
 // Fetch context for display
 $patient = getPatient($patient_id);
 
-$sql = "SELECT m.name, COALESCE(ms.unit_per_dose, m.unit_per_dose) AS current_upd, ms.frequency AS current_freq
+$sql = "SELECT m.name, ms.unit_per_dose AS current_upd, ms.frequency AS current_freq
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
         WHERE ms.id = ? AND ms.patient_id = ?";

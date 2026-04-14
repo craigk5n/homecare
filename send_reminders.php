@@ -1,11 +1,19 @@
 <?php
 require_once 'includes/init.php';
 
-// TODO: store this in hc_config or another table for notifications
-$NOTIFY_URL = 'http://192.168.0.100:8802/';
-//$NOTIFY_URL = 'https://ntfy.sh/';
-$NOTIFY_CHANNEL = 'craig';
-//$NOTIFY_CHANNEL = 'FyqRAPozGb3KrTVm';
+use HomeCare\Config\NtfyConfig;
+use HomeCare\Database\DbiAdapter;
+use HomeCare\Repository\InventoryRepository;
+use HomeCare\Repository\ScheduleRepository;
+use HomeCare\Service\InventoryService;
+use HomeCare\Service\SupplyAlertLog;
+use HomeCare\Service\SupplyAlertService;
+
+// HC-041: ntfy settings live in hc_config now. Manage via settings.php
+// (admin section) or direct SQL. Defaults: ntfy_url='https://ntfy.sh/',
+// ntfy_topic='', ntfy_enabled='N'. The cron script short-circuits
+// push calls when the config isn't `isReady()`.
+$ntfy = new NtfyConfig(new DbiAdapter());
 
 
 $dryRun = in_array('--dry-run', $argv);
@@ -59,17 +67,79 @@ foreach ($patients as $patient) {
     }
 }
 
+// ── HC-040: Low-supply alerts ─────────────────────────────────────────
+// Runs after the per-dose reminders. Threshold comes from hc_config
+// (`supply_alert_days`, default 7). Each alert fires at most once per
+// 24h per medicine; state is tracked in hc_supply_alert_log.
+
+$supplyThreshold = SupplyAlertService::DEFAULT_THRESHOLD_DAYS;
+$cfg = dbi_get_cached_rows(
+    "SELECT value FROM hc_config WHERE setting = 'supply_alert_days'"
+);
+if (!empty($cfg) && !empty($cfg[0][0])) {
+    $parsed = (int) $cfg[0][0];
+    if ($parsed > 0) {
+        $supplyThreshold = $parsed;
+    }
+}
+
+$supplyDb = new DbiAdapter();
+$supplyService = new SupplyAlertService(
+    $supplyDb,
+    new InventoryService(new InventoryRepository($supplyDb), new ScheduleRepository($supplyDb)),
+    new SupplyAlertLog($supplyDb),
+);
+
+foreach ($supplyService->findPendingAlerts($supplyThreshold) as $alert) {
+    $message = $alert->message();
+    if ($dryRun) {
+        echo "Dry run: Would send low-supply alert for medicine {$alert->medicineId}: {$message}\n";
+    } elseif (!$ntfy->isReady()) {
+        echo "Skipped (ntfy disabled in hc_config): {$message}\n";
+    } else {
+        sendSupplyAlert($ntfy, $message);
+        $supplyService->recordSent($alert->medicineId);
+    }
+}
+
+function sendSupplyAlert(NtfyConfig $ntfy, string $message): void
+{
+    $postData = json_encode([
+        'topic' => $ntfy->getTopic(),
+        'title' => 'Low Medication Supply',
+        'message' => $message,
+        'tags' => ['warning', 'pill'],
+        'priority' => 4, // ntfy: "high"
+    ]);
+
+    $ch = curl_init($ntfy->getUrl());
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+    ]);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
+    curl_exec($ch);
+    curl_close($ch);
+
+    echo "Low-supply alert sent: $message\n";
+}
+
 function sendNotification($patient_id, $patient_name, $message) {
-    global $NOTIFY_URL, $NOTIFY_CHANNEL;
+    global $ntfy;
+    if (!$ntfy->isReady()) {
+        echo "Skipped (ntfy disabled in hc_config): $message\n";
+        return;
+    }
     // TODO: Look into X-Delay, click/actions
     $postData = json_encode([
-        'topic' => $NOTIFY_CHANNEL,
+        'topic' => $ntfy->getTopic(),
         'title' => 'Medication Reminder',
         'message' => $message,
         'tags' => ['pill']
     ]);
 
-    $ch = curl_init($NOTIFY_URL);
+    $ch = curl_init($ntfy->getUrl());
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: text/plain',

@@ -1,0 +1,141 @@
+<?php
+
+declare(strict_types=1);
+
+namespace HomeCare\Service;
+
+use HomeCare\Domain\ScheduleCalculator;
+use HomeCare\Repository\IntakeRepositoryInterface;
+use HomeCare\Repository\ScheduleRepositoryInterface;
+
+/**
+ * Medication adherence for a single schedule over a date range.
+ *
+ * Adherence = actual doses recorded / doses expected in the effective
+ * overlap of [query range] and [schedule lifetime]. The "effective"
+ * clamp is what makes schedules that started mid-period honest: a
+ * schedule begun on day 5 of a 10-day window only has 6 days to
+ * account for, not 10.
+ *
+ * Doses-per-day comes straight from frequency via
+ * {@see ScheduleCalculator::frequencyToSeconds()}. We use `round()` on
+ * the expected total so a partial day's worth (e.g. a half-day at 2d
+ * frequency) is reflected correctly rather than silently floored to zero.
+ *
+ * Return shape also reports `coverage_days` (days of overlap between the
+ * query window and the schedule's lifetime) and `window_days` (length of
+ * the query window itself). Callers use these to tell "N/A — schedule
+ * wasn't active in this window" (coverage_days == 0) apart from the very
+ * different "was active but nothing was recorded" (coverage_days > 0,
+ * actual == 0, percentage == 0.0).
+ *
+ * @phpstan-type AdherenceReport array{
+ *     expected:int,
+ *     actual:int,
+ *     percentage:float,
+ *     coverage_days:int,
+ *     window_days:int
+ * }
+ */
+final class AdherenceService
+{
+    public function __construct(
+        private readonly ScheduleRepositoryInterface $schedules,
+        private readonly IntakeRepositoryInterface $intakes,
+    ) {
+    }
+
+    /**
+     * @return AdherenceReport
+     */
+    public function calculateAdherence(
+        int $scheduleId,
+        string $startDate,
+        string $endDate,
+    ): array {
+        $windowDays = self::inclusiveDayCount($startDate, $endDate);
+
+        if ($startDate > $endDate) {
+            return self::empty(0);
+        }
+
+        $schedule = $this->schedules->getScheduleById($scheduleId);
+        if ($schedule === null) {
+            return self::empty($windowDays);
+        }
+
+        $effectiveStart = $startDate > $schedule['start_date'] ? $startDate : $schedule['start_date'];
+        $effectiveEnd = $endDate;
+        if ($schedule['end_date'] !== null && $schedule['end_date'] < $endDate) {
+            $effectiveEnd = $schedule['end_date'];
+        }
+
+        $expected = 0;
+        $actual = 0;
+        $coverageDays = 0;
+        if ($effectiveStart <= $effectiveEnd) {
+            $coverageDays = self::inclusiveDayCount($effectiveStart, $effectiveEnd);
+            if ($coverageDays > 0) {
+                $secondsPerDose = ScheduleCalculator::frequencyToSeconds($schedule['frequency']);
+                $dosesPerDay = 86400 / $secondsPerDose;
+                $expected = (int) round($coverageDays * $dosesPerDay);
+            }
+
+            // Count actual intakes inside the SAME clamped window used
+            // for expected. Using the raw query window would credit
+            // intakes recorded before the schedule started (or after it
+            // ended) to this schedule, which surfaces as noisy >100%
+            // figures on newly-started schedules where a caregiver
+            // backdated intakes from a prior schedule into the same
+            // query range.
+            $actual = $this->intakes->countIntakesBetween(
+                $scheduleId,
+                $effectiveStart . ' 00:00:00',
+                $effectiveEnd . ' 23:59:59'
+            );
+        }
+
+        $percentage = $expected > 0
+            ? round(($actual / $expected) * 100, 1)
+            : 0.0;
+
+        return [
+            'expected' => $expected,
+            'actual' => $actual,
+            'percentage' => $percentage,
+            'coverage_days' => $coverageDays,
+            'window_days' => $windowDays,
+        ];
+    }
+
+    /**
+     * @return AdherenceReport
+     */
+    private static function empty(int $windowDays): array
+    {
+        return [
+            'expected' => 0,
+            'actual' => 0,
+            'percentage' => 0.0,
+            'coverage_days' => 0,
+            'window_days' => $windowDays,
+        ];
+    }
+
+    /**
+     * Inclusive date diff in whole days. Returns 0 when $start > $end.
+     */
+    private static function inclusiveDayCount(string $start, string $end): int
+    {
+        if ($start > $end) {
+            return 0;
+        }
+        $startTs = strtotime($start);
+        $endTs = strtotime($end);
+        if ($startTs === false || $endTs === false) {
+            return 0;
+        }
+
+        return (int) floor(($endTs - $startTs) / 86400) + 1;
+    }
+}

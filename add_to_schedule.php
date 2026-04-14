@@ -28,17 +28,18 @@ $medicationsResult = dbi_query($medicationsSql);
 // If medicine id specified, load that
 if (!empty($medicine_id) && !empty($schedule_id)) {
   echo "<h2>Edit Medication to Patient Schedule</h2>\n";
-  $sql = 'SELECT id, start_date, end_date, frequency FROM hc_medicine_schedules ' .
+  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose FROM hc_medicine_schedules ' .
     'WHERE patient_id = ? and medicine_id = ? AND id = ?';
   $rows = dbi_get_cached_rows($sql, [$patient_id, $medicine_id, $schedule_id]);
-  //echo "<pre>"; print_r($rows); echo "</pre>";
   $start_date = $rows[0][1];
   $end_date = $rows[0][2];
   $frequency = $rows[0][3];
+  $unit_per_dose = $rows[0][4];
 } else {
   echo "<h2>Add Medication to Patient Schedule</h2>\n";
   $start_date = $end_date = '';
   $frequency = '1d'; // default
+  $unit_per_dose = '1.00';
 }
 
 echo "<div class='container mt-3'>\n";
@@ -95,6 +96,13 @@ foreach ($frequencies as $value => $description) {
   echo "<option value='$value'$selected>$description</option>\n";
 }
 echo "</select>\n";
+echo "</div>\n";
+
+echo "<div class='form-group'>\n";
+echo "<label for='unit_per_dose'>Unit Per Dose:</label>\n";
+echo "<input type='number' step='0.01' min='0.01' name='unit_per_dose' id='unit_per_dose' class='form-control' required";
+echo " value='" . htmlspecialchars($unit_per_dose) . "'>\n";
+echo "<small class='form-text text-muted'>Number of tablets/units consumed per dose</small>\n";
 echo "</div>\n";
 
 // Submit button

@@ -1,0 +1,23 @@
+includes:
+    - vendor/phpstan/phpstan-phpunit/extension.neon
+    - vendor/phpstan/phpstan-phpunit/rules.neon
+
+parameters:
+    level: max
+    paths:
+        - src
+        - tests
+    # Legacy files under includes/ and the root *.php pages are untyped
+    # procedural WebCalendar code. They are intentionally out of scope here --
+    # new namespaced code under src/ is held to level max; legacy code stays
+    # behind the existing manual review process.
+    excludePaths:
+        - tests/fixtures
+    bootstrapFiles:
+        - vendor/autoload.php
+    # includes/homecare.php defines global function wrappers that delegate to
+    # ScheduleCalculator. scanFiles lets PHPStan see their signatures from
+    # tests/Unit/Domain/LegacyWrapperTest.php without analysing the legacy
+    # dbi_* code that file also touches.
+    scanFiles:
+        - includes/homecare.php

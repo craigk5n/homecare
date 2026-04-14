@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/init.php';
+require_role('caregiver');
 
 $medicine_id = getPostValue('medicine_id');
 $quantity = getPostValue('quantity');
@@ -14,7 +15,9 @@ if (!empty($delete) && $delete === 'yes' && !empty($inventory_id)) {
     if (!dbi_execute($deleteSql, [$inventory_id])) {
         echo "Error deleting inventory: " . dbi_error();
     } else {
-        //echo "Inventory record deleted successfully.";
+        audit_log('inventory.updated', 'inventory', (int) $inventory_id, [
+            'kind' => 'delete',
+        ]);
     }
 } elseif (empty($inventory_id)) {
     // Insert a new inventory record into the database
@@ -23,7 +26,13 @@ if (!empty($delete) && $delete === 'yes' && !empty($inventory_id)) {
     if (!dbi_execute($insertSql, $params)) {
         echo "Error adding new inventory: " . dbi_error();
     } else {
-        //echo "New inventory added successfully.";
+        $newId = (int) mysqli_insert_id($GLOBALS['c']);
+        audit_log('inventory.updated', 'inventory', $newId ?: null, [
+            'kind' => 'insert',
+            'medicine_id' => (int) $medicine_id,
+            'quantity' => (float) $quantity,
+            'current_stock' => (float) $current_stock,
+        ]);
     }
 } else {
     // Update existing inventory entry
@@ -32,7 +41,11 @@ if (!empty($delete) && $delete === 'yes' && !empty($inventory_id)) {
     if (!dbi_execute($updateSql, $params)) {
         echo "Error updating inventory: " . dbi_error();
     } else {
-        //echo "Inventory updated successfully.";
+        audit_log('inventory.updated', 'inventory', (int) $inventory_id, [
+            'kind' => 'update',
+            'quantity' => (float) $quantity,
+            'current_stock' => (float) $current_stock,
+        ]);
     }
 }
 

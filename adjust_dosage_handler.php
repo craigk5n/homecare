@@ -1,5 +1,6 @@
 <?php
 require_once 'includes/init.php';
+require_role('caregiver');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: list_medications.php');
@@ -65,34 +66,36 @@ if (!dbi_execute($endSql, [$effective_date, $old_schedule_id])) {
 }
 
 // Step 2: Create the new schedule
-// If unit_per_dose matches the medicine's default, store NULL (use medicine default)
-$medicineUpdSql = "SELECT unit_per_dose FROM hc_medicines WHERE id = ?";
-$medicineUpdRows = dbi_get_cached_rows($medicineUpdSql, [$medicine_id]);
-$medicineDefault = !empty($medicineUpdRows) ? $medicineUpdRows[0][0] : null;
-
-$scheduleUpd = null;
-if ($medicineDefault !== null && floatval($unit_per_dose) != floatval($medicineDefault)) {
-    $scheduleUpd = $unit_per_dose;
-}
-
 $insertSql = "INSERT INTO hc_medicine_schedules
     (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose)
     VALUES (?, ?, ?, NULL, ?, ?)";
-$insertValues = [$patient_id, $medicine_id, $effective_date, $frequency, $scheduleUpd];
+$insertValues = [$patient_id, $medicine_id, $effective_date, $frequency, $unit_per_dose];
 
 if (!dbi_execute($insertSql, $insertValues)) {
     die_miserable_death('Error creating new schedule: ' . dbi_error());
 }
+$newScheduleId = (int) mysqli_insert_id($GLOBALS['c']);
 
 // Step 3: Reassign overlapping intakes if requested
+$reassigned = 0;
 if ($reassign_intakes === 'yes') {
-    $newScheduleId = mysqli_insert_id($GLOBALS['c']);
     $reassignSql = "UPDATE hc_medicine_intake SET schedule_id = ?
         WHERE schedule_id = ? AND taken_time >= ?";
     if (!dbi_execute($reassignSql, [$newScheduleId, $old_schedule_id, $effective_date . ' 00:00:00'])) {
         die_miserable_death('Error reassigning intake records: ' . dbi_error());
     }
+    $reassigned = (int) mysqli_affected_rows($GLOBALS['c']);
 }
+
+audit_log('dosage.adjusted', 'schedule', $newScheduleId, [
+    'patient_id' => (int) $patient_id,
+    'medicine_id' => (int) $medicine_id,
+    'old_schedule_id' => (int) $old_schedule_id,
+    'new_frequency' => $frequency,
+    'new_unit_per_dose' => (float) $unit_per_dose,
+    'effective_date' => $effective_date,
+    'intakes_reassigned' => $reassigned,
+]);
 
 do_redirect('list_schedule.php?patient_id=' . urlencode($patient_id));
 ?>

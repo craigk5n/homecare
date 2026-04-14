@@ -1,0 +1,57 @@
+# HC-051: Run the PHPStan + PHPUnit gate on every push to main and
+# every pull request. Tests run against in-memory SQLite (per
+# tests/Integration/DatabaseTestCase) so no MySQL service is needed.
+
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel a previous run on the same branch when a new push lands. The
+# CI gate is fast (~60s); only the latest commit's result matters.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: PHPStan max + PHPUnit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP 8.2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          # mysqli is needed because DbiAdapter / IntakeRepository import
+          # the mysqli class even though the test path uses SQLite.
+          extensions: mbstring, pdo, pdo_sqlite, sqlite3, mysqli, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Determine Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php82-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php82-composer-
+
+      - name: Install dependencies (with dev tools — phpunit, phpstan)
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: 'PHPStan (level: max)'
+        run: composer analyse
+
+      - name: PHPUnit (full suite)
+        run: composer test

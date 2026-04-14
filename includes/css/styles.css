@@ -527,14 +527,119 @@ nav.navbar .dropdown-menu {
 
 /* ── Schedule page ── */
 
-/* Sticky patient header below navbar */
+/* ── Intake report: inline caregiver notes ──
+   Notes used to live behind a hover tooltip, which is invisible on
+   touch devices and dropped entirely when the page was printed.
+   They're now rendered on their own line under the med name, styled
+   muted-italic so they don't compete visually with the medication
+   list but remain readable and print-safe. */
+.intake-med {
+  margin-bottom: .25rem;
+}
+.intake-med + .intake-med {
+  margin-top: .35rem;
+  padding-top: .35rem;
+  border-top: 1px dashed #e9ecef;
+}
+.intake-note {
+  font-size: .85rem;
+  font-style: italic;
+  color: #6c757d;
+  margin-left: 1.35rem;
+  margin-top: .1rem;
+  line-height: 1.35;
+}
+.intake-note img {
+  width: 12px;
+  height: 12px;
+  opacity: .7;
+  margin-right: .2rem;
+  vertical-align: -1px;
+}
+/* Print: drop the muted gray — caregivers taking a printout to a vet
+   visit want the notes readable on paper. */
+@media print {
+  .intake-note { color: #000; font-style: italic; }
+  .intake-note img { display: none; }
+}
+
+/* Sticky patient header below navbar.
+   Two visual states:
+     - default (top of page): full "hero" height with name + status badges + actions
+     - .is-compact (after scrolling): thin strip with just name + badges, actions shrink
+   The collapse is driven by a scroll listener on list_schedule.php that toggles
+   .is-compact once window.scrollY > ~80px. Users who have prefers-reduced-motion
+   set get the compact state as an instant swap instead of an animated shrink. */
 .schedule-sticky-header {
   position: sticky;
   top: 56px; /* navbar height */
   z-index: 1019;
   background: #fff;
   border-bottom: 1px solid #dee2e6;
-  padding: .5rem 0;
+  padding: .85rem 0 .75rem;
+  transition: padding .18s ease, box-shadow .18s ease;
+}
+.schedule-sticky-header.is-compact {
+  padding: .3rem 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .06);
+}
+.schedule-sticky-header .hc-patient-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
+  transition: font-size .18s ease;
+}
+.schedule-sticky-header.is-compact .hc-patient-name {
+  font-size: .95rem;
+}
+.schedule-sticky-header .hc-status-badges {
+  display: flex;
+  gap: .35rem;
+  flex-wrap: wrap;
+}
+.schedule-sticky-header .hc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
+  padding: .2rem .55rem;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.schedule-sticky-header .hc-badge-overdue  { background: #f8d7da; color: #721c24; }
+.schedule-sticky-header .hc-badge-due-soon { background: #fff3cd; color: #856404; }
+.schedule-sticky-header .hc-badge-ok       { background: #d4edda; color: #155724; }
+.schedule-sticky-header .hc-badge-dot {
+  width: .45rem;
+  height: .45rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .8;
+}
+.schedule-sticky-header .hc-header-actions {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+}
+/* Hide the full-text action button labels when compact; keep icons + a tiny
+   "+" so the header stays scannable without dominating vertical space. */
+.schedule-sticky-header.is-compact .hc-label-full { display: none; }
+.schedule-sticky-header .hc-label-compact { display: none; }
+.schedule-sticky-header.is-compact .hc-label-compact { display: inline; }
+
+/* Small viewports (short landscape phones, split-screen): the sticky header
+   costs too much of the screen. Fall back to a static header so the user
+   gets their scroll area back. */
+@media (max-height: 520px) {
+  .schedule-sticky-header { position: static; }
+}
+
+/* Honor user motion preference. */
+@media (prefers-reduced-motion: reduce) {
+  .schedule-sticky-header,
+  .schedule-sticky-header .hc-patient-name { transition: none; }
 }
 
 /* Status stripe (left border) */
@@ -612,4 +717,85 @@ nav.navbar .dropdown-menu {
   .schedule-card { box-shadow: none; border: 1px solid #ccc; }
   .d-md-none { display: block !important; }
   .d-none.d-md-block { display: none !important; }
+}
+
+/* ── HC-061: shared "page shell" classes ──
+   Generalised from the schedule-page pattern so list_medications,
+   report_intake, report_missed, report_medications, and
+   schedule_daily all share the same sticky header + dual desktop-
+   table / mobile-card layout. The .schedule-* class names above stay
+   for backward compatibility; new pages should use these. */
+.page-sticky-header {
+  position: sticky;
+  top: 56px;
+  z-index: 1019;
+  background: #fff;
+  border-bottom: 1px solid #dee2e6;
+  padding: .5rem 0;
+}
+.page-sticky-header .page-title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
+}
+.page-sticky-header .page-actions {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.page-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Desktop table (used inside .d-none.d-md-block wrapper) */
+.page-table th { vertical-align: middle; }
+.page-table td { vertical-align: middle; padding: .55rem .75rem; }
+.page-table .actions-cell { white-space: nowrap; }
+
+/* Mobile card (used inside .d-md-none wrapper) */
+.page-card {
+  border-radius: .375rem;
+  margin-bottom: .5rem;
+  padding: .75rem 1rem;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.page-card .card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .5rem;
+}
+.page-card .card-primary {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.page-card .card-meta {
+  font-size: .85rem;
+  color: #6c757d;
+  margin-top: .15rem;
+}
+.page-card .card-detail {
+  font-size: .9rem;
+  margin-top: .35rem;
+}
+.page-card .card-actions {
+  margin-top: .5rem;
+}
+
+/* Print styles for the generalised pages */
+@media print {
+  .page-sticky-header,
+  .page-controls,
+  .page-card .card-actions,
+  .page-table .actions-cell { display: none !important; }
+  .page-card { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+  /* Force card view on print so content is more readable on paper */
+  .d-none.d-md-block { display: none !important; }
+  .d-md-none { display: block !important; }
 }

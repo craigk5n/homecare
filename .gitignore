@@ -1,0 +1,24 @@
+# Ignore vendor/ by default so every transient composer update doesn't
+# pollute the working tree — but allow-list the production runtime deps
+# so `git clone` delivers a working app without needing `composer install`
+# (same philosophy as pub/bootstrap.min.css being checked in).
+#
+# Dev-only deps (phpunit, phpstan, nikic, sebastian, phar-io, myclabs,
+# theseer) are NOT allow-listed; contributors who run tests locally get
+# them via `composer install`.
+/vendor/*
+!/vendor/autoload.php
+!/vendor/composer
+!/vendor/dompdf
+!/vendor/masterminds
+!/vendor/sabberworm
+!/vendor/thecodingmachine
+
+.phpunit.cache/
+.phpunit.result.cache
+includes/settings.php
+homecare-dump.sql
+*.log
+.DS_Store
+COMPETITIVE_ANALYSIS.md
+AGENTS.md
