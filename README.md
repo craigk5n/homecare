@@ -10,6 +10,16 @@ for one or more dependents — built for the reality that someone is
 already juggling multiple medications, refill windows, and "did we
 give it this morning?" across a household.
 
+## Screenshots
+
+Click any thumbnail to open the full-resolution image.
+
+| [![Patient schedule](docs/screenshots/homecare-list-of-medications-thumb.png)](docs/screenshots/homecare-list-of-medications.png) | [![Today's schedule](docs/screenshots/homecare-todays-schedule-thumb.png)](docs/screenshots/homecare-todays-schedule.png) |
+| :-: | :-: |
+| **Patient schedule** — overdue and upcoming groupings with remaining-dose estimates and one-tap record / adjust / edit actions. | **Today and tomorrow** — the daily-driver view with strike-throughs for doses already recorded. |
+| [![Intake history](docs/screenshots/homecare-intake-report-thumb.png)](docs/screenshots/homecare-intake-report.png) | [![Adherence report](docs/screenshots/homecare-adherence-report-thumb.png)](docs/screenshots/homecare-adherence-report.png) |
+| **Intake history** — month view with inline caregiver notes and CSV / FHIR / PDF export buttons in the sticky header. | **Adherence report** — 7/30/90-day rolling bar chart and table. Gray "N/A" cells distinguish schedules that weren't active in the window from genuine zero-adherence. |
+
 ## Features
 
 - **Scheduling** — per-patient medication schedules with arbitrary
