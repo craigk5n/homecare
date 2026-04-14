@@ -23,17 +23,10 @@ if ($can_add) {
 // Logout/Login URL
 if (!$use_http_auth && $single_user != 'Y') {
   $login_url = 'login.php';
-
-  if (empty($login_return_path))
-    $logout_url = $login_url . '?';
-  else {
+  if (!empty($login_return_path)) {
     $login_url .= '?return_path=' . $login_return_path;
-    $logout_url = $login_url . '&';
   }
-  $logout_url .= 'action=logout';
-  if (empty($CSRF_PROTECTION) || $CSRF_PROTECTION != 'N') {
-    $logout_url .= '&amp;csrf_form_key=' . getFormKey();
-  }
+  $logout_url = 'logout.php';
 }
 
 $patients = getPatients();

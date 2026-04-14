@@ -509,6 +509,22 @@ tr:hover .edit-icon {
   visibility: visible;
 }
 
+/* ── Navbar stacking fix ──
+   Bootstrap 4 dropdown-menus default to z-index:1000, which sits below the
+   sticky page/schedule headers (z-index:1019). That caused the top rows of
+   long dropdowns (e.g. the first patient's header + "Intake History" under
+   Reports) to be hidden behind the sticky header. Raise the navbar and its
+   dropdowns above every sticky region. */
+nav.navbar {
+  position: relative;
+  z-index: 1030;
+}
+nav.navbar .dropdown-menu {
+  z-index: 1031;
+  max-height: calc(100vh - 70px);
+  overflow-y: auto;
+}
+
 /* ── Schedule page ── */
 
 /* Sticky patient header below navbar */

@@ -6,11 +6,9 @@ print_header();
 // TODO: Move this to a shared file
 $frequencies = [
     '1d' => '1d - once daily',
-    '2d' => '2d - twice daily',
-    '3d' => '3d - three times daily',
-    '12h' => '12h - every 12 hours',
-    '8h' => '8h - every 8 hours',
-    '6h' => '6h - every 6 hours',
+    '12h' => '12h - twice daily (every 12 hours)',
+    '8h' => '8h - three times daily (every 8 hours)',
+    '6h' => '6h - four times daily (every 6 hours)',
     '4h' => '4h - every 4 hours'
 ];
 
