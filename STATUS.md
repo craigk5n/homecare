@@ -1316,8 +1316,8 @@ bugs and the session-double-start login bug all slipped past PHPStan
 **Acceptance Criteria**:
 - [ ] `tests/Browser/` directory with Playwright test scaffolding
 - [ ] CI workflow `e2e.yml` stands up the Docker stack
-      (`docker compose up -d`), seeds cknudsen, runs Playwright
-      against `http://localhost:8080`
+      (`docker compose up -d`), seeds the default admin user, runs
+      Playwright against `http://localhost:8080`
 - [ ] Smoke flow: login → list_schedule → record an intake → log out
 - [ ] Merge-page flow: login → merge_medicines → preview → confirm
 - [ ] Adherence-report flow: login → report_adherence → toggle range

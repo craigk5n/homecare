@@ -74,11 +74,12 @@ Open <http://localhost:8080>. On first boot the container loads
 `tables-mysql.sql` automatically; subsequent `up` cycles reuse the
 named `homecare_db_data` volume.
 
-Seed a starter admin:
+Seed a starter admin (login `admin`, password `admin` — **rotate on
+first login** via Settings → Your Settings):
 
 ```bash
 docker compose exec db mysql -u homecare -phomecare homecare \
-    < migrations/004_seed_cknudsen_user.sql
+    < migrations/004_seed_admin_user.sql
 ```
 
 ### Services
@@ -114,8 +115,14 @@ If you already run Apache + PHP 8.1+ + MySQL 8:
 # Clone into your docroot
 git clone git@github.com:craigk5n/homecare.git /var/www/html/homecare
 
-# Load the schema and any pending migrations
+# Load the schema
 mysql <your-db> < tables-mysql.sql
+
+# Seed the starter admin user (login: admin / password: admin — rotate
+# on first login).
+mysql <your-db> < migrations/004_seed_admin_user.sql
+
+# Apply any newer migrations you haven't run yet.
 mysql <your-db> < migrations/009_normalize_frequency_2d_to_12h.sql
 
 # Create includes/settings.php with DB credentials (see

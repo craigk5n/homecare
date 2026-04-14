@@ -13,7 +13,7 @@ final class AuditLoggerTest extends DatabaseTestCase
     {
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'cknudsen',
+            static fn (): string => 'admin',
             static fn (): string => '10.0.0.5',
             static fn (): string => '2026-04-13 15:00:00',
         );
@@ -24,7 +24,7 @@ final class AuditLoggerTest extends DatabaseTestCase
         $this->assertCount(1, $rows);
         $row = $rows[0];
 
-        $this->assertSame('cknudsen', $row['user_login']);
+        $this->assertSame('admin', $row['user_login']);
         $this->assertSame('intake.recorded', $row['action']);
         $this->assertSame('schedule', $row['entity_type']);
         $this->assertSame(42, (int) $row['entity_id']);
@@ -68,7 +68,7 @@ final class AuditLoggerTest extends DatabaseTestCase
     {
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'cknudsen',
+            static fn (): string => 'admin',
         );
 
         $logger->log('schedule.created', 'schedule', 1);
@@ -91,7 +91,7 @@ final class AuditLoggerTest extends DatabaseTestCase
 
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'cknudsen',
+            static fn (): string => 'admin',
         );
 
         // Capture error_log() output -- set to a temp file for the duration.
