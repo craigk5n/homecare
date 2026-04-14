@@ -81,7 +81,11 @@ final class PdfIntakeExporter
             $canvas->get_width() - 80,
             $canvas->get_height() - 22,
             'Page {PAGE_NUM} of {PAGE_COUNT}',
-            null,
+            // Name the font explicitly. Dompdf::page_text() declares
+            // $font as a non-nullable string, so passing null trips
+            // PHPStan's max-level check even though Dompdf itself
+            // would silently fall back.
+            'DejaVu Sans',
             7,
             [0.44, 0.50, 0.59] // #718096 to match the CSS footer
         );

@@ -52,13 +52,13 @@ final class PdfIntakeExporterTest extends TestCase
 
     public function testSingleIntakeRendersPatientMedAndDate(): void
     {
-        $rows = [self::row([
-            'patient_name' => 'Daisy',
-            'medicine_name' => 'Thyroxine',
-            'medicine_dosage' => '0.2mg',
-            'taken_time' => '2026-02-14 08:00:00',
-            'note' => 'took with food',
-        ])];
+        $rows = [self::row(
+            patient_name: 'Daisy',
+            medicine_name: 'Thyroxine',
+            medicine_dosage: '0.2mg',
+            taken_time: '2026-02-14 08:00:00',
+            note: 'took with food',
+        )];
 
         $html = $this->exporter->renderHtml($rows);
         $this->assertStringContainsString('Daisy', $html);
@@ -72,9 +72,9 @@ final class PdfIntakeExporterTest extends TestCase
 
     public function testNotesAreHtmlEscapedToPreventInjection(): void
     {
-        $rows = [self::row([
-            'note' => 'took <script>alert(1)</script> with food',
-        ])];
+        $rows = [self::row(
+            note: 'took <script>alert(1)</script> with food',
+        )];
         $html = $this->exporter->renderHtml($rows);
 
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
@@ -84,9 +84,9 @@ final class PdfIntakeExporterTest extends TestCase
     public function testRowsAreGroupedByCalendarDay(): void
     {
         $rows = [
-            self::row(['taken_time' => '2026-02-14 08:00:00', 'medicine_name' => 'Thyroxine']),
-            self::row(['taken_time' => '2026-02-14 20:00:00', 'medicine_name' => 'Thyroxine']),
-            self::row(['taken_time' => '2026-02-15 08:00:00', 'medicine_name' => 'Vetmedin']),
+            self::row(medicine_name: 'Thyroxine', taken_time: '2026-02-14 08:00:00'),
+            self::row(medicine_name: 'Thyroxine', taken_time: '2026-02-14 20:00:00'),
+            self::row(medicine_name: 'Vetmedin', taken_time: '2026-02-15 08:00:00'),
         ];
         $html = $this->exporter->renderHtml($rows);
 
@@ -103,9 +103,9 @@ final class PdfIntakeExporterTest extends TestCase
     public function testSummaryCountsReflectRows(): void
     {
         $rows = [
-            self::row(['taken_time' => '2026-02-14 08:00:00']),
-            self::row(['taken_time' => '2026-02-14 20:00:00']),
-            self::row(['taken_time' => '2026-02-15 08:00:00']),
+            self::row(taken_time: '2026-02-14 08:00:00'),
+            self::row(taken_time: '2026-02-14 20:00:00'),
+            self::row(taken_time: '2026-02-15 08:00:00'),
         ];
         $html = $this->exporter->renderHtml($rows);
 
@@ -132,11 +132,11 @@ final class PdfIntakeExporterTest extends TestCase
         }
 
         $pdf = $this->exporter->toPdf(
-            [self::row([
-                'patient_name' => 'Daisy',
-                'medicine_name' => 'Thyroxine',
-                'taken_time' => '2026-02-14 08:00:00',
-            ])],
+            [self::row(
+                patient_name: 'Daisy',
+                medicine_name: 'Thyroxine',
+                taken_time: '2026-02-14 08:00:00',
+            )],
             ['patient_name' => 'Daisy', 'period_label' => 'February 2026'],
         );
 
@@ -153,28 +153,44 @@ final class PdfIntakeExporterTest extends TestCase
     }
 
     /**
-     * @param array<string,mixed> $overrides
+     * Typed fixture builder. Using named parameters (PHP 8) instead of
+     * an $overrides array means PHPStan can prove the return shape
+     * key-by-key — `array_merge($base, $overrides)` widens to
+     * array<string, mixed> and loses the IntakeExportRow shape, which
+     * was breaking the max-level CI gate.
+     *
      * @return array{
      *     intake_id:int,schedule_id:int,patient_id:int,patient_name:string,
      *     medicine_id:int,medicine_name:string,medicine_dosage:string,
      *     frequency:string,unit_per_dose:float,taken_time:string,note:?string
      * }
      */
-    private static function row(array $overrides = []): array
-    {
-        return array_merge([
-            'intake_id' => 1,
-            'schedule_id' => 1,
-            'patient_id' => 1,
-            'patient_name' => 'Daisy',
-            'medicine_id' => 1,
-            'medicine_name' => 'Thyroxine',
-            'medicine_dosage' => '0.2mg',
-            'frequency' => '12h',
-            'unit_per_dose' => 1.0,
-            'taken_time' => '2026-02-14 08:00:00',
-            'note' => null,
-        ], $overrides);
+    private static function row(
+        int $intake_id = 1,
+        int $schedule_id = 1,
+        int $patient_id = 1,
+        string $patient_name = 'Daisy',
+        int $medicine_id = 1,
+        string $medicine_name = 'Thyroxine',
+        string $medicine_dosage = '0.2mg',
+        string $frequency = '12h',
+        float $unit_per_dose = 1.0,
+        string $taken_time = '2026-02-14 08:00:00',
+        ?string $note = null,
+    ): array {
+        return [
+            'intake_id' => $intake_id,
+            'schedule_id' => $schedule_id,
+            'patient_id' => $patient_id,
+            'patient_name' => $patient_name,
+            'medicine_id' => $medicine_id,
+            'medicine_name' => $medicine_name,
+            'medicine_dosage' => $medicine_dosage,
+            'frequency' => $frequency,
+            'unit_per_dose' => $unit_per_dose,
+            'taken_time' => $taken_time,
+            'note' => $note,
+        ];
     }
 
     private static function commandExists(string $name): bool
