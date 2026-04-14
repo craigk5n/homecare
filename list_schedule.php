@@ -1,9 +1,19 @@
 <?php
 require_once 'includes/init.php';
 
+$patient_id = getGetValue('patient_id');
+
+// Missing or non-numeric patient_id → bounce to the home page. This
+// catches stale bookmarks, menu links that lost their query string,
+// and anyone who reached here via an empty return_path after login.
+// Must run BEFORE print_header() so the redirect can emit headers.
+if (!is_numeric($patient_id) || (int) $patient_id <= 0) {
+    header('Location: index.php');
+    exit;
+}
+
 print_header();
 
-$patient_id = getGetValue('patient_id');
 $patient = getPatient($patient_id);
 $patientName = $patient['name'];
 $showCompletedParam = getIntValue('show_completed');
