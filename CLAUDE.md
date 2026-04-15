@@ -49,12 +49,14 @@ MySQL (via the `mysqli` driver set in `settings.php`). All app tables are prefix
 Remaining-doses math in `dosesRemaining()` works by taking the most recent inventory row and subtracting `SUM(s.unit_per_dose)` of intakes (from `hc_medicine_schedules`) since that inventory timestamp — so inventory rows are checkpoints, not running counters. Keep it that way when touching inventory logic. `unit_per_dose` is always read from the schedule, never from the medicine.
 
 ### External integrations
+
 - **`schedule_ics.php`** emits an iCalendar feed of today/tomorrow doses for a given `?patient_id=…`. Caregivers subscribe to this URL from their calendar app.
+
 - **`send_reminders.php`** is a CLI/cron script that pushes due-soon alerts to an [ntfy](https://ntfy.sh/) topic. The ntfy URL and channel are currently hard-coded at the top of the file (marked `TODO: move to hc_config`). Supports `--dry-run` and an optional numeric arg for "minutes before due" (default 5).
 
-## Common commands
+### Common commands
 
-There is no `composer`, `npm`, `make`, or test runner in this repo. Operations are manual:
+There is no `composer`, `npm`, `make`, or test suite in this repo. Operations are manual:
 
 ```bash
 # Apply / reset the schema (destructive):
@@ -62,7 +64,7 @@ mysql intranet < tables-mysql.sql
 
 # Run pending migrations (non-destructive, backup first):
 ./dump.sh
-mysql intranet < migrations/001_separate_product_prescription.sql
+composer migrate
 
 # Back up just the HomeCare tables into homecare-dump.sql:
 ./dump.sh
@@ -78,9 +80,15 @@ The DB name (`intranet`) and credentials come from `includes/settings.php`, whic
 ## Conventions to follow when editing
 
 - **Pages follow the `init.php` → `print_header()` → body → `print_trailer()` shape.** Don't introduce a router or an autoloader for one-off pages.
+
 - **Always use `dbi_*` with parameter arrays** — e.g. `dbi_get_cached_rows($sql, [$patient_id, $schedule_id])`. Never string-concatenate user input into SQL.
+
 - **Always HTML-escape output** with `htmlspecialchars(...)` when echoing values from the DB or request (see `list_medications.php` for the pattern).
+
 - **Read request input via `getGetValue` / `getPostValue`** from `formvars.php`, not raw superglobals.
+
 - **New HomeCare-specific helpers go in `includes/homecare.php`.** Leave `functions.php` / `dbi4php.php` / `translate.php` alone unless you are intentionally pulling a fix back from upstream WebCalendar.
+
 - **Frequencies** are short strings (`Nd` / `Nh` / `Nm`) — parse via the helpers in `homecare.php`, don't re-invent.
+
 - **Globals are real here.** `init.php` and `config.php` expose dozens of `$GLOBALS['…']` values that pages rely on (e.g. `$login`, `$c`, `$SQLLOG`, `$PROGRAM_VERSION`). Don't rename them casually.

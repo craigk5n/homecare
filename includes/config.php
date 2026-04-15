@@ -195,14 +195,7 @@ function do_config($callingFromInstall=false)
       if ($callingFromInstall) {
         return; // not an error during install
       }
-      // There is no settings.php file.
-      // Redirect user to install page if it exists.
-      if (file_exists('install/index.php')) {
-        header('Location: install/index.php');
-        exit;
-      } else {
-        die_miserable_death(translate('Could not find settings.php file...'));
-      }
+// No settings.php - fatal, no install path
     }
 
     foreach ($possible_settings as $key => $type) {
@@ -243,14 +236,7 @@ function do_config($callingFromInstall=false)
   // If no db settings, then user has likely started install but not yet
   // completed. So, send them back to the install script.
   if (empty($db_type)) {
-    if ($callingFromInstall) {
-      return; // not an error during install
-    }
-    if (file_exists('install/index.php')) {
-      header('Location: install/index.php');
-      exit;
-    } else
-      die_miserable_death(translate('Incomplete settings.php file...'));
+    die_miserable_death(translate('Incomplete settings.php file...'));
   }
 
   // Use 'db_cachedir' if found, otherwise look for 'cachedir'.
@@ -310,8 +296,7 @@ function do_config($callingFromInstall=false)
     $single_user_login = '';
   }
 
-  // Type of user authentication.
-  $user_inc = $settings['user_inc'];
+// Type of user authentication removed
 
   // If SQLite, the db file is in the includes directory.
   if ($db_type == 'sqlite' || $db_type == 'sqlite3') {
@@ -319,50 +304,7 @@ function do_config($callingFromInstall=false)
       $db_database = get_full_include_path($db_database);
   }
 
-  $locateStr = 'Location: install/index.php';
-
-  // Check the current installation version.
-  // Redirect user to install page if it is different from stored value.
-  // This will prevent running until the database is updated
-  // (typically through the web-based install pages).
-  $c = @dbi_connect($db_host, $db_login, $db_password, $db_database, false);
-
-  if ($c && !$callingFromInstall) {
-    $rows = dbi_get_cached_rows('SELECT value FROM hc_config
-      WHERE setting = \'HOMECARE_PROGRAM_VERSION\'');
-
-    //echo "PROGRAM_VERSION: $PROGRAM_VERSION <br>";
-    //echo "Version:<br><pre>"; print_r($rows); echo "</pre>"; exit;
-    if (!$rows || empty($rows) || empty($rows[0])) {
-      header($locateStr . 'UNKNOWN&reason=missing');
-    } else {
-      $versionInDb = $rows[0][0];
-      if ($versionInDb != $PROGRAM_VERSION) {
-        // New version has been installed on filesystem but db says it is an
-        // older version.  See if we can just bump up the version in the db
-        // (only an option when there are no database schema changes between
-        // the version and the new version.)
-        if (true) {
-          // TODO: implement upgrade_requires_db_changes
-          //if (upgrade_requires_db_changes($db_type, $versionInDb, $PROGRAM_VERSION)) {
-          header($locateStr . $versionInDb);
-          exit;
-        } else {
-          // We can just update the version in the database and move on.
-          //if (!update_webcalendar_version_in_db($versionInDb, $PROGRAM_VERSION)) {
-          //  die_miserable_death("Unable to update version in database");
-          //}
-        }
-      }
-    }
-    dbi_close($c);
-  } else {
-    if (!$callingFromInstall) {
-      // Must mean we don't have a settings.php file or env variables.
-      header($locateStr . 'UNKNOWN');
-      exit;
-    }
-  }
+// Version check removed - migrations handle schema updates
 
   if ($single_user != 'Y')
     $single_user_login = '';

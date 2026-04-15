@@ -1212,27 +1212,43 @@ table fixes that.
 
 ### HC-073: Drop dead WebCalendar-derived code
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
+
 **Type**: Story
+
 **Points**: 2
+
 **Depends on**: HC-072
 
 **Description**: After the native auth cutover (HC-auth tickets):
+
 - `includes/user.php` is no longer included by anything.
+
 - `includes/config.php`'s `do_config()` still has the redirect to
+
   `install/index.php` (which doesn't exist), kept alive only by the
+
   Docker entrypoint stamping a `HOMECARE_PROGRAM_VERSION` row.
+
 - A few WebCalendar `user_inc`-style globals are referenced but
+
   unused.
 
 **Acceptance Criteria**:
-- [ ] Confirm `includes/user.php` has no callers; delete it
-- [ ] Remove `install/index.php` redirect block from `config.php`
+
+- [x] Confirm `includes/user.php` has no callers; delete it
+
+- [x] Remove `install/index.php` redirect block from `config.php`
+
       (and the matching entrypoint workaround)
-- [ ] Remove `user_inc`, `user-app-*` references from `config.php`
+
+- [x] Remove `user_inc`, `user-app-*` references from `config.php`
+
       and `validate.php`
-- [ ] All tests still pass; no lints fail; PHPStan max stays clean
-- [ ] CLAUDE.md updated: WebCalendar-borrowed file list shrinks
+
+- [x] All tests still pass; no lints fail; PHPStan max stays clean
+
+- [x] CLAUDE.md updated: WebCalendar-borrowed file list shrinks
 
 ---
 
