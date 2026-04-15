@@ -156,7 +156,7 @@ function hc_validate(): void
 
     // Populate the legacy globals every page reads.
     $rows = dbi_get_cached_rows(
-        'SELECT login, firstname, lastname, email, is_admin, enabled
+        'SELECT login, firstname, lastname, email, role, enabled
          FROM hc_user WHERE login = ?',
         [$login]
     );
@@ -184,7 +184,7 @@ function hc_validate(): void
         $fullname = $login;
     }
     $user_email = (string) ($row[3] ?? '');
-    $is_admin = (($row[4] ?? '') === 'Y');
+    $is_admin = ($row[4] ?? 'viewer') === 'admin';
 }
 
 function hc_redirect_to_login(string $currentScript): void

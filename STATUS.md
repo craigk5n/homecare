@@ -1254,23 +1254,35 @@ table fixes that.
 
 ### HC-074: Cutover off `hc_user.is_admin` to `role`
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
+
 **Type**: Story
+
 **Points**: 2
+
 **Depends on**: HC-072
 
 **Description**: `getCurrentUserRole()` (HC-011) bridges
+
 `is_admin='Y'` to `role='admin'` so the migration could be
+
 non-atomic. Now that nothing else reads `is_admin`, drop the bridge
+
 and the column.
 
 **Acceptance Criteria**:
-- [ ] Grep + remove every read of `is_admin` outside the legacy
+
+- [x] Grep + remove every read of `is_admin` outside the legacy
+
       `includes/validate.php` user-load fallback
-- [ ] `getCurrentUserRole()` simplifies to a straight `role` read
-- [ ] Migration 009 (via the new runner) drops the column
-- [ ] `tables-mysql.sql` + `schema-sqlite.sql` updated
-- [ ] Auth tests + integration tests still pass
+
+- [x] `getCurrentUserRole()` simplifies to a straight `role` read
+
+- [x] Migration 009 (via the new runner) drops the column
+
+- [x] `tables-mysql.sql` + `schema-sqlite.sql` updated
+
+- [x] Auth tests + integration tests still pass
 
 ---
 

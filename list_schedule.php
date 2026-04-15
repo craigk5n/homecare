@@ -110,6 +110,20 @@ foreach ($rows as $row) {
         }
     }
 
+    // Cadence mismatch warning
+    require_once 'src/Database/DbiAdapter.php';
+    require_once 'src/Repository/IntakeRepository.php';
+    require_once 'src/Repository/ScheduleRepository.php';
+    require_once 'src/Domain/ScheduleCalculator.php';
+    require_once 'src/Service/CadenceCheck.php';
+
+    $db = new \HomeCare\Database\DbiAdapter();
+    $intakesRepo = new \HomeCare\Repository\IntakeRepository($db);
+    $schedulesRepo = new \HomeCare\Repository\ScheduleRepository($db);
+    $calc = new \HomeCare\Domain\ScheduleCalculator();
+    $cadenceCheck = new \HomeCare\Service\CadenceCheck($intakesRepo, $schedulesRepo, $calc);
+    $warningText = $cadenceCheck->getWarningText($schedule_id);
+
     // Build remaining display
     $days = $remainingDoses['remainingDays'];
     $futureDate = date('M j, Y', strtotime("+$days days"));
@@ -255,6 +269,9 @@ function renderTableRow($entry, $statusClass) {
     $html .= '<td>' . htmlspecialchars($entry['frequency']) . '</td>';
     $html .= '<td>' . htmlspecialchars($entry['lastTakenNicely']) . '</td>';
     $html .= '<td class="js-countdown"' . $dueAttr . '>' . $warningIcon . htmlspecialchars($entry['nextDueLabel']);
+    if ($warningText) {
+        $html .= '<br><div class="alert alert-warning mt-1 mb-0 p-1 small"><strong>Cadence Mismatch:</strong> ' . htmlspecialchars($warningText) . '</div>';
+    }
     if ($entry['nextDueDetail']) {
         $html .= '<br><small class="text-muted">' . htmlspecialchars($entry['nextDueDetail']) . '</small>';
     }
