@@ -1122,7 +1122,7 @@ settings)
 
 ### HC-071: Token-signed iCalendar feed and shareable exports
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-030

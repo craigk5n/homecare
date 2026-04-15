@@ -1,20 +1,48 @@
 <?php
 require_once 'includes/init.php';
+require_once 'src/Auth/SignedUrl.php';
+
+use HomeCare\Auth\SignedUrl;
+
+// Check auth: session or token
+$token = getGetValue('token', '');
+$patient_id = (int) getGetValue('patient_id', 0);
+if ($patient_id <= 0) {
+    http_response_code(400);
+    die('Missing patient_id.');
+}
+
+$authorized = false;
+if ($token) {
+    $signed = SignedUrl::instance();
+    $params = $signed->getParams($token);
+    if ($params !== null && $params['type'] === 'ics' && (int) $params['patient_id'] === $patient_id) {
+        $authorized = true;
+        audit_log('signedurl.access', 'patient', $patient_id, ['via' => 'signed_url', 'resource' => 'ics']);
+    }
+} 
+
+if (!$authorized) {
+    require_role('viewer');
+}
+
+$patient = getPatient($patient_id);
+if (!$patient) {
+    http_response_code(404);
+    die('Patient not found.');
+}
+$patientName = $patient['name'];
 
 // Configuration variables
 $includeReminder = true; // True to include reminders, false to not include them
 $includeTaken = false; // Include medications already taken?
 $reminderMinutesBefore = 1; // Number of minutes before the medication time to set the reminder
 
-$patient_id = getGetValue('patient_id');
 $date = date('Y-m-d');
 $tomorrowDate = date('Y-m-d', strtotime('+1 day'));
 
-$patient = getPatient($patient_id);
-$patientName = $patient['name'];
-
 header('Content-Type: text/calendar; charset=utf-8');
-header('Content-Disposition: attachment; filename="medication_schedule.ics"');
+header('Content-Disposition: attachment; filename="medication_schedule_' . preg_replace('/[^a-z0-9_-]/i', '_', strtolower($patientName)) . '.ics"');
 
 echo "BEGIN:VCALENDAR\r\n";
 echo "VERSION:2.0\r\n";
