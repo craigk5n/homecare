@@ -67,46 +67,32 @@ function get_server_top_url () {
   * Send HTTP headers.  Would be nice to make some of these configurable
   * in the admin System Settings.
   */
-function send_http_headers () {
+function send_http_headers (string $nonce = '') {
   global $CSP, $PROGRAM_DATE, $PROGRAM_VERSION;
 
   $csp = empty($CSP) || in_array($CSP, ['none', 'same', 'any']) ? $CSP : 'none';
 
-  // Prevent click-jacking by including a "frame-breaker" script in each page that should not be framed.
-  // Admin can override CSP setting (default is 'none') in Admin Settings
-  // Source: https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html
-  Header('X-CSP-Value: ' . $csp);
-  if ($csp == 'none') {
-    Header("Content-Security-Policy: frame-ancestors 'none'");
-    // App cannot be loaded in a frame
-    // Options for this cookie: deny, sameorigin, allow-from
-    Header("X-Frame-Options: deny");
-  } else if ($csp == 'same') {
-    Header("Content-Security-Policy: frame-ancestors 'self'");
-    Header("X-Frame-Options: sameorigin");
-  } else if ($csp == 'any') {
-    // No restrictions
-    Header("Content-Security-Policy: frame-ancestors *");
+  // Prevent click-jacking
+  Header('X-Frame-Options: DENY');
+  Header('Content-Security-Policy: frame-ancestors \'none\'');
+
+  // Other security headers
+  Header('X-Content-Type-Options: nosniff');
+  Header('Referrer-Policy: strict-origin-when-cross-origin');
+  Header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
+
+  // HSTS if HTTPS
+  if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+    Header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
   }
 
-  // Include App version in HTTP header
+  // Enhanced CSP with nonce for scripts
+  $cspValue = "default-src 'self'; script-src 'self' 'nonce-$nonce'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';";
+  Header("Content-Security-Policy: $cspValue");
+
+  // App metadata
   Header('HomeCare-Version: ' . ltrim($PROGRAM_VERSION, 'v'));
   Header('HomeCare-Date: ' . $PROGRAM_DATE);
-
-  // Marker used by the server to indicate that the MIME types advertised in the
-  // Content-Type headers should be followed and not be changed.
-  // NOTE: Some web servers (e.g. apache2) set this for us, so users may get 2 of these.
-  Header("X-Content-Type-Options: nosniff");
-
-  // Set the Content Security Policy.  HomeCare specifically bundles required
-  // components like jQuery and Bootstrap so that external resources don't need
-  // to be loaded.  However, if an admin user creates a custom header that loads
-  // external content, this may break.
-  // More info: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-  // TODO: Fix this.  It seems to break CSS, images or something.  I'm trying
-  // to restrict all content to one server, but it's blocking more than it should.
-  //Header("Content-Security-Policy: default-src " . get_server_top_url() .
-  //  "; img-src *; style-src *");
 }
 
 /**
@@ -168,34 +154,22 @@ function print_header( $includes = '', $HeadX = '', $BodyX = '',
 
   send_http_headers ();
 
-  if (empty($CSP) || $CSP == 'none') {
-    $ret .= "\n<style id=\"antiClickjack\">\n  body{display:none !important;}\n</style>\n" .
-      "<script type=\"text/javascript\">\n" .
-      "  if (self.location.hostname === top.location.hostname) {\n" .
-      "      var antiClickjack = document.getElementById(\"antiClickjack\");\n" .
-      "      antiClickjack.parentNode.removeChild(antiClickjack);\n" .
-      "  } else {\n" .
-      "      top.location = self.location;\n" .
-      "  }\n" .
-      "</script>\n";
-    }
+    if (empty($CSP) || $CSP == 'none') {
+      $ret .= "\n<style id=\"antiClickjack\">body{display:none !important;}</style>\n" .
+        "<script nonce=\"" . $nonce . "\">\n" .
+        "  if (self.location.hostname === top.location.hostname) {\n" .
+        "      var antiClickjack = document.getElementById(\"antiClickjack\");\n" .
+        "      antiClickjack.parentNode.removeChild(antiClickjack);\n" .
+        "  } else {\n" .
+        "      top.location = self.location;\n" .
+        "  }\n" .
+        "</script>\n";
+      }
 
 
-  $nonce = bin2hex(random_bytes(16));
+// Remove duplicate code
 
-// Security headers
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-$nonce'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';");
-header("X-Content-Type-Options: nosniff");
-header("X-Frame-Options: DENY");
-header("Referrer-Policy: strict-origin-when-cross-origin");
-header("Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()");
-if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
-  header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
-}
-
-$GLOBALS['NONCE'] = $nonce;
-
-$ret .= $ASSETS;
+  $ret .= $ASSETS;
 
   if( ! $disableUTIL )
     $js_ar[] = 'js/util.js';
@@ -204,7 +178,7 @@ $ret .= $ASSETS;
     foreach( $js_ar as $j ) {
       $i = 'includes/' . $j;
       $ret .= '
-    <script nonce="' . htmlspecialchars($GLOBALS['NONCE']) . '" src="' . $i . '"></script>';
+    <script nonce="' . $nonce . '" src="' . $i . '"></script>';
     }
 
   // Any other includes?
@@ -225,8 +199,8 @@ $ret .= $ASSETS;
         // Don't load popups.js if DISABLE_POPUPS.
       } else {
         $arinc = explode( '/', $inc );
-        $ret .= '
-    <script src="';
+    $ret .= '
+    <script nonce="' . $nonce . '" src="' ;
 
         if( stristr( $inc, '/true' ) ) {
           $i = 'includes';
@@ -282,7 +256,7 @@ $ret .= $ASSETS;
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d6efd">
     <link rel="apple-touch-icon" href="pub/icons/icon-192.png">
-    <script>
+    <script nonce="' . $nonce . '">
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
           navigator.serviceWorker.register("sw.js").catch(function (e) {
@@ -379,10 +353,7 @@ function print_trailer( $include_nav_links = true, $closeDb = true,
     '<!-- ' . $GLOBALS['PROGRAM_NAME'] . '     ' . $GLOBALS['PROGRAM_URL'] . ' -->' .
     ( $includeCkeditor ?
     /* Load local copy of ckeditor */ '
-    <script nonce="' . htmlspecialchars($GLOBALS['NONCE']) . '" src="pub/ckeditor/ckeditor.js"></script>
-    <script nonce="' . htmlspecialchars($GLOBALS['NONCE']) . '">
-      CKEDITOR.replaceAll();
-    </script>' : '' ) .
+
 
     // Adds an easy link to validate the pages.
     ( $DEMO_MODE == 'Y' ? '
