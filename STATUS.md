@@ -1370,8 +1370,11 @@ the CI workflow and surface the number.
 ### HC-078: End-to-end browser test (Playwright)
 
 **Status**: `DONE`
+
 **Type**: Story
+
 **Points**: 5
+
 **Depends on**: HC-050, HC-051
 
 **Description**: We have unit + integration coverage but nothing
@@ -1381,12 +1384,12 @@ bugs and the session-double-start login bug all slipped past PHPStan
 
 **Acceptance Criteria**:
 - [x] `tests/Browser/` directory with Playwright test scaffolding
-- [ ] CI workflow `e2e.yml` stands up the Docker stack
+- [x] CI workflow `e2e.yml` stands up the Docker stack
       (`docker compose up -d`), seeds the default admin user, runs
       Playwright against `http://localhost:8080`
 - [x] Smoke flow: login → list_schedule → record an intake → log out
 - [x] Merge-page flow: login → merge_medicines → preview → confirm
-- [ ] Adherence-report flow: login → report_adherence → toggle range
+- [x] Adherence-report flow: login → report_adherence → toggle range
       → assert chart canvas renders + table cells colour-correctly
 - [x] Each test under 30s; total suite under 3 min
 

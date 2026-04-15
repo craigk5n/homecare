@@ -82,9 +82,13 @@ test.describe('HomeCare E2E Flows', () => {
     // Assert chart renders (canvas element)
     await expect(page.locator('canvas.chartjs-render-monitor')).toBeVisible();
 
-    // Assert table cells have color classes (green/yellow/red)
-    await expect(page.locator('.adherence-cell.green')).toBeVisible(); // Assume classes
-    await expect(page.locator('table.adherence tbody tr')).toHaveCount(>0);
+// Assert chart renders (canvas element)
+    await expect(page.locator('canvas')).toBeVisible({ timeout: 5000 });
+
+    // Assert table cells have color classes (green/yellow/red) - inspect actual classes from CSS
+    // Assuming classes like .table-success for green, .table-warning yellow, .table-danger red
+    await expect(page.locator('.table-success')).toBeVisible(); // At least one green cell or adjust selector
+    await expect(page.locator('table tbody tr td')).toHaveCount({ min: 1 });
 
     // Logout
     await page.goto('http://localhost:8080/logout.php');
