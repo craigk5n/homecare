@@ -1380,15 +1380,15 @@ bugs and the session-double-start login bug all slipped past PHPStan
 + PHPUnit because they only manifest in a real browser.
 
 **Acceptance Criteria**:
-- [ ] `tests/Browser/` directory with Playwright test scaffolding
+- [x] `tests/Browser/` directory with Playwright test scaffolding
 - [ ] CI workflow `e2e.yml` stands up the Docker stack
       (`docker compose up -d`), seeds the default admin user, runs
       Playwright against `http://localhost:8080`
-- [ ] Smoke flow: login → list_schedule → record an intake → log out
-- [ ] Merge-page flow: login → merge_medicines → preview → confirm
+- [x] Smoke flow: login → list_schedule → record an intake → log out
+- [x] Merge-page flow: login → merge_medicines → preview → confirm
 - [ ] Adherence-report flow: login → report_adherence → toggle range
       → assert chart canvas renders + table cells colour-correctly
-- [ ] Each test under 30s; total suite under 3 min
+- [x] Each test under 30s; total suite under 3 min
 
 ---
 

@@ -1,0 +1,64 @@
+name: E2E Tests
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      web:
+        image: ghcr.io/craigk5n/homecare:dev  # or build from Dockerfile
+        ports:
+          - 8080:80
+        options: >-
+          --health-cmd "curl -f http://localhost/healthz || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 3
+      db:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: homecare
+          MYSQL_USER: homecare
+          MYSQL_PASSWORD: homecare
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h localhost -u root -proot"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Wait for services
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:8080; do sleep 1; done'
+        # Seed admin user
+        docker compose exec -T db mysql -u homecare -phomecare homecare < migrations/004_seed_admin_user.sql
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install Playwright
+      run: |
+        npm init playwright@latest -y -- --quiet
+        npx playwright install --with-deps
+
+    - name: Run E2E tests
+      run: npx playwright test
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: playwright-report/
