@@ -1,0 +1,18 @@
+{
+  "name": "homecare",
+  "version": "1.0.0",
+  "description": "[![Tests](https://github.com/craigk5n/homecare/actions/workflows/tests.yml/badge.svg)](https://github.com/craigk5n/homecare/actions/workflows/tests.yml) [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.1-blue)](https://www.php.net/) [![License: GPL v2+](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)",
+  "main": "playwright.config.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0"
+  }
+}

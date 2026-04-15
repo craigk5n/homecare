@@ -22,3 +22,11 @@ homecare-dump.sql
 .DS_Store
 COMPETITIVE_ANALYSIS.md
 AGENTS.md
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

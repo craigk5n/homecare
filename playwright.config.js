@@ -1,7 +1,7 @@
 module.exports = {
   timeout: 30000,
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: 'http://localhost:' + (process.env.HC_WEB_PORT || '8081'),
     headless: true,
     viewport: { width: 1280, height: 720 },
     trace: 'on-first-retry',
