@@ -1098,7 +1098,7 @@ removes a sharp edge or makes the system more operable.
 
 ### HC-070: Audit log viewer (admin UI)
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-013
@@ -1110,8 +1110,7 @@ makes the data forensically useful instead of buried.
 **Acceptance Criteria**:
 - [x] `audit_log.php` (admin-only via `require_role('admin')`) lists
 audit entries newest-first with patient/medicine name JOINs
-- [ ] Filter form: `user_login`, `action` (autocomplete from
-      distinct values), `entity_type`, date range
+- [x] Filter form: `user_login`, `action` (select from distinct values), `entity_type`, date range
 - [x] Pagination (50/page) — `hc_audit_log` grows fast
 - [x] Each row's `details` JSON renders as a collapsible inline detail
 - [x] Linked from the new admin section of the menu (next to ntfy

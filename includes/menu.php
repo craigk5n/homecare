@@ -141,6 +141,7 @@ $patients = getPatients();
               echo '<div class="dropdown-divider"></div>';
               echo '<h6 class="dropdown-header">' . translate('Admin Settings') . '</h6>';
               print_menu_item(translate('Notifications (ntfy)'), 'settings.php#notifications');
+              print_menu_item(translate('Audit Log'), 'audit_log.php');
             }
             ?>
           </div>

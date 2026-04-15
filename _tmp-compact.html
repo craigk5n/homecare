@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="iso-8859-1">
+      <title>Title</title>
+<style id="antiClickjack">
+  body{display:none !important;}
+</style>
+<script type="text/javascript">
+  if (self.location.hostname === top.location.hostname) {
+      var antiClickjack = document.getElementById("antiClickjack");
+      antiClickjack.parentNode.removeChild(antiClickjack);
+  } else {
+      top.location = self.location;
+  }
+</script>
+<link rel="stylesheet" href="pub/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N"><script src="pub/jquery.min.js" integrity="sha384-vtXRMe3mGCbOeY7l30aIg8H9p3GdeSe4IFlP6G8JMa7o7lXvnz3GFKzPxzJdPfGK"></script><script src="pub/bootstrap.bundle.min.js" integrity="sha384-Fy6S3B9q64WdZWQUiU+q4/2Lc9npb8tCaSX9FK7E8HnRr0Jz8D6OP9dO5Vg3Q9ct"></script>
+
+    <script src="includes/js/util.js"></script>
+    <link href="css_cacher.php?login=cknudsen&amp;css_cache=1" rel="stylesheet">
+    <link href="includes/css/styles.css" rel="stylesheet">
+
+    <link href="includes/css/print_styles.css" rel="stylesheet" media="print">
+
+    <link type="image/x-icon" href="favicon.ico?1776170835" rel="shortcut icon">
+    <!-- HC-060: PWA. manifest + theme color + apple-touch-icon so iOS
+         "Add to Home Screen" picks up our icon, and a tiny inline
+         registration of /sw.js. The SW caches static assets only; PHP
+         pages and API JSON are network-only. -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <link rel="apple-touch-icon" href="pub/icons/icon-192.png">
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("sw.js").catch(function (e) {
+            console.warn("HomeCare SW registration failed:", e);
+          });
+        });
+      }
+    </script>
+  </head>
+  <body id="">
+<nav class="navbar navbar-expand-md navbar-light bg-light">
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+  <div class="navbar-collapse collapse w-50 order-1 order-md-0 dual-collapse2" id="navbarNavDropdown">
+    <ul class="navbar-nav">
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Medications        </a>
+        <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+          <a class="dropdown-item" href="list_medications.php">Available Medications</a>
+                      <a class="dropdown-item" href="edit_medication.php">Add New Medication</a>
+                    <a class="dropdown-item" href="inventory_dashboard.php">Inventory Dashboard</a>
+                  </div>
+      </li>
+
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Schedule        </a>
+        <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                  <h6 class="dropdown-header">Daisy</h6>
+        <a class="dropdown-item" href="list_schedule.php?patient_id=1">List of Medication</a>
+<a class="dropdown-item" href="schedule_daily.php?patient_id=1">Today's Schedule</a>
+<div class="dropdown-divider"></div>          <h6 class="dropdown-header">Fozzie</h6>
+        <a class="dropdown-item" href="list_schedule.php?patient_id=2">List of Medication</a>
+<a class="dropdown-item" href="schedule_daily.php?patient_id=2">Today's Schedule</a>
+        </div>
+      </li>
+
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Intake        </a>
+        <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                  <h6 class="dropdown-header">Daisy</h6>
+          <a class="dropdown-item" href="bulk_intake.php?patient_id=1">Bulk Input</a>
+<div class="dropdown-divider"></div>          <h6 class="dropdown-header">Fozzie</h6>
+          <a class="dropdown-item" href="bulk_intake.php?patient_id=2">Bulk Input</a>
+        </div>
+      </li>
+
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Reports        </a>
+        <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+                  <h6 class="dropdown-header">Daisy</h6>
+          <a class="dropdown-item" href="report_intake.php?patient_id=1">Intake History</a>
+<a class="dropdown-item" href="report_missed.php?patient_id=1">Missed Medications</a>
+<a class="dropdown-item" href="report_medications.php?patient_id=1">Medication Supply</a>
+<a class="dropdown-item" href="report_adherence.php?patient_id=1">Adherence</a>
+<div class="dropdown-divider"></div>          <h6 class="dropdown-header">Fozzie</h6>
+          <a class="dropdown-item" href="report_intake.php?patient_id=2">Intake History</a>
+<a class="dropdown-item" href="report_missed.php?patient_id=2">Missed Medications</a>
+<a class="dropdown-item" href="report_medications.php?patient_id=2">Medication Supply</a>
+<a class="dropdown-item" href="report_adherence.php?patient_id=2">Adherence</a>
+        </div>
+      </li>
+
+              <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Settings          </a>
+          <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <h6 class="dropdown-header">Your Settings</h6><a class="dropdown-item" href="settings.php">Account & API key</a>
+          </div>
+        </li>
+      
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          Help        </a>
+        <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+          <a class="dropdown-item" href="#" onclick="javascript:openHelp()">Help Contents</a>
+          <a class="dropdown-item" href="#" onclick="javascript:openAbout()">About HomeCare</a>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+      <div class="navbar-collapse collapse w-20 order-3 dual-collapse2">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item dropdown-menu-right">
+          <a class="nav-link" href="logout.php">Logout</a>
+        </li>
+      </ul>
+    </div>
+  
+  </div>
+</nav>
+
+<div class="container-fluid"><div class="schedule-sticky-header noprint is-compact" role="region" aria-label="Patient schedule header" id="scheduleStickyHeader"><div class="d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;"><div class="d-flex align-items-center flex-wrap" style="gap:.6rem;"><h1 class="hc-patient-name">Daisy</h1><div class="hc-status-badges" aria-label="Schedule status summary"><span class="hc-badge hc-badge-overdue" title="Overdue doses"><span class="hc-badge-dot" aria-hidden="true"></span>1 overdue</span></div></div><div class="hc-header-actions"><a href="medication_summary.php?patient_id=1" class="btn btn-outline-secondary btn-sm" title="One-page printable summary"><span class="hc-label-full">Print Summary</span><span class="hc-label-compact" aria-hidden="true">Print</span><span class="sr-only hc-label-compact">Print Summary</span></a><a href="add_to_schedule.php?patient_id=1" class="btn btn-primary btn-sm" title="Add medication to this schedule"><span class="hc-label-full">+ Add Medication</span><span class="hc-label-compact" aria-hidden="true">+ Add</span><span class="sr-only hc-label-compact">Add Medication</span></a></div></div></div><div class="schedule-controls noprint mt-3"><div class="custom-control custom-switch"><input type="checkbox" class="custom-control-input" id="assumePastIntake" onchange="toggleParam(this, 'assume_past_intake')"><label class="custom-control-label" for="assumePastIntake">Assume past doses taken</label></div><div class="custom-control custom-switch"><input type="checkbox" class="custom-control-input" id="showCompleted" onchange="toggleParam(this, 'show_completed')"><label class="custom-control-label" for="showCompleted">Show completed</label></div><button class="btn btn-outline-secondary btn-sm ml-auto" onclick="window.print()">Print</button></div><div class="d-none d-md-block"><div class="schedule-section-header section-overdue"><img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="" class="mr-1" style="width:16px;height:16px;"> Overdue (1)</div><div class="table-responsive"><table class="table table-hover schedule-table mb-2"><thead class="thead-light"><tr><th>Medication</th><th>Frequency</th><th>Last Taken</th><th>Next Due</th><th>Remaining</th><th class="actions-cell">Actions</th></tr></thead><tbody><tr class="status-overdue"><td>Omeprazole OTC 20mg tablet</td><td>1d</td><td>April 12 at 11:45 PM</td><td class="js-countdown" data-due-seconds="0"><img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="Warning" class="mr-1"> Overdue<br><small class="text-muted">Yesterday at 11:45 PM</small></td><td>424 doses (424 days)<br><small class="text-muted">Until Jun 12, 2027</small></td><td class="actions-cell"><a href="record_intake.php?schedule_id=39&amp;patient_id=1" class="btn btn-sm btn-success mr-1" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=39" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=39&amp;medicine_id=22" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></td></tr></tbody></table></div><div class="schedule-section-header section-ok">Upcoming (6)</div><div class="table-responsive"><table class="table table-hover schedule-table mb-2"><thead class="thead-light"><tr><th>Medication</th><th>Frequency</th><th>Last Taken</th><th>Next Due</th><th>Remaining</th><th class="actions-cell">Actions</th></tr></thead><tbody><tr class="status-ok"><td>amLODIPine 2.5mg Tablet</td><td>12h</td><td>Today at 9:45 AM</td><td class="js-countdown" data-due-seconds="19950">5h 32m<br><small class="text-muted">Today at 9:45 PM</small></td><td>824 doses (412 days)<br><small class="text-muted">Until May 31, 2027</small></td><td class="actions-cell"><a href="record_intake.php?schedule_id=19&amp;patient_id=1" class="btn btn-sm btn-success mr-1" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=19" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=19&amp;medicine_id=2" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></td></tr><tr class="status-ok"><td>Sildenafil 20mg Tablet</td><td>12h</td><td>Today at 9:45 AM</td><td class="js-countdown" data-due-seconds="19950">5h 32m<br><small class="text-muted">Today at 9:45 PM</small></td><td>103 doses (51 days)<br><small class="text-muted">Until Jun 4, 2026</small></td><td class="actions-cell"><a href="record_intake.php?schedule_id=36&amp;patient_id=1" class="btn btn-sm btn-success mr-1" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=36" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=36&amp;medicine_id=19" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></td></tr><tr class="status-ok"><td>Vetmedin (pimobendan) Solution for Dogs, 1.5 mg/mL, 50 mL</td><td>12h</td><td>Today at 1:50 PM</td><td class="js-countdown" data-due-seconds="34650">9h 37m<br><small class="text-muted">Tomorrow at 1:50 AM</small></td><td>None</td><td class="actions-cell"><a href="record_intake.php?schedule_id=50&amp;patient_id=1" class="btn btn-sm btn-success mr-1" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=50" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=50&amp;medicine_id=20" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></td></tr><tr class="status-ok"><td>Tobramycin 0.3% Ophthalmic Solution 5ml Bottle TGH</td><td>12h</td><td>Today at 1:50 PM</td><td class="js-countdown" data-due-seconds="34650">9h 37m<br><small class="text-muted">Tomorrow at 1:50 AM</small></td><td>None</td><td class="actions-cell"><a href="record_intake.php?schedule_id=51&amp;patient_id=1" class="btn btn-sm btn-success mr-1" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=51" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=51&amp;medicine_id=15" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></td></tr><tr class="status-ok"><td>Fluticasone Propionate HFA</td><td>1d</td><td>Today at 1:05 PM</td><td class="js-countdown" data-due-seconds="75150">20h 52m<br><small class="text-muted">Tomorrow at 1:05 PM</small></td><td>148 doses (148 days)<br><small class="text-muted">Until Sep 9, 2026</small></td><td class="actions-cell"><a href="record_intake.php?schedule_id=38&amp;patient_id=1" class="btn btn-sm btn-success mr-1" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=38" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=38&amp;medicine_id=21" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></td></tr><tr class="status-ok"><td>Proviable DC: capsules</td><td>1d</td><td>Today at 1:35 PM</td><td class="js-countdown" data-due-seconds="76950">21h 22m<br><small class="text-muted">Tomorrow at 1:35 PM</small></td><td>204 doses (204 days)<br><small class="text-muted">Until Nov 4, 2026</small></td><td class="actions-cell"><a href="record_intake.php?schedule_id=12&amp;patient_id=1" class="btn btn-sm btn-success mr-1" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=12" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=12&amp;medicine_id=7" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></td></tr></tbody></table></div></div><div class="d-md-none"><div class="schedule-section-header section-overdue"><img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="" class="mr-1" style="width:16px;height:16px;"> Overdue (1)</div><div class="schedule-card status-overdue"><div class="d-flex justify-content-between align-items-start"><span class="card-med-name">Omeprazole OTC 20mg tablet</span><a href="record_intake.php?schedule_id=39&amp;patient_id=1" class="btn btn-sm btn-success" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a></div><div class="card-meta">Every 1d &middot; Last: April 12 at 11:45 PM</div><div class="card-due js-countdown" data-due-seconds="0"><img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="Warning" class="mr-1"> Overdue <small class="text-muted">(Yesterday at 11:45 PM)</small></div><div class="card-remaining">424 doses (424 days) &middot; Until Jun 12, 2027</div><div class="card-actions"><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=39" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=39&amp;medicine_id=22" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></div></div><div class="schedule-section-header section-ok">Upcoming (6)</div><div class="schedule-card status-ok"><div class="d-flex justify-content-between align-items-start"><span class="card-med-name">amLODIPine 2.5mg Tablet</span><a href="record_intake.php?schedule_id=19&amp;patient_id=1" class="btn btn-sm btn-success" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a></div><div class="card-meta">Every 12h &middot; Last: Today at 9:45 AM</div><div class="card-due js-countdown" data-due-seconds="19950">Due in 5h 32m <small class="text-muted">(Today at 9:45 PM)</small></div><div class="card-remaining">824 doses (412 days) &middot; Until May 31, 2027</div><div class="card-actions"><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=19" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=19&amp;medicine_id=2" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></div></div><div class="schedule-card status-ok"><div class="d-flex justify-content-between align-items-start"><span class="card-med-name">Sildenafil 20mg Tablet</span><a href="record_intake.php?schedule_id=36&amp;patient_id=1" class="btn btn-sm btn-success" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a></div><div class="card-meta">Every 12h &middot; Last: Today at 9:45 AM</div><div class="card-due js-countdown" data-due-seconds="19950">Due in 5h 32m <small class="text-muted">(Today at 9:45 PM)</small></div><div class="card-remaining">103 doses (51 days) &middot; Until Jun 4, 2026</div><div class="card-actions"><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=36" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=36&amp;medicine_id=19" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></div></div><div class="schedule-card status-ok"><div class="d-flex justify-content-between align-items-start"><span class="card-med-name">Vetmedin (pimobendan) Solution for Dogs, 1.5 mg/mL, 50 mL</span><a href="record_intake.php?schedule_id=50&amp;patient_id=1" class="btn btn-sm btn-success" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a></div><div class="card-meta">Every 12h &middot; Last: Today at 1:50 PM</div><div class="card-due js-countdown" data-due-seconds="34650">Due in 9h 37m <small class="text-muted">(Tomorrow at 1:50 AM)</small></div><div class="card-actions"><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=50" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=50&amp;medicine_id=20" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></div></div><div class="schedule-card status-ok"><div class="d-flex justify-content-between align-items-start"><span class="card-med-name">Tobramycin 0.3% Ophthalmic Solution 5ml Bottle TGH</span><a href="record_intake.php?schedule_id=51&amp;patient_id=1" class="btn btn-sm btn-success" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a></div><div class="card-meta">Every 12h &middot; Last: Today at 1:50 PM</div><div class="card-due js-countdown" data-due-seconds="34650">Due in 9h 37m <small class="text-muted">(Tomorrow at 1:50 AM)</small></div><div class="card-actions"><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=51" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=51&amp;medicine_id=15" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></div></div><div class="schedule-card status-ok"><div class="d-flex justify-content-between align-items-start"><span class="card-med-name">Fluticasone Propionate HFA</span><a href="record_intake.php?schedule_id=38&amp;patient_id=1" class="btn btn-sm btn-success" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a></div><div class="card-meta">Every 1d &middot; Last: Today at 1:05 PM</div><div class="card-due js-countdown" data-due-seconds="75150">Due in 20h 52m <small class="text-muted">(Tomorrow at 1:05 PM)</small></div><div class="card-remaining">148 doses (148 days) &middot; Until Sep 9, 2026</div><div class="card-actions"><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=38" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=38&amp;medicine_id=21" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></div></div><div class="schedule-card status-ok"><div class="d-flex justify-content-between align-items-start"><span class="card-med-name">Proviable DC: capsules</span><a href="record_intake.php?schedule_id=12&amp;patient_id=1" class="btn btn-sm btn-success" title="Record Intake"><img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a></div><div class="card-meta">Every 1d &middot; Last: Today at 1:35 PM</div><div class="card-due js-countdown" data-due-seconds="76950">Due in 21h 22m <small class="text-muted">(Tomorrow at 1:35 PM)</small></div><div class="card-remaining">204 doses (204 days) &middot; Until Nov 4, 2026</div><div class="card-actions"><a href="adjust_dosage.php?patient_id=1&amp;schedule_id=12" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a><a href="add_to_schedule.php?patient_id=1&amp;schedule_id=12&amp;medicine_id=7" class="btn btn-sm btn-outline-secondary" title="Edit"><img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a></div></div></div><div class="mt-3 noprint"><a href="add_to_schedule.php?patient_id=1" class="btn btn-primary">+ Add Medication to Schedule</a></div><script>
+// Toggle URL parameter and reload
+function toggleParam(el, param) {
+    var url = new URL(window.location.href);
+    if (el.checked) {
+        url.searchParams.set(param, '1');
+    } else {
+        url.searchParams.delete(param);
+    }
+    window.location.href = url.toString();
+}
+
+// Shrink-on-scroll for the sticky patient header.
+// Collapses the header to .is-compact once the user has scrolled past the
+// threshold; a 16px hysteresis band prevents flapping when the scroll
+// position sits right on the boundary. rAF-throttled so we don't thrash
+// on scroll events.
+(function() {
+    var header = document.getElementById('scheduleStickyHeader');
+    if (!header) return;
+    var COLLAPSE_AT = 80;
+    var EXPAND_AT   = 64;
+    var ticking = false;
+    var compact = false;
+    function update() {
+        var y = window.scrollY || window.pageYOffset || 0;
+        if (!compact && y > COLLAPSE_AT) {
+            header.classList.add('is-compact');
+            compact = true;
+        } else if (compact && y < EXPAND_AT) {
+            header.classList.remove('is-compact');
+            compact = false;
+        }
+        ticking = false;
+    }
+    window.addEventListener('scroll', function() {
+        if (!ticking) {
+            window.requestAnimationFrame(update);
+            ticking = true;
+        }
+    }, { passive: true });
+    update();
+})();
+
+// Live countdown: update every 60 seconds
+(function() {
+    function updateCountdowns() {
+        var els = document.querySelectorAll('.js-countdown[data-due-seconds]');
+        els.forEach(function(el) {
+            var secs = parseInt(el.getAttribute('data-due-seconds'), 10) - 60;
+            el.setAttribute('data-due-seconds', secs);
+
+            if (secs <= 0) {
+                // Switch to overdue styling
+                el.innerHTML = '<img src="images/bootstrap-icons/exclamation-triangle-fill.svg" alt="Warning" class="mr-1"> Overdue';
+                var row = el.closest('tr');
+                var card = el.closest('.schedule-card');
+                if (row) {
+                    row.className = row.className.replace(/status-\w+/g, '') + ' status-overdue';
+                }
+                if (card) {
+                    card.className = card.className.replace(/status-\w+/g, '') + ' status-overdue';
+                }
+            } else {
+                var h = Math.floor(secs / 3600);
+                var m = Math.floor((secs % 3600) / 60);
+                var label = h > 0 ? h + 'h ' + m + 'm' : m + 'm';
+                // Preserve any existing <small> detail
+                var small = el.querySelector('small');
+                var detailHtml = small ? '<br>' + small.outerHTML : '';
+                // Check if this is a card (uses "Due in" prefix)
+                if (el.closest('.schedule-card')) {
+                    el.innerHTML = 'Due in ' + label + (small ? ' <small class="text-muted">' + small.textContent + '</small>' : '');
+                } else {
+                    el.innerHTML = label + detailHtml;
+                }
+            }
+        });
+    }
+    setInterval(updateCountdowns, 60000);
+})();
+</script>
+<script src="./includes/js/menu.js"></script>
+<!-- HomeCare v0.1.0 (07 Apr 2024)     http://k5n.us/wp/honecare/ -->
+    </div></body>
+  </html>
