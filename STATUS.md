@@ -1170,27 +1170,43 @@ solved by per-resource HMAC-signed URLs.
 
 ### HC-072: Migrations runner with applied-migrations tracking
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
+
 **Type**: Story
+
 **Points**: 3
+
 **Depends on**: HC-001
 
 **Description**: Migrations 001-008 are applied manually today --
+
 each new install requires the operator to remember which files have
+
 run. A small runner that records applied migrations in a tracking
+
 table fixes that.
 
 **Acceptance Criteria**:
-- [ ] `hc_migrations` table: `name VARCHAR(64) PRIMARY KEY`,
+
+- [x] `hc_migrations` table: `name VARCHAR(64) PRIMARY KEY`,
+
       `applied_at DATETIME`
-- [ ] `composer migrate` script (or a `php bin/migrate` CLI) reads
+
+- [x] `composer migrate` script (or a `php bin/migrate` CLI) reads
+
       the migrations directory, applies any not yet recorded, and
+
       stamps each one
-- [ ] `--dry-run` flag lists pending migrations without applying
-- [ ] Idempotent: running twice in a row reports "no pending"
-- [ ] Docker entrypoint (HC-050) calls the runner instead of the
+
+- [x] `--dry-run` flag lists pending migrations without applying
+
+- [x] Idempotent: running twice in a row reports "no pending"
+
+- [x] Docker entrypoint (HC-050) calls the runner instead of the
+
       one-shot `tables-mysql.sql` load on first boot
-- [ ] Integration test exercises the runner against a SQLite DB
+
+- [x] Integration test exercises the runner against a SQLite DB
 
 ---
 

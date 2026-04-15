@@ -1,7 +1,6 @@
 <?php
-#!/usr/bin/env php
 <?php
-
+#!/usr/bin/env php
 /**
  * Migration runner for HomeCare.
  * 
@@ -98,3 +97,4 @@ try {
     echo "Error: " . $e->getMessage() . "\n";
     exit(1);
 }
+?>
