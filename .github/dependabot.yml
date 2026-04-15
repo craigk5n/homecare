@@ -1,0 +1,27 @@
+# HC-081: Automated dependency updates.
+#
+# PHPUnit, PHPStan, Bootstrap, Chart.js, jQuery, and GitHub Actions
+# versions need periodic refresh. Dependabot watches Composer and
+# GitHub Actions; the bundled browser assets (Bootstrap, Chart.js,
+# jQuery) are vendored and documented in README.md under "Upgrading
+# PWA assets" — Dependabot does not track them.
+
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - composer
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions

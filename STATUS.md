@@ -1437,12 +1437,12 @@ extraction.
 shipped. Adding both to the CI matrix catches deprecations early.
 
 **Acceptance Criteria**:
-- [ ] `tests.yml` adds a matrix on `php-version: ['8.2', '8.3', '8.4']`
-- [ ] Each version cell runs `composer check`
-- [ ] Any new deprecations under 8.3/8.4 are addressed in code
-- [ ] `composer.json` `php` requirement bumped if any 8.3+ feature is
+- [x] `tests.yml` adds a matrix on `php-version: ['8.2', '8.3', '8.4']`
+- [x] Each version cell runs `composer check`
+- [x] Any new deprecations under 8.3/8.4 are addressed in code
+- [x] `composer.json` `php` requirement bumped if any 8.3+ feature is
       adopted; otherwise stays `>=8.1`
-- [ ] Dockerfile bumps to `php:8.3-apache` once green on 8.3
+- [x] Dockerfile bumps to `php:8.3-apache` once green on 8.3
 
 ---
 
@@ -1457,9 +1457,9 @@ shipped. Adding both to the CI matrix catches deprecations early.
 need periodic refresh. Automate it.
 
 **Acceptance Criteria**:
-- [ ] `.github/dependabot.yml` watches `composer` weekly
-- [ ] `.github/dependabot.yml` watches `github-actions` monthly
-- [ ] `pub/chart.umd.min.js` re-fetch documented in
+- [x] `.github/dependabot.yml` watches `composer` weekly
+- [x] `.github/dependabot.yml` watches `github-actions` monthly
+- [x] `pub/chart.umd.min.js` re-fetch documented in
       README ("upgrading PWA assets") since it's not a Composer dep
 
 ---

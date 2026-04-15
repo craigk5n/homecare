@@ -227,6 +227,34 @@ conventions).
 └── send_reminders.php     Cron: due-dose + low-supply notifications
 ```
 
+## Upgrading PWA assets
+
+Bootstrap, jQuery, and Chart.js are vendored under `pub/` rather than
+loaded from a CDN — the app is designed to run on isolated networks
+and the service worker (`sw.js`) caches them for offline use. They
+are not Composer dependencies, so Dependabot does not track them.
+Refresh them manually:
+
+```bash
+# Chart.js (used by report_adherence.php)
+curl -L -o pub/chart.umd.min.js \
+  https://cdn.jsdelivr.net/npm/chart.js@<version>/dist/chart.umd.min.js
+
+# Bootstrap 4 JS + CSS
+curl -L -o pub/bootstrap.min.js \
+  https://cdn.jsdelivr.net/npm/bootstrap@<version>/dist/js/bootstrap.bundle.min.js
+curl -L -o pub/bootstrap.min.css \
+  https://cdn.jsdelivr.net/npm/bootstrap@<version>/dist/css/bootstrap.min.css
+
+# jQuery
+curl -L -o pub/jquery.min.js \
+  https://code.jquery.com/jquery-<version>.min.js
+```
+
+After updating any `pub/` asset, bump the cache name in `sw.js`
+(e.g. `homecare-shell-v1` → `homecare-shell-v2`) so installed clients
+re-fetch instead of serving the stale cached copy.
+
 ## Contributing
 
 Issues and pull requests are welcome. Before opening a PR, please:
