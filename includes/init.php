@@ -181,7 +181,21 @@ function print_header( $includes = '', $HeadX = '', $BodyX = '',
     }
 
 
-  $ret .= $ASSETS;
+  $nonce = bin2hex(random_bytes(16));
+
+// Security headers
+header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-$nonce'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self';");
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
+header("Referrer-Policy: strict-origin-when-cross-origin");
+header("Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()");
+if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+  header("Strict-Transport-Security: max-age=31536000; includeSubDomains");
+}
+
+$GLOBALS['NONCE'] = $nonce;
+
+$ret .= $ASSETS;
 
   if( ! $disableUTIL )
     $js_ar[] = 'js/util.js';
@@ -190,7 +204,7 @@ function print_header( $includes = '', $HeadX = '', $BodyX = '',
     foreach( $js_ar as $j ) {
       $i = 'includes/' . $j;
       $ret .= '
-    <script src="' . $i . '"></script>';
+    <script nonce="' . htmlspecialchars($GLOBALS['NONCE']) . '" src="' . $i . '"></script>';
     }
 
   // Any other includes?
@@ -365,9 +379,8 @@ function print_trailer( $include_nav_links = true, $closeDb = true,
     '<!-- ' . $GLOBALS['PROGRAM_NAME'] . '     ' . $GLOBALS['PROGRAM_URL'] . ' -->' .
     ( $includeCkeditor ?
     /* Load local copy of ckeditor */ '
-    <script src="pub/ckeditor/ckeditor.js"></script>
-    <script>' .
-    /* Use CKEditor for ALL <textarea>. */ '
+    <script nonce="' . htmlspecialchars($GLOBALS['NONCE']) . '" src="pub/ckeditor/ckeditor.js"></script>
+    <script nonce="' . htmlspecialchars($GLOBALS['NONCE']) . '">
       CKEDITOR.replaceAll();
     </script>' : '' ) .
 

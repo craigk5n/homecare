@@ -1406,16 +1406,16 @@ HSTS, `Referrer-Policy`, `Permissions-Policy`. Inline scripts
 extraction.
 
 **Acceptance Criteria**:
-- [ ] `print_header()` emits `Content-Security-Policy:
+- [x] `print_header()` emits `Content-Security-Policy:
       default-src 'self'; script-src 'self' 'nonce-XXX';
       style-src 'self' 'unsafe-inline'; img-src 'self' data:;
       object-src 'none'; base-uri 'self'`
-- [ ] All `<script>` blocks carry the nonce attribute
-- [ ] `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- [x] All `<script>` blocks carry the nonce attribute
+- [x] `Strict-Transport-Security: max-age=31536000; includeSubDomains`
       (gated on HTTPS detection)
-- [ ] `Referrer-Policy: strict-origin-when-cross-origin`
-- [ ] `Permissions-Policy: camera=(), microphone=(), geolocation=()`
-- [ ] Manual smoke: every page loads cleanly with no CSP violations
+- [x] `Referrer-Policy: strict-origin-when-cross-origin`
+- [x] `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- [x] Manual smoke: every page loads cleanly with no CSP violations
       in the browser console
 
 ---
