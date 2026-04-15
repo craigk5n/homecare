@@ -1122,29 +1122,49 @@ settings)
 ### HC-071: Token-signed iCalendar feed and shareable exports
 
 **Status**: `DONE`
+
 **Type**: Story
+
 **Points**: 3
+
 **Depends on**: HC-030
 
 **Description**: `schedule_ics.php` is currently exempt from
+
 `hc_validate()` because calendar apps can't carry session cookies --
+
 which means the feed is effectively public. The CSV / FHIR export
+
 endpoints require login but a caregiver might want to email a
+
 read-only link to a vet without sharing credentials. Both problems
+
 solved by per-resource HMAC-signed URLs.
 
 **Acceptance Criteria**:
-- [ ] `src/Auth/SignedUrl.php` with `sign(array $params, int $ttl)`
+
+- [x] `src/Auth/SignedUrl.php` with `sign(array $params, int $ttl)`
+
       and `verify(array $params): bool` using HMAC-SHA256 over a
+
       stable per-deploy secret stored in `hc_config.signing_secret`
-- [ ] `schedule_ics.php` checks the signature instead of being a
+
+- [x] `schedule_ics.php` checks the signature instead of being a
+
       blanket public endpoint
-- [ ] `export_intake_csv.php` and `export_intake_fhir.php` accept
+
+- [x] `export_intake_csv.php` and `export_intake_fhir.php` accept
+
       either a session cookie OR a signed `?token=` param
-- [ ] Settings page (admin section) generates a "shareable URL" for
+
+- [x] Settings page (admin section) generates a "shareable URL" for
+
       each export with a configurable TTL (1 day / 7 days / 30 days)
-- [ ] Audit row on every signed-URL access (`export.intake_csv` with
+
+- [x] Audit row on every signed-URL access (`export.intake_csv` with
+
       `details.via='signed_url'`)
+
 
 ---
 
