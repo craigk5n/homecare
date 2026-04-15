@@ -29,11 +29,17 @@
     },
     "scripts": {
         "test": "phpunit",
+        "test:coverage": "phpunit --coverage-clover=coverage-clover.xml --coverage-html=coverage --coverage-text",
+        "test:cov-check": "php tools/check_coverage.php",
         "analyse": "phpstan analyse",
         "migrate": "php bin/migrate.php",
         "check": [
             "@analyse",
             "@test"
+        ],
+        "check-cov": [
+            "@test:coverage",
+            "@test:cov-check"
         ]
     }
 }

@@ -1,6 +1,7 @@
 # HomeCare
 
 [![Tests](https://github.com/craigk5n/homecare/actions/workflows/tests.yml/badge.svg)](https://github.com/craigk5n/homecare/actions/workflows/tests.yml)
+[![Coverage](https://coverage.codecov.io/gh/craigk5n/homecare/branch/main/graph/badge.svg)](https://codecov.io/gh/craigk5n/homecare)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.1-blue)](https://www.php.net/)
 [![License: GPL v2+](https://img.shields.io/badge/license-GPL--2.0--or--later-blue.svg)](LICENSE)
 

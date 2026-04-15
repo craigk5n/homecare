@@ -18,17 +18,21 @@ concurrency:
 jobs:
   test:
     name: PHPStan max + PHPUnit
+    strategy:
+      matrix:
+        php-version: [8.2, 8.3, 8.4]
     runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.php-version != '8.2' }}
     timeout-minutes: 5
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up PHP 8.2
+      - name: Set up PHP ${{ matrix.php-version }}
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.php-version }}
           # mysqli is needed because DbiAdapter / IntakeRepository import
           # the mysqli class even though the test path uses SQLite.
           extensions: mbstring, pdo, pdo_sqlite, sqlite3, mysqli, zip
@@ -50,8 +54,53 @@ jobs:
       - name: Install dependencies (with dev tools — phpunit, phpstan)
         run: composer install --prefer-dist --no-progress --no-interaction
 
-      - name: 'PHPStan (level: max)'
-        run: composer analyse
+    - name: Install PCOV (coverage)
+      if: matrix.php-version == '8.2'
+      run: |
+        pecl install pcov
+        docker-php-ext-enable pcov
 
-      - name: PHPUnit (full suite)
-        run: composer test
+    - name: 'PHPStan (level: max)'
+      run: composer analyse
+
+    - name: PHPUnit (full suite)
+      if: matrix.php-version != '8.2'
+      run: composer test
+
+    - name: PHPUnit + coverage (8.2 only)
+      if: matrix.php-version == '8.2'
+      run: composer test:coverage
+
+    - name: Upload coverage to Codecov
+      if: matrix.php-version == '8.2'
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage-clover.xml
+        fail_ci_if_error: true
+
+    - name: Check coverage threshold
+      if: matrix.php-version == '8.2'
+      run: composer test:cov-check
+
+    - name: Upload coverage artifact (8.2 only)
+      if: matrix.php-version == '8.2'
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: |
+          coverage-clover.xml
+          coverage/
+          coverage.txt
+
+    - name: Upload coverage to Codecov
+      if: matrix.php-version == '8.2'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage-clover.xml
+        fail_ci_if_error: true
+    - name: Upload coverage to Codecov
+      if: matrix.php-version == '8.2'
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage-clover.xml
+        fail_ci_if_error: true
