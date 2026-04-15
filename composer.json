@@ -30,6 +30,7 @@
     "scripts": {
         "test": "phpunit",
         "analyse": "phpstan analyse",
+        "migrate": "php bin/migrate.php",
         "check": [
             "@analyse",
             "@test"

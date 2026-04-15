@@ -83,29 +83,26 @@ hc_config_exists=$(mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \
                   WHERE table_schema='${HC_DB_NAME}' AND table_name='hc_config'")
 
 if [[ "${hc_config_exists}" == "0" ]]; then
-    echo "[entrypoint] Empty database detected — loading schema."
+    echo "[entrypoint] Empty database detected — running migrations."
+    # Load initial schema as migration 000
     mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \
           -u "${HC_DB_USER}" -p"${HC_DB_PASSWORD}" \
           "${MYSQL_CLIENT_OPTS[@]}" \
           "${HC_DB_NAME}" < /var/www/html/tables-mysql.sql
-
-    # Seed HOMECARE_PROGRAM_VERSION so do_config() in includes/config.php
-    # doesn't redirect every request to install/index.php with
-    # "...UNKNOWN&reason=missing". Informational only; the value just
-    # needs to exist for the version-check to pass.
+    
+    # Run migrations to apply deltas and record everything
+    php /var/www/html/bin/migrate.php
+    
+    # Ensure version is set
     mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \
           -u "${HC_DB_USER}" -p"${HC_DB_PASSWORD}" \
           "${MYSQL_CLIENT_OPTS[@]}" \
           "${HC_DB_NAME}" \
-          -e "INSERT INTO hc_config (setting, value) VALUES ('HOMECARE_PROGRAM_VERSION', 'v0.1.0')"
+          -e "INSERT IGNORE INTO hc_config (setting, value) VALUES ('HOMECARE_PROGRAM_VERSION', 'v0.1.0')"
 
-    # tables-mysql.sql already includes everything migrations 002-008
-    # add (since we mirrored each ALTER into the canonical schema), so
-    # there's nothing additional to apply on a fresh install. Existing
-    # databases run migrations manually per migrations/ -- see README.md.
-    echo "[entrypoint] Schema loaded + version seeded."
+    echo "[entrypoint] Initial setup complete via migrations."
 else
-    echo "[entrypoint] Existing schema detected — skipping init."
+    echo "[entrypoint] Existing database — skipping init."
 fi
 
 # 4. Hand off.

@@ -20,15 +20,15 @@ final class SignedUrl
     /**
      * Sign parameters with TTL in seconds.
      *
-     * @param array<string, int|string> $params
+     * @param array&lt;string, int|string&gt; $params
      */
     public function sign(array $params, int $ttl): string
     {
-        $payload = json_encode($params + ['exp' => time() + $ttl], JSON_UNESCAPED_SLASHES);
-        $signature = hash_hmac('sha256', $payload, $this->secret, true);
-@phpstan-ignore-next-line // raw binary ok for base64
+        $payload = json_encode($params + [&#x27;exp&#x27; =&gt; time() + $ttl], JSON_UNESCAPED_SLASHES);
+        $signature = hash_hmac(&#x27;sha256&#x27;, $payload, $this-&gt;secret, true);
         return base64_encode($payload . $signature);
     }
+
 
     public function verify(string $token): bool
     {
