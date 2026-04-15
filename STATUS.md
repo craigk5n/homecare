@@ -1108,15 +1108,15 @@ there's no UI for inspecting it. An admin-only browse / filter page
 makes the data forensically useful instead of buried.
 
 **Acceptance Criteria**:
-- [ ] `audit_log.php` (admin-only via `require_role('admin')`) lists
-      audit entries newest-first with patient/medicine name JOINs
+- [x] `audit_log.php` (admin-only via `require_role('admin')`) lists
+audit entries newest-first with patient/medicine name JOINs
 - [ ] Filter form: `user_login`, `action` (autocomplete from
       distinct values), `entity_type`, date range
-- [ ] Pagination (50/page) — `hc_audit_log` grows fast
-- [ ] Each row's `details` JSON renders as a collapsible inline detail
-- [ ] Linked from the new admin section of the menu (next to ntfy
-      settings)
-- [ ] Integration test verifies filter combinations narrow correctly
+- [x] Pagination (50/page) — `hc_audit_log` grows fast
+- [x] Each row's `details` JSON renders as a collapsible inline detail
+- [x] Linked from the new admin section of the menu (next to ntfy
+settings)
+- [x] Integration test verifies filter combinations narrow correctly
 
 ---
 
