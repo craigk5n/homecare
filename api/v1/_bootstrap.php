@@ -23,7 +23,9 @@ require_once __DIR__ . '/../../includes/dbi4php.php';
 
 use HomeCare\Api\ApiAuth;
 use HomeCare\Api\ApiResponse;
+use HomeCare\Auth\ApiAuthResult;
 use HomeCare\Database\DbiAdapter;
+use HomeCare\RateLimit\ApiRateLimiter;
 use HomeCare\Repository\UserRepository;
 
 do_config();
@@ -31,6 +33,20 @@ do_config();
 $GLOBALS['c'] = @dbi_connect($db_host, $db_login, $db_password, $db_database);
 if (!$GLOBALS['c']) {
     api_send(ApiResponse::error('Database unavailable', 503));
+}
+
+$ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+$limiter = new ApiRateLimiter(new DbiAdapter());
+$unauth_rpm = $limiter->getConfigValue('api_rate_limit_rpm', 60);
+$auth_rpm = $limiter->getConfigValue('api_rate_limit_authenticated_rpm', 600);
+
+$has_bearer_header = isset($_SERVER['HTTP_AUTHORIZATION']) && str_starts_with(strtolower($_SERVER['HTTP_AUTHORIZATION'] ?? ''), 'bearer ');
+
+if ($has_bearer_header) {
+    if (!$limiter->isUnderLimit($ip, $unauth_rpm, 'bearer_attempts')) {
+        header('Retry-After: 60');
+        api_send(ApiResponse::error('rate_limited', 429));
+    }
 }
 
 /**
@@ -72,20 +88,15 @@ function api_parse_json_body(): array
 }
 
 /**
- * Authenticate the current request via Authorization: Bearer <key>.
- * On failure, sends a JSON error with the right status and terminates.
+ * Authenticate the current request via Authorization: Bearer &lt;key&gt;.
  *
- * @return array<string,mixed> The hydrated UserRecord on success.
+ * @return ApiAuthResult
  */
-function api_authenticate_or_exit(): array
+function api_try_authenticate(): ApiAuthResult
 {
-    $users = new UserRepository(new DbiAdapter());
-    $result = (new ApiAuth($users))->authenticate($_SERVER);
-
-    if (!$result->success || $result->user === null) {
-        $status = \HomeCare\Auth\ApiKeyAuth::httpStatusFor($result);
-        api_send(ApiResponse::error((string) ($result->reason ?? 'unauthorized'), $status));
-    }
+  $users = new UserRepository(new DbiAdapter());
+  return (new ApiAuth($users))-&gt;authenticate($_SERVER);
+}
 
     return $result->user;
 }

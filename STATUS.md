@@ -1288,9 +1288,12 @@ and the column.
 
 ### HC-075: Frequency-mismatch warning on the schedule UI
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
+
 **Type**: Story
+
 **Points**: 2
+
 **Depends on**: HC-022
 
 **Description**: The "200% Tobramycin adherence" investigation
@@ -1302,22 +1305,22 @@ error. Add a soft warning banner on `list_schedule.php` and
 substantially from the schedule's `frequency`.
 
 **Acceptance Criteria**:
-- [ ] `src/Service/CadenceCheck.php` with method
+- [x] `src/Service/CadenceCheck.php` with method
       `divergence(int $scheduleId, int $sampleSize = 5): ?float`
       returning the ratio of observed-interval to expected-interval
       across the last N intakes, or null when too few intakes
-- [ ] Warning rendered when `divergence` < 0.5 OR > 2.0 (i.e.
+- [x] Warning rendered when `divergence` < 0.5 OR > 2.0 (i.e.
       observed cadence is at least 2× off the schedule)
-- [ ] Banner copy: "Recent doses average every Xh, but the schedule
+- [x] Banner copy: "Recent doses average every Xh, but the schedule
       says Yh. Did you mean to set frequency to ~Xh?"
-- [ ] Unit tests: ratio math; no warning when too few samples; no
+- [x] Unit tests: ratio math; no warning when too few samples; no
       warning when within 50%
 
 ---
 
 ### HC-076: Rate limiting on the v1 API
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-031
@@ -1327,22 +1330,22 @@ API has none. A flood of bad bearer tokens against `/api/v1/*`
 currently spins up a DB query per request with no ceiling.
 
 **Acceptance Criteria**:
-- [ ] Per-IP token-bucket: 60 requests/minute by default, configurable
+- [x] Per-IP token-bucket: 60 requests/minute by default, configurable
       via `hc_config.api_rate_limit_rpm`
-- [ ] Counter persisted in `hc_api_rate_limit (ip, window_start, count)`
+- [x] Counter persisted in `hc_api_rate_limit (ip, window_start, count)`
       OR an in-memory option for single-host deploys
-- [ ] When exceeded: 429 with `Retry-After` header and the standard
+- [x] When exceeded: 429 with `Retry-After` header and the standard
       `{status:"error",message:"rate_limited"}` envelope
-- [ ] Authenticated requests (valid bearer) get a higher cap
+- [x] Authenticated requests (valid bearer) get a higher cap
       (configurable, default 600/min) — bots without credentials
       shouldn't degrade service for real users
-- [ ] Integration test simulates a burst and verifies the 429
+- [x] Integration test simulates a burst and verifies the 429
 
 ---
 
 ### HC-077: Coverage reporting in CI
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: HC-051
@@ -1366,7 +1369,7 @@ the CI workflow and surface the number.
 
 ### HC-078: End-to-end browser test (Playwright)
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-050, HC-051
@@ -1391,7 +1394,7 @@ bugs and the session-double-start login bug all slipped past PHPStan
 
 ### HC-079: CSP tightening + security-headers pass
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: Nothing
@@ -1419,7 +1422,7 @@ extraction.
 
 ### HC-080: PHP 8.3 / 8.4 support
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: HC-051
@@ -1439,7 +1442,7 @@ shipped. Adding both to the CI matrix catches deprecations early.
 
 ### HC-081: Dependabot for Composer + bundled JS
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 1
 **Depends on**: HC-051

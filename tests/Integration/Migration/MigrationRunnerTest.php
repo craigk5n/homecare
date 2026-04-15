@@ -80,20 +80,10 @@ INSERT INTO test_table (name) VALUES (\'test\');');
         $this->assertStringContainsString('No pending migrations', $output);
     }
 
-    private function runMigration(array $args): string
-    {
-        $script = file_get_contents(__DIR__ . '/../../../bin/migrate.php');
-        
-        // Create temporary script that uses our test DB
-        $tempScript = tempnam(sys_get_temp_dir(), 'migrate_test');
-        $pdoString = '    $c = new mysqli(' . var_export($this->getDbPdo()->getAttribute(PDO::ATTR_PERSISTENT), true) . ', ' . var_export($this->getDbPdo()->getAttribute(PDO::ATTR_PERSISTENT), true) . ');';
-        $script = str_replace('require __DIR__ . '/../includes/init.php';', '// Mock init', $script);
-        $script = str_replace('global $c;', 'global $c; $c = new mysqli_connection or something', $script); // This is complicated, skip for now
-        
-        $this->markTestIncomplete('Implement testable MigrationRunner class');
-        
-        unlink($tempScript);
-        
-        return '';
-    }
+private function runMigration(array $args): string
+{
+    $this->markTestIncomplete('Migration runner integration test pending full implementation');
+    
+    return '';
+}
 }

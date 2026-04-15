@@ -41,36 +41,29 @@ class AuditLogViewerTest extends DatabaseTestCase
     }
 
 
-        } else {
-            // Override if already defined
-            function getGetValue(string $key, mixed $default = null): mixed {
-                global $getMock;
-                return $getMock[$key] ?? $default;
-            }
-        }
-    }
+
 
     private function stubPrintFunctions(): void
     {
         if (!function_exists('print_header')) {
-            function print_header(string $title = ''): never {
-                echo "<!-- Mock header for $title -->";
-            }
+function print_header(string $title = ''): void {
+    echo "&lt;!-- Mock header for $title --&gt;";
+}
         }
 
         if (!function_exists('print_trailer')) {
-            function print_trailer(): never {
-                echo '<!-- Mock trailer -->';
-            }
+function print_trailer(): void {
+    echo '&lt;!-- Mock trailer --&gt;';
+}
         }
     }
 
     private function stubRequireRole(): void
     {
         if (!function_exists('require_role')) {
-            function require_role(string $role): never {
-                // Assume admin for test
-            }
+function require_role(string $role): void {
+    // Assume admin for test
+}
         }
     }
 

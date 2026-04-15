@@ -1,5 +1,4 @@
 <?php
-<?php
 #!/usr/bin/env php
 /**
  * Migration runner for HomeCare.
