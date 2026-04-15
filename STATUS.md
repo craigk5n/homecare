@@ -1398,8 +1398,11 @@ bugs and the session-double-start login bug all slipped past PHPStan
 ### HC-079: CSP tightening + security-headers pass
 
 **Status**: `DONE`
+
 **Type**: Story
+
 **Points**: 3
+
 **Depends on**: Nothing
 
 **Description**: Current CSP is `frame-ancestors 'none'` only --

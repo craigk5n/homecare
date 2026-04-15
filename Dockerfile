@@ -9,7 +9,7 @@
 # variables by /usr/local/bin/docker-entrypoint.sh — committing a
 # settings.php would defeat the point.
 
-FROM php:8.2-apache
+FROM php:8.3-apache
 
 # System packages: build tools for ext compile, mysql client for
 # entrypoint healthcheck, libsqlite for tests, libzip for composer.
