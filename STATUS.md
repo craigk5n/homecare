@@ -1355,15 +1355,15 @@ coverage on `src/`" but nothing measures it. Wire pcov/Xdebug into
 the CI workflow and surface the number.
 
 **Acceptance Criteria**:
-- [ ] `tests.yml` adds a coverage step (`pcov` or `xdebug` via
+- [x] `tests.yml` adds a coverage step (`pcov` or `xdebug` via
       shivammathur/setup-php's `coverage:` flag)
-- [ ] `vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml`
+- [x] `vendor/bin/phpunit --coverage-text --coverage-clover=coverage.xml`
       runs alongside the gate
-- [ ] Coverage threshold enforced at 80% for `src/` (lines); CI fails
+- [x] Coverage threshold enforced at 80% for `src/` (lines); CI fails
       below it
-- [ ] Coverage badge added to README (Coveralls or Codecov, whichever
+- [x] Coverage badge added to README (Coveralls or Codecov, whichever
       is simplest)
-- [ ] Per-class report uploaded as a CI artifact for inspection
+- [x] Per-class report uploaded as a CI artifact for inspection
 
 ---
 
