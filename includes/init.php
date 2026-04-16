@@ -152,7 +152,11 @@ function print_header( $includes = '', $HeadX = '', $BodyX = '',
 // Use "punctuation.css" to start getting punctuation out of the code to where the translators can get at it.
   //  <link href="' . $incdir . '/css/punctuation.css" rel="stylesheet">';
 
-  send_http_headers ();
+  // HC-079: fresh per-request CSP nonce, shared with send_http_headers()
+  // and stamped on every inline <script> below.
+  $nonce = bin2hex(random_bytes(16));
+  $GLOBALS['NONCE'] = $nonce;
+  send_http_headers ($nonce);
 
     if (empty($CSP) || $CSP == 'none') {
       $ret .= "\n<style id=\"antiClickjack\">body{display:none !important;}</style>\n" .

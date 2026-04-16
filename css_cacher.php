@@ -8,8 +8,20 @@ require_once 'includes/formvars.php';
 require_once 'includes/functions.php';
 
 do_config();
-require_once "includes/$user_inc";
+// HC-073 removed $user_inc / includes/user.php; auth is native. That
+// removal also lost the DB-connect side-effect the old user.php
+// pulled in, so we open the connection explicitly before loading
+// global settings (validate.php short-circuits for css_cacher.php).
 require_once 'includes/validate.php';
+
+global $c, $db_host, $db_login, $db_password, $db_database;
+if (empty($c)) {
+  $c = @dbi_connect($db_host, $db_login, $db_password, $db_database);
+  if (!$c) {
+    http_response_code(500);
+    exit;
+  }
+}
 
 load_global_settings();
 @session_start();
