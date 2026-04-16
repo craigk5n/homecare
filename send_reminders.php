@@ -1,13 +1,17 @@
 <?php
 require_once 'includes/init.php';
 
+use HomeCare\Auth\SignedUrl;
 use HomeCare\Config\EmailConfig;
 use HomeCare\Config\NtfyConfig;
+use HomeCare\Config\WebhookConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Notification\ChannelRegistry;
+use HomeCare\Notification\CurlHttpClient;
 use HomeCare\Notification\EmailChannel;
 use HomeCare\Notification\NotificationMessage;
 use HomeCare\Notification\NtfyChannel;
+use HomeCare\Notification\WebhookChannel;
 use HomeCare\Repository\InventoryRepository;
 use HomeCare\Repository\ScheduleRepository;
 use HomeCare\Service\InventoryService;
@@ -26,6 +30,14 @@ $channels->register(new NtfyChannel($ntfy));
 // The channel's `isReady()` short-circuits when the DSN/from-address
 // isn't set, so registering unconditionally is safe.
 $channels->register(new EmailChannel(new EmailConfig($db)));
+// HC-102: webhook channel. Uses its own HttpClient so the per-webhook
+// timeout can honour `webhook_timeout_seconds` instead of ntfy's.
+$webhookConfig = new WebhookConfig($db);
+$channels->register(new WebhookChannel(
+    config: $webhookConfig,
+    secret: SignedUrl::getSecret(),
+    http: new CurlHttpClient($webhookConfig->getTimeoutSeconds()),
+));
 
 $dryRun = in_array('--dry-run', $argv, true);
 

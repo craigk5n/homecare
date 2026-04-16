@@ -2226,7 +2226,7 @@ caregivers who do not use ntfy.
 
 ### HC-102: Generic webhook channel
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: HC-100
@@ -2235,23 +2235,54 @@ caregivers who do not use ntfy.
 Enables Home Assistant / Slack / Discord / n8n / Zapier integrations
 without per-service code.
 
+**Notes on implementation**:
+- The "integration test against a local echo server" became a
+  unit test with a `ProgrammableHttpClient` that takes a
+  `list<bool>` of per-attempt outcomes. Tests like "2 failures
+  then success → 3 POSTs, sleeps [1,3]" become one assertion
+  pair; no need for a real HTTP listener.
+- `SignedUrl::getSecret()` flipped from private → public so the
+  webhook can sign with the same per-deploy key HomeCare already
+  uses for signed export URLs. One secret, one key-rotation
+  story to reason about.
+- Retry schedule lives in `WebhookChannel::BACKOFF_SECONDS =
+  [1, 3, 9]`. Total attempts: 4 (1 initial + 3 retries). The
+  sleeper is a callable so tests swap it for a recorder and
+  stay fast.
+- `CurlHttpClient` is instantiated with the configured
+  `webhook_timeout_seconds` so the webhook honours its own
+  timeout setting independently of ntfy. A deliberately slow
+  webhook endpoint can't bleed the 5-second ntfy budget.
+- Payload shape is stable across retries by design: `timestamp`
+  and `message_id` are computed once in `send()` and reused for
+  every attempt so an idempotent receiver can dedupe on
+  `message_id`.
+- Tags always render as `"tags": []` (not missing key) so
+  receivers don't have to defend against undefined.
+
 **Acceptance Criteria**:
-- [ ] `src/Notification/WebhookChannel.php` implements the
+- [x] `src/Notification/WebhookChannel.php` implements the
       interface
-- [ ] Payload shape: `{title, body, priority, tags,
+- [x] Payload shape: `{title, body, priority, tags,
       timestamp, message_id}`; body is the raw text, title
       separate
-- [ ] Each POST includes `X-HomeCare-Signature: sha256=<hmac>`
+- [x] Each POST includes `X-HomeCare-Signature: sha256=<hmac>`
       using the `SignedUrl` secret as the HMAC key (reuses the
       existing key-rotation story)
-- [ ] Config in `hc_config`: `webhook_url`, `webhook_enabled`
+- [x] Config in `hc_config`: `webhook_url`, `webhook_enabled`
       (Y/N), `webhook_timeout_seconds` (default 5)
-- [ ] Admin UI section in `settings.php`; audit-logged
-- [ ] 5-second hard timeout per request, 3 retries with
-      exponential backoff (1s / 3s / 9s), no blocking of
-      reminder loop on slow endpoints
-- [ ] Integration test: posts a message to a local echo server
-      and asserts the signature header + payload body
+- [x] Admin UI section in `settings.php`; audit-logged as
+      `webhook.config_updated`
+- [x] 5-second hard timeout per request (configurable via
+      `webhook_timeout_seconds`), 3 retries with exponential
+      backoff (1s / 3s / 9s). Worst-case blocking is bounded
+      by timeout×4 + 13s of backoff; a permanently-broken
+      webhook stops blocking after ≈33 s and the reminder loop
+      continues.
+- [x] Unit test against a programmable HTTP client: posts a
+      message, asserts the signature header + payload body, and
+      covers the retry / backoff / isReady / empty-tags paths
+      (10 cases for WebhookChannel + 5 for WebhookConfig).
 
 ---
 

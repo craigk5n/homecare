@@ -115,7 +115,13 @@ final class SignedUrl
         return new self($secret);
     }
 
-    private static function getSecret(): string
+    /**
+     * Return the per-deploy HMAC secret. Generated on first access
+     * and cached in `hc_config.signing_secret`. Public so non-URL
+     * call sites (e.g. HC-102 webhook-channel signatures) can sign
+     * with the same key HomeCare already trusts.
+     */
+    public static function getSecret(): string
     {
         if (self::$cachedSecret !== null) {
             return self::$cachedSecret;

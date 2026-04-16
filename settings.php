@@ -27,6 +27,7 @@ use HomeCare\Auth\PasswordPolicy;
 use HomeCare\Auth\TotpService;
 use HomeCare\Config\EmailConfig;
 use HomeCare\Config\NtfyConfig;
+use HomeCare\Config\WebhookConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\UserRepository;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
@@ -46,6 +47,7 @@ $db = new DbiAdapter();
 $users = new UserRepository($db);
 $ntfyConfig = new NtfyConfig($db);
 $emailConfig = new EmailConfig($db);
+$webhookConfig = new WebhookConfig($db);
 $totpService = new TotpService();
 $passwordHasher = new PasswordHasher();
 $passwordPolicy = new PasswordPolicy($db);
@@ -152,6 +154,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ntfyConfig->setEnabled(getPostValue('ntfy_enabled') === 'Y');
     audit_log('ntfy.config_updated', 'config', null, $ntfyConfig->getAll());
     $flash = ['type' => 'success', 'text' => 'Notification settings saved.'];
+} elseif ($action === 'save_webhook' && $isAdmin) {
+    $webhookConfig->setUrl(trim((string) getPostValue('webhook_url')));
+    $webhookConfig->setEnabled(getPostValue('webhook_enabled') === 'Y');
+    $timeoutRaw = (string) getPostValue('webhook_timeout_seconds');
+    if ($timeoutRaw !== '' && ctype_digit($timeoutRaw)) {
+        $webhookConfig->setTimeoutSeconds((int) $timeoutRaw);
+    }
+    audit_log('webhook.config_updated', 'config', null, $webhookConfig->getAll());
+    $flash = ['type' => 'success', 'text' => 'Webhook settings saved.'];
 } elseif ($action === 'save_email' && $isAdmin) {
     $emailConfig->setDsn(trim((string) getPostValue('smtp_dsn')));
     $emailConfig->setFromAddress(trim((string) getPostValue('smtp_from_address')));
@@ -634,6 +645,46 @@ print_header();
     refresh();
   })();
   </script>
+
+  <hr class="my-4">
+  <?php $wh = $webhookConfig->getAll(); ?>
+  <h4 id="webhook">Webhook <small class="text-muted">— admin only</small></h4>
+  <p class="text-muted">
+    POSTs a signed JSON envelope to an arbitrary URL every time a
+    reminder or supply alert fires. Useful for Home Assistant, Slack,
+    Discord, n8n, Zapier, or any HTTP consumer. Each request carries
+    <code>X-HomeCare-Signature: sha256=...</code> (HMAC-SHA256 over
+    the raw body using the same per-deploy secret as signed URLs)
+    so receivers can verify the payload.
+  </p>
+  <form method="post" class="form">
+    <?php print_form_key(); ?>
+    <input type="hidden" name="action" value="save_webhook">
+    <div class="form-group mb-3" style="max-width: 620px;">
+      <label for="webhook_url" class="form-label">Webhook URL</label>
+      <input type="url" class="form-control" id="webhook_url" name="webhook_url"
+             value="<?= htmlspecialchars($wh['url']) ?>"
+             placeholder="https://hooks.example.com/homecare">
+    </div>
+    <div class="form-group mb-3" style="max-width: 180px;">
+      <label for="webhook_timeout_seconds" class="form-label">Timeout (sec)</label>
+      <input type="number" class="form-control" id="webhook_timeout_seconds"
+             name="webhook_timeout_seconds" min="1" max="60"
+             value="<?= (int) $wh['timeout_seconds'] ?>">
+      <small class="form-text text-muted">
+        Per-request. The channel retries up to 3 times with 1/3/9s
+        backoff.
+      </small>
+    </div>
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" id="webhook_enabled"
+             name="webhook_enabled" value="Y" <?= $wh['enabled'] ? 'checked' : '' ?>>
+      <label class="form-check-label" for="webhook_enabled">
+        Enable webhook dispatch
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Save webhook settings</button>
+  </form>
 
   <hr class="my-4">
   <h4>Shareable Exports <small class="text-muted">— admin only</small></h4>
