@@ -451,6 +451,7 @@ if (isset($result) && $result->isTotpRequired()) {
 
         <button type="submit" class="btn-signin">Sign in</button>
       </form>
+      <p class="footnote"><a href="forgot_password.php">Forgot your password?</a></p>
     <?php endif; ?>
   </div>
 

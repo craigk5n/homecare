@@ -27,6 +27,20 @@ final class UserRepository implements UserRepositoryInterface
         return $rows === [] ? null : self::hydrate($rows[0]);
     }
 
+    public function findByEmail(string $email): ?array
+    {
+        if ($email === '') {
+            return null;
+        }
+        // Case-insensitive — email addresses are canonical lowercase.
+        $rows = $this->db->query(
+            $this->selectColumns() . ' WHERE LOWER(email) = LOWER(?) LIMIT 1',
+            [$email]
+        );
+
+        return $rows === [] ? null : self::hydrate($rows[0]);
+    }
+
     /**
      * @return UserRecord|null
      */
@@ -172,7 +186,7 @@ final class UserRepository implements UserRepositoryInterface
 
     private function selectColumns(): string
     {
-        return 'SELECT login, passwd, is_admin, role, enabled, '
+        return 'SELECT login, passwd, email, is_admin, role, enabled, '
             . 'remember_token, remember_token_expires, '
             . 'failed_attempts, locked_until, api_key_hash, '
             . 'totp_secret, totp_enabled, totp_recovery_codes, '
@@ -189,6 +203,7 @@ final class UserRepository implements UserRepositoryInterface
         return [
             'login' => (string) $row['login'],
             'passwd' => (string) ($row['passwd'] ?? ''),
+            'email' => $row['email'] === null ? null : (string) $row['email'],
             'is_admin' => (string) ($row['is_admin'] ?? 'N'),
             'role' => (string) ($row['role'] ?? 'caregiver'),
             'enabled' => (string) ($row['enabled'] ?? 'Y'),

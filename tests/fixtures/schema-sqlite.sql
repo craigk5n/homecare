@@ -35,6 +35,16 @@ CREATE TABLE hc_user (
   PRIMARY KEY (login)
 );
 
+CREATE TABLE hc_password_reset_tokens (
+  token_hash CHAR(64) NOT NULL PRIMARY KEY,
+  user_login VARCHAR(25) NOT NULL,
+  created_at DATETIME NOT NULL,
+  used_at DATETIME NULL,
+  expires_at DATETIME NOT NULL
+);
+CREATE INDEX idx_prt_user_created
+  ON hc_password_reset_tokens (user_login, created_at);
+
 CREATE TABLE `hc_patients` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `name` VARCHAR(255) NOT NULL,

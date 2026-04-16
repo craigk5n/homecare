@@ -10,6 +10,7 @@ namespace HomeCare\Repository;
  * @phpstan-type UserRecord array{
  *     login:string,
  *     passwd:string,
+ *     email:?string,
  *     is_admin:string,
  *     role:string,
  *     enabled:string,
@@ -30,6 +31,17 @@ interface UserRepositoryInterface
      * @return UserRecord|null
      */
     public function findByLogin(string $login): ?array;
+
+    /**
+     * Case-insensitive email lookup. Used by the forgot-password
+     * flow so a user can enter either a login or an address.
+     * Returns null when no row matches — the caller renders the
+     * same "check your email" message either way so the lookup
+     * doesn't leak existence.
+     *
+     * @return UserRecord|null
+     */
+    public function findByEmail(string $email): ?array;
 
     /**
      * Look up a user by the SHA-256 hash of a remember-me token.

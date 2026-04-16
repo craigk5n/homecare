@@ -46,6 +46,16 @@ CREATE TABLE hc_user (
   PRIMARY KEY (login)
 );
 
+/* HC-091: password reset tokens (hashed; raw token only in the email) */
+CREATE TABLE hc_password_reset_tokens (
+  token_hash CHAR(64) NOT NULL PRIMARY KEY,
+  user_login VARCHAR(25) NOT NULL,
+  created_at DATETIME NOT NULL,
+  used_at DATETIME NULL,
+  expires_at DATETIME NOT NULL,
+  KEY idx_prt_user_created (user_login, created_at)
+);
+
 CREATE TABLE `hc_patients` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(255) NOT NULL,

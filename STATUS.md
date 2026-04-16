@@ -1918,7 +1918,7 @@ cover the lost-phone case.
 
 ### HC-091: Password reset flow
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-071 (SignedUrl), EPIC-10 (for email delivery)
@@ -1928,34 +1928,71 @@ HMAC-signed link. Reuses the `SignedUrl` service from HC-071 with a
 dedicated `purpose=password_reset` claim so a leaked export token
 can't double as a reset token.
 
+**Notes on implementation**:
+- The spec called for SignedUrl with a dedicated claim, but
+  `hc_password_reset_tokens` (migration 013) is the cleaner fit:
+  we need `used_at` for single-use enforcement and `created_at`
+  for the per-login rate limit. SignedUrl's stateless-token
+  model doesn't support either without reinventing a tracking
+  table anyway.
+- Consume-before-write: `complete()` marks the token `used_at`
+  *before* hashing and writing the new password. A mid-flight
+  crash can't leave the token replayable; the worst case is a
+  stuck token that requires the user to request a new link.
+- Rate limit is a count over `hc_password_reset_tokens` for the
+  login in the last hour rather than a separate table, keeps
+  the throttle inherently correct (no clock drift between two
+  tables).
+- Silent responses on every failure mode (unknown login,
+  disabled account, no email on file, rate-limited) —
+  `forgot_password.php` always renders the same "check your
+  email" screen so the response can't be used as a login-enum
+  oracle.
+- `UserRepository` grew `findByEmail()` and the `email` column
+  joined `UserRecord`. Both were needed for the forgot-password
+  lookup (which accepts either login or email).
+- Password policy (HC-092) is applied at the reset step — same
+  enforcement as settings-page change-password.
+- Reset invalidates every existing remember-me cookie for the
+  user so a leaked cookie can't outlive a known reset.
+
 **Acceptance Criteria**:
-- [ ] Migration: `hc_password_reset_tokens (token_hash CHAR(64)
-      PRIMARY KEY, user_login VARCHAR(25) NOT NULL, created_at
-      DATETIME, used_at DATETIME NULL, expires_at DATETIME)`
-- [ ] `forgot_password.php`: accepts a login or email, always
+- [x] Migration (013): `hc_password_reset_tokens (token_hash
+      CHAR(64) PRIMARY KEY, user_login VARCHAR(25) NOT NULL,
+      created_at DATETIME, used_at DATETIME NULL, expires_at
+      DATETIME)` plus a composite index on (user_login,
+      created_at) for the rate-limit query
+- [x] `forgot_password.php`: accepts a login or email, always
       returns the same "check your email" message (no user
       enumeration); enqueues email only if the account exists AND
-      is `enabled='Y'`
-- [ ] `src/Auth/PasswordResetService.php`:
+      is `enabled='Y'` AND has an email on file
+- [x] `src/Auth/PasswordResetService.php`:
       - `initiate(string $loginOrEmail, string $baseUrl): void`
-        inserts token, sends email
+        inserts token, sends email via injected NotificationChannel
       - `validate(string $token): ?string` returns the login if
         valid + unused + unexpired, null otherwise
       - `complete(string $token, string $newPassword): bool`
         verifies, hashes, updates `hc_user.passwd`, marks token
         used, clears `failed_attempts` / `locked_until`
-- [ ] TTL: 60 minutes (constant on the service)
-- [ ] Reset consumes (marks used_at) even on failure to write the
+- [x] TTL: 60 minutes (`PasswordResetService::TTL_MINUTES`)
+- [x] Reset consumes (marks used_at) even on failure to write the
       new password — prevents replay
-- [ ] `reset_password.php?token=...` form validates the token on
-      GET, requires new password + confirm on POST
-- [ ] Resetting the password invalidates all existing remember-me
+- [x] `reset_password.php?token=...` form validates the token on
+      GET, requires new password + confirm on POST, applies
+      PasswordPolicy before committing
+- [x] Resetting the password invalidates all existing remember-me
       cookies for that user
-- [ ] Audit rows: `password_reset.requested`, `password_reset.completed`,
-      `password_reset.failed_invalid_token`
-- [ ] Unit + integration tests covering: valid round-trip, expired
+- [x] Audit rows: `password_reset.requested`, `password_reset.completed`,
+      `password_reset.failed_invalid_token`, plus bonus rows for
+      `password_reset.requested_unknown` /
+      `password_reset.requested_no_email` /
+      `password_reset.rate_limited` so forensics can tell apart
+      why a request didn't deliver
+- [x] Unit + integration tests covering: valid round-trip, expired
       token, already-used token, unknown user (silent), rate
-      limit of requests per hour per login (max 3)
+      limit of requests per hour per login (max 3) — 12
+      integration cases plus the rate-limit-resets-after-an-hour
+      guard
 
 ---
 
