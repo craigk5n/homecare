@@ -2054,7 +2054,7 @@ on them)
 
 ### HC-100: `NotificationChannel` abstraction + ntfy adapter
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-041
@@ -2064,23 +2064,38 @@ and the supply-alert path talk to channels uniformly, then migrate
 the existing ntfy logic behind it. No new channels yet — this is
 the refactor that unblocks HC-101 and HC-102.
 
+**Notes on implementation**:
+- `HttpClient` is its own interface (`src/Notification/HttpClient.php`)
+  so channels never call `curl_*` directly. `CurlHttpClient` is the
+  production adapter with a 5-second timeout; tests use a recording
+  fake that captures url/body/headers per call. That's what lets
+  `NtfyChannelTest` assert request shape without a live server.
+- `ChannelRegistry::dispatch()` returns the count of channels that
+  accepted the message. `send_reminders.php` maps `0` → "Skipped
+  (no channel ready)" stdout line so cron log consumers keep
+  parsing what they expect.
+- Kept `NtfyConfig` as the source of truth for ntfy URL/topic/
+  enabled (HC-041 work stays intact); `NtfyChannel` just wraps it
+  and the HTTP client.
+
 **Acceptance Criteria**:
-- [ ] `src/Notification/NotificationChannel.php` (interface):
+- [x] `src/Notification/NotificationChannel.php` (interface):
       `send(NotificationMessage $msg): bool`, `isReady(): bool`,
       `name(): string`
-- [ ] `NotificationMessage` value object: title, body, priority
+- [x] `NotificationMessage` value object: title, body, priority
       (1-5), tags (array), recipient (login or email or topic,
       channel decides interpretation)
-- [ ] `src/Notification/NtfyChannel.php` implements the interface
+- [x] `src/Notification/NtfyChannel.php` implements the interface
       using the existing `NtfyConfig`; call-sites in
       `send_reminders.php` migrated
-- [ ] `src/Notification/ChannelRegistry.php`: keyed by name,
+- [x] `src/Notification/ChannelRegistry.php`: keyed by name,
       resolves default or per-user channel list
-- [ ] No behavioral change: `composer test` still passes, reminders
+- [x] No behavioral change: `composer test` still passes, reminders
       still fire through ntfy for existing users
-- [ ] Unit test: `NtfyChannel::send()` shape verified against a
+- [x] Unit test: `NtfyChannel::send()` shape verified against a
       fake HTTP client; ready/not-ready state matches
-      `NtfyConfig::isReady()`
+      `NtfyConfig::isReady()` (7 cases for NtfyChannel + 9 for
+      ChannelRegistry)
 
 ---
 
