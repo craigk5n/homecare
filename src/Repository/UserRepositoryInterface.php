@@ -24,7 +24,8 @@ namespace HomeCare\Repository;
  *     totp_recovery_codes:?string,
  *     email_notifications:string,
  *     notification_channels:string,
- *     last_login_ip:?string
+ *     last_login_ip:?string,
+ *     digest_enabled:string
  * }
  */
 interface UserRepositoryInterface
@@ -158,4 +159,18 @@ interface UserRepositoryInterface
      * `findByLogin()['last_login_ip']` so a new-IP email can fire.
      */
     public function updateLastLoginIp(string $login, ?string $ip): bool;
+
+    /**
+     * Toggle the weekly-digest opt-in flag (HC-107).
+     */
+    public function updateDigestEnabled(string $login, bool $on): bool;
+
+    /**
+     * Return (login, email) tuples for every user opted in to the
+     * weekly adherence digest AND currently enabled. The digest CLI
+     * needs the login for body personalisation, not just the address.
+     *
+     * @return list<array{login:string,email:string}>
+     */
+    public function getDigestSubscribers(): array;
 }

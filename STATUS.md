@@ -2542,7 +2542,7 @@ write-points through the email channel with a tight template.
 
 ### HC-107: Weekly adherence email digest
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-104, HC-022
@@ -2553,21 +2553,46 @@ every Monday morning. Useful for family caregivers who aren't
 logging in daily and want a calm Monday-morning snapshot rather
 than real-time pings.
 
+**Notes on implementation**:
+- One shared body per run: every opted-in caregiver sees the
+  same patient-by-patient snapshot (this is a single-household
+  app where all caregivers see all patients). The CLI computes
+  the body ONCE and fans it out to each recipient so adherence
+  numbers are stable across the batch.
+- Windows end "yesterday" so a partial current day doesn't
+  skew the percentages. Monday-morning cron thus reports on
+  Mon-Sun (7-day) and the preceding 30 calendar days.
+- Default is OFF — `hc_user.digest_enabled='N'` everywhere
+  until the caregiver opts in from settings.php. Same
+  philosophy as reminder email: loud additions to outbound
+  mail require explicit consent.
+- `AdherenceDigestBuilder` is pure. CLI owns the adherence
+  maths and patient walk; builder just lays out the table
+  and applies colour markers. Tests cover the boundary cases
+  directly without any DB fixture.
+- Column widths use byte-counting `str_pad()` so we don't
+  require PHP 8.3's `mb_str_pad`. ASCII medicine names
+  dominate; a unicode name may mis-align a column or two on
+  a monospace-font reader — acceptable for a weekly
+  low-priority email.
+
 **Acceptance Criteria**:
-- [ ] New CLI script `bin/send_adherence_digest.php` (intended
+- [x] New CLI script `bin/send_adherence_digest.php` (intended
       for a Monday-morning cron entry).
-- [ ] Per-patient section in the body: per-medication
+- [x] Per-patient section in the body: per-medication
       `7-day %, 30-day %` table, colour-keyed via text markers
       (✓ ≥90%, ⚠ 70-89%, ✗ <70%).
-- [ ] Per-user opt-in: `hc_user.digest_enabled CHAR(1) DEFAULT
+- [x] Per-user opt-in: `hc_user.digest_enabled CHAR(1) DEFAULT
       'N'` + settings.php toggle (reuses the HC-104 contact
       section).
-- [ ] Subject: `[HomeCare] Weekly adherence digest — {date}`
-- [ ] Dry-run flag prints per-recipient message without sending.
-- [ ] Unit test for the body builder against a fixture set:
-      correct colour markers for boundary percentages, correct
-      section ordering, empty-week shows "no intakes this period"
-      rather than a blank table.
+- [x] Subject: `[HomeCare] Weekly adherence digest — {date}`
+- [x] Dry-run flag prints per-recipient message without sending.
+- [x] Unit tests (10): boundary markers (exact 90 → ✓,
+      exact 70 → ⚠, 69.9 → ✗, 89.9 → ⚠), patient + row
+      ordering follow input, empty-patient shows "No intakes
+      this week", header line carries run date, table header
+      present only when rows exist, empty subscriber list
+      shows placeholder.
 
 ---
 

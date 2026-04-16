@@ -217,6 +217,35 @@ final class UserRepository implements UserRepositoryInterface
         );
     }
 
+    public function updateDigestEnabled(string $login, bool $on): bool
+    {
+        return $this->db->execute(
+            'UPDATE hc_user SET digest_enabled = ? WHERE login = ?',
+            [$on ? 'Y' : 'N', $login]
+        );
+    }
+
+    public function getDigestSubscribers(): array
+    {
+        $rows = $this->db->query(
+            "SELECT login, email FROM hc_user
+             WHERE digest_enabled = 'Y'
+               AND email IS NOT NULL AND email <> ''
+               AND enabled = 'Y'"
+        );
+
+        $out = [];
+        foreach ($rows as $r) {
+            $login = (string) ($r['login'] ?? '');
+            $email = (string) ($r['email'] ?? '');
+            if ($login !== '' && $email !== '') {
+                $out[] = ['login' => $login, 'email' => $email];
+            }
+        }
+
+        return $out;
+    }
+
     public function updateNotificationChannels(string $login, array $channelNames): bool
     {
         // Defensive: filter to strings, drop duplicates, reindex so the
@@ -257,7 +286,7 @@ final class UserRepository implements UserRepositoryInterface
             . 'failed_attempts, locked_until, api_key_hash, '
             . 'totp_secret, totp_enabled, totp_recovery_codes, '
             . 'email_notifications, notification_channels, '
-            . 'last_login_ip FROM hc_user';
+            . 'last_login_ip, digest_enabled FROM hc_user';
     }
 
     /**
@@ -288,6 +317,7 @@ final class UserRepository implements UserRepositoryInterface
             'notification_channels' => (string) ($row['notification_channels'] ?? '[]'),
             'last_login_ip' => $row['last_login_ip'] === null
                 ? null : (string) $row['last_login_ip'],
+            'digest_enabled' => (string) ($row['digest_enabled'] ?? 'N'),
         ];
     }
 }

@@ -131,24 +131,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'save_contact') {
         $newEmail = trim((string) getPostValue('email'));
         $wantsEmailReminders = getPostValue('email_notifications') === 'Y';
+        $wantsDigest = getPostValue('digest_enabled') === 'Y';
 
         if ($newEmail !== '' && filter_var($newEmail, FILTER_VALIDATE_EMAIL) === false) {
             $flash = ['type' => 'danger', 'text' => 'That does not look like a valid email address.'];
-        } elseif ($wantsEmailReminders && $newEmail === '') {
+        } elseif (($wantsEmailReminders || $wantsDigest) && $newEmail === '') {
             // Can't opt-in without an address to send to.
             $flash = [
                 'type' => 'danger',
-                'text' => 'Set a valid email address before turning on reminder email.',
+                'text' => 'Set a valid email address before turning on reminder or digest email.',
             ];
         } else {
             $storedEmail = $newEmail === '' ? null : $newEmail;
             $users->updateEmail($login, $storedEmail);
             $users->updateEmailNotifications($login, $wantsEmailReminders);
+            $users->updateDigestEnabled($login, $wantsDigest);
             audit_log('user.email_updated', 'user', null, [
                 'has_email' => $storedEmail !== null,
             ]);
             audit_log('user.email_prefs_updated', 'user', null, [
                 'email_notifications' => $wantsEmailReminders,
+                'digest_enabled' => $wantsDigest,
             ]);
             $flash = ['type' => 'success', 'text' => 'Contact preferences saved.'];
         }
@@ -457,6 +460,7 @@ print_header();
 <?php
 $currentEmail = $user['email'] ?? '';
 $currentEmailNotifications = ($user['email_notifications'] ?? 'N') === 'Y';
+$currentDigestEnabled = ($user['digest_enabled'] ?? 'N') === 'Y';
 ?>
 <h4 id="contact">Contact</h4>
 <p class="text-muted">
@@ -483,6 +487,18 @@ $currentEmailNotifications = ($user['email_notifications'] ?? 'N') === 'Y';
     <small class="form-text text-muted">
       The reminder cron will send to this address when a dose is due.
       Requires a valid email above and an admin-configured SMTP server.
+    </small>
+  </div>
+  <div class="form-check mb-3">
+    <input type="checkbox" class="form-check-input" id="digest_enabled"
+           name="digest_enabled" value="Y"
+           <?= $currentDigestEnabled ? 'checked' : '' ?>>
+    <label class="form-check-label" for="digest_enabled">
+      Email me the weekly adherence digest
+    </label>
+    <small class="form-text text-muted">
+      Monday-morning summary of the last week's per-medication
+      adherence. A low-frequency alternative to real-time reminders.
     </small>
   </div>
   <button type="submit" class="btn btn-primary">Save contact preferences</button>

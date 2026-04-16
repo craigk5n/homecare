@@ -49,6 +49,8 @@ CREATE TABLE hc_user (
   /* Last IP we saw on a successful login (HC-106 new-IP alerts).
    * VARCHAR(45) is wide enough for IPv4-mapped IPv6. */
   last_login_ip VARCHAR(45) NULL,
+  /* Weekly adherence-digest opt-in (HC-107); 'N' default */
+  digest_enabled CHAR(1) NOT NULL DEFAULT 'N',
   PRIMARY KEY (login)
 );
 

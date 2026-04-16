@@ -34,6 +34,7 @@ CREATE TABLE hc_user (
   email_notifications CHAR(1) NOT NULL DEFAULT 'N',
   notification_channels TEXT NOT NULL DEFAULT ('[]'),
   last_login_ip VARCHAR(45) NULL,
+  digest_enabled CHAR(1) NOT NULL DEFAULT 'N',
   PRIMARY KEY (login)
 );
 
