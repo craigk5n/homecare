@@ -1670,10 +1670,41 @@ errors before they land in the DB.
 
 ### HC-085: Caregiver notes plain-text journal import
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-082
+
+**Notes on implementation**:
+- Parser is a small line-level state machine
+  (`src/Import/JournalParser.php`). A regex "gate" rejects most
+  non-date lines before we waste `createFromFormat` cycles on
+  them, then confirms via strict format matching so
+  continuation lines like "ate 5 kibble turkey" don't accidentally
+  reset the date cursor.
+- Non-monotonic detection is done against the *immediate*
+  predecessor only. That matches the spec's sample perfectly
+  (Apr 14's "1:20 AM" and "1:35 AM" flag; intermediate AM/PM
+  bouncing does not).
+- Commit path dedups on `(patient_id, note_time, SHA256(note))`
+  via a single range scan in
+  `CaregiverNoteRepository::getNotesInTimeRange()`, then builds
+  an in-memory hash set keyed by `noteTime . "\0" . sha256(note)`.
+  In-file duplicates also get flagged (the second occurrence of
+  an identical entry in the paste is marked duplicate), so
+  re-pasting after a partial failure is safe.
+- UI (`import_notes_journal.php`) follows the HC-084 stateless
+  pattern: preview step embeds the raw textarea content in a
+  hidden field, and commit re-parses the same bytes -- no
+  session blobs, no signed payloads.
+- Perf: synthetic 3000-entry paste (150 KB, 6600 lines) parses
+  in ~14 ms on the reference dev box, comfortably under the 5 s
+  bar. The preview render adds one DB range scan.
+- Covered by 23 parser unit cases (canonical sample, 7 header
+  variants, multi-line body, orphan, 7 time edge cases, block
+  reset, BOM, empty input) and 6 importer integration cases
+  (round-trip, full re-paste, partial re-paste, in-file
+  duplicates, invalid-plan refusal, transaction rollback).
 
 **Description**: The real-world caregiver journal is not CSV; it's
 free-form text kept in a notes app, pasted in large chunks covering
@@ -1730,11 +1761,11 @@ Characteristics of the real format:
   hundreds to low thousands of entries per import.
 
 **Acceptance Criteria**:
-- [ ] `import_notes_journal.php` (caregiver+ role): large
+- [x] `import_notes_journal.php` (caregiver+ role): large
       `<textarea>` (no file upload required — paste is the primary
       affordance) plus a patient selector (single-patient scope per
       import).
-- [ ] Parser (`src/Import/JournalParser.php`) walks the text
+- [x] Parser (`src/Import/JournalParser.php`) walks the text
       line-by-line:
       - Detects date headers via a permissive regex first
         (`^[A-Za-z]+ [A-Za-z]+ \d{1,2},?\s*\d{4}$`), then confirms
@@ -1746,7 +1777,7 @@ Characteristics of the real format:
       - Lines that match neither pattern are retained as
         continuation of the previous entry's note body (multi-line
         notes).
-- [ ] Ambiguity handling: for each entry, the parser emits a
+- [x] Ambiguity handling: for each entry, the parser emits a
       confidence flag:
       - `ok`: monotonic within its date block AND no date gap
       - `non_monotonic`: time goes backward vs previous entry in
@@ -1754,21 +1785,21 @@ Characteristics of the real format:
         decides to keep-under-same-day or reassign to next day)
       - `orphan`: entry appears before any date header — rejected
         with a clear error pointing at the offending line
-- [ ] Preview step: table of parsed entries grouped by day with
+- [x] Preview step: table of parsed entries grouped by day with
       `(date, time, note, confidence)` columns, row-level errors
       at the top, total entry count, and a "nothing will be
       inserted until you click Confirm" banner.
-- [ ] Commit in a single transaction; rollback on any DB error.
-- [ ] De-dup on (`patient_id`, `note_time`, `SHA256(note)`): if an
+- [x] Commit in a single transaction; rollback on any DB error.
+- [x] De-dup on (`patient_id`, `note_time`, `SHA256(note)`): if an
       identical entry already exists it is SKIPPED with a preview
       row marked "duplicate — will skip". This makes re-pasting
       after a partial failure safe.
-- [ ] Audit row `note.journal_imported` with `details = {patient_id,
+- [x] Audit row `note.journal_imported` with `details = {patient_id,
       parsed_count, inserted_count, skipped_duplicates,
       non_monotonic_count, source_bytes}`.
-- [ ] Performance: a 3000-entry paste parses and previews in
+- [x] Performance: a 3000-entry paste parses and previews in
       under 5 seconds on the reference dev box.
-- [ ] Unit tests (`tests/Unit/Import/JournalParserTest.php`):
+- [x] Unit tests (`tests/Unit/Import/JournalParserTest.php`):
       - The sample above parses to 12 entries across 2 dates with
         2 `non_monotonic` flags (Apr 14's "1:20 AM" and "1:35 AM"
         after later PM entries).
@@ -1779,7 +1810,7 @@ Characteristics of the real format:
       - Time parser: 12:00 AM → midnight, 12:30 PM → 12:30 (noon-
         adjacent), 1:35 AM → 01:35, leading-zero and non-leading-
         zero hours both accepted.
-- [ ] Integration test exercises paste → preview → commit → query
+- [x] Integration test exercises paste → preview → commit → query
       round-trip with the sample input and asserts the 12 resulting
       `hc_caregiver_notes` rows.
 

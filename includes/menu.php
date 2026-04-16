@@ -99,9 +99,10 @@ $hasPatient = $activePatientId > 0 && $activePatient !== null;
             <a class="dropdown-item" href="list_caregiver_notes.php<?php echo $activeIdQs; ?>"><?php etranslate('View Notes'); ?></a>
             <?php if ($can_add) { ?>
               <a class="dropdown-item" href="note_caregiver.php<?php echo $activeIdQs; ?>"><?php etranslate('Add Note'); ?></a>
+              <div class="dropdown-divider"></div>
+              <a class="dropdown-item" href="import_notes_journal.php<?php echo $activeIdQs; ?>"><?php etranslate('Paste Journal'); ?></a>
             <?php } ?>
             <?php if (!empty($is_admin) && $is_admin) { ?>
-              <div class="dropdown-divider"></div>
               <a class="dropdown-item" href="import_caregiver_notes.php"><?php etranslate('Import Notes from File'); ?></a>
             <?php } ?>
           </div>

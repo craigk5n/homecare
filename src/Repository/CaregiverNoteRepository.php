@@ -139,6 +139,32 @@ final class CaregiverNoteRepository
     }
 
     /**
+     * All notes for a patient with `note_time` in the inclusive range.
+     *
+     * Used by the journal importer to dedupe against existing rows: it
+     * hashes each note body and skips incoming entries whose
+     * (note_time, sha256(note)) already exist.
+     *
+     * @return list<array{note_time:?string,note:string}>
+     */
+    public function getNotesInTimeRange(int $patientId, string $from, string $to): array
+    {
+        $rows = $this->db->query(
+            'SELECT note_time, note FROM hc_caregiver_notes
+             WHERE patient_id = ? AND note_time >= ? AND note_time <= ?',
+            [$patientId, $from, $to]
+        );
+
+        return array_map(
+            static fn (array $row): array => [
+                'note_time' => $row['note_time'] === null ? null : (string) $row['note_time'],
+                'note'      => (string) $row['note'],
+            ],
+            $rows
+        );
+    }
+
+    /**
      * Shared WHERE-clause builder for {@see search()} / {@see countSearch()}.
      *
      * @return array{0:string,1:list<scalar>}
