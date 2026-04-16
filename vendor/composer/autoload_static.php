@@ -102,7 +102,9 @@ class ComposerStaticInit50dff187be0c3684b0a2950370a4abaf
         ),
         'P' => 
         array (
+            'PragmaRX\\Google2FA\\' => 19,
             'PhpParser\\' => 10,
+            'ParagonIE\\ConstantTime\\' => 23,
             'PHPStan\\' => 8,
         ),
         'M' => 
@@ -122,6 +124,11 @@ class ComposerStaticInit50dff187be0c3684b0a2950370a4abaf
         array (
             'Dompdf\\' => 7,
             'DeepCopy\\' => 9,
+            'DASPRiD\\Enum\\' => 13,
+        ),
+        'B' => 
+        array (
+            'BaconQrCode\\' => 12,
         ),
     );
 
@@ -134,9 +141,17 @@ class ComposerStaticInit50dff187be0c3684b0a2950370a4abaf
         array (
             0 => __DIR__ . '/..' . '/sabberworm/php-css-parser/src',
         ),
+        'PragmaRX\\Google2FA\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/pragmarx/google2fa/src',
+        ),
         'PhpParser\\' => 
         array (
             0 => __DIR__ . '/..' . '/nikic/php-parser/lib/PhpParser',
+        ),
+        'ParagonIE\\ConstantTime\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/paragonie/constant_time_encoding/src',
         ),
         'PHPStan\\' => 
         array (
@@ -165,6 +180,14 @@ class ComposerStaticInit50dff187be0c3684b0a2950370a4abaf
         'DeepCopy\\' => 
         array (
             0 => __DIR__ . '/..' . '/myclabs/deep-copy/src/DeepCopy',
+        ),
+        'DASPRiD\\Enum\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/dasprid/enum/src',
+        ),
+        'BaconQrCode\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/bacon/bacon-qr-code/src',
         ),
     );
 

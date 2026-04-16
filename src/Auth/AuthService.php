@@ -7,6 +7,8 @@ namespace HomeCare\Auth;
 use HomeCare\Repository\UserRepositoryInterface;
 
 /**
+ * @phpstan-import-type UserRecord from UserRepositoryInterface
+ *
  * Native HomeCare authentication. Replaces the WebCalendar-derived
  * `includes/user.php` + `includes/validate.php` flow with a testable,
  * side-effect-free service.
@@ -39,6 +41,7 @@ final class AuthService
         private readonly PasswordHasher $hasher,
         ?callable $clock = null,
         ?callable $tokenFactory = null,
+        private readonly ?TotpService $totp = null,
     ) {
         $this->clock = $clock ?? static fn (): int => time();
         $this->tokenFactory = $tokenFactory
@@ -95,22 +98,109 @@ final class AuthService
             $user['passwd'] = $newHash;
         }
 
-        $this->users->touchLastLogin($user['login'], $now);
-
-        if ($remember) {
-            $token = $this->newToken();
-            $hash = self::hashToken($token);
-            $expiresUnix = $now + self::REMEMBER_LIFETIME_SECONDS;
-            $this->users->updateRememberToken(
-                $user['login'],
-                $hash,
-                date('Y-m-d H:i:s', $expiresUnix)
-            );
-
-            return AuthResult::ok($user, $token, $expiresUnix);
+        // 2FA gate: if the account has TOTP enabled, the caller must
+        // run a second step (see {@see verifyTotp()}). We deliberately
+        // do NOT touch last_login or mint a remember-me token here --
+        // those are side effects of a *completed* authentication.
+        if ($user['totp_enabled'] === 'Y' && $user['totp_secret'] !== null) {
+            return AuthResult::requiresTotp($user);
         }
 
-        return AuthResult::ok($user);
+        return $this->finaliseLogin($user, $remember, $now);
+    }
+
+    /**
+     * Second step of the login flow when TOTP is enabled.
+     *
+     * Accepts either a 6-digit TOTP code OR one of the user's recovery
+     * codes. Recovery-code consumption is atomic: the used code is
+     * popped from the stored list before the success branch returns,
+     * so replay is impossible even on race.
+     *
+     * Caller must have stashed the login in a `pending_login` session
+     * slot after {@see attemptLogin()} returned `requires_totp`; this
+     * method does not trust client-supplied user context.
+     */
+    public function verifyTotp(
+        string $login,
+        #[\SensitiveParameter] string $code,
+        bool $remember = false,
+    ): AuthResult {
+        if ($this->totp === null) {
+            return AuthResult::fail('totp_unavailable');
+        }
+
+        $user = $this->users->findByLogin($login);
+        if ($user === null || $user['totp_enabled'] !== 'Y' || $user['totp_secret'] === null) {
+            return AuthResult::fail('invalid_credentials');
+        }
+        if ($user['enabled'] !== 'Y') {
+            return AuthResult::fail('account_disabled');
+        }
+
+        $now = $this->now();
+        if (self::isLockedAt($user['locked_until'], $now)) {
+            return AuthResult::fail('account_locked');
+        }
+
+        if ($this->totp->verifyCode($user['totp_secret'], $code)) {
+            return $this->finaliseLogin($user, $remember, $now);
+        }
+
+        // 6-digit TOTP didn't match — try recovery code.
+        $stored = TotpService::decodeStoredRecoveryCodes($user['totp_recovery_codes']);
+        if ($stored !== []) {
+            $remaining = $this->totp->consumeRecoveryCode($code, $stored);
+            if ($remaining !== null) {
+                $this->users->setRecoveryCodes($user['login'], $remaining);
+
+                return $this->finaliseLogin($user, $remember, $now, usedRecoveryCode: true);
+            }
+        }
+
+        // Reuse the lockout counter so bruteforce against the TOTP
+        // step is bounded by the same MAX_FAILED_ATTEMPTS ceiling as
+        // the password step.
+        $attempts = $this->users->incrementFailedAttempts($user['login']);
+        if ($attempts >= self::MAX_FAILED_ATTEMPTS) {
+            $this->users->applyLockout(
+                $user['login'],
+                date('Y-m-d H:i:s', $now + self::LOCKOUT_MINUTES * 60)
+            );
+        }
+
+        return AuthResult::fail('invalid_totp');
+    }
+
+    /**
+     * Common tail of the successful-login path: touch last_login,
+     * optionally mint a remember-me token, and return AuthResult::ok.
+     *
+     * @param UserRecord $user
+     */
+    private function finaliseLogin(
+        array $user,
+        bool $remember,
+        int $now,
+        bool $usedRecoveryCode = false,
+    ): AuthResult {
+        $this->users->resetLoginAttempts($user['login']);
+        $this->users->touchLastLogin($user['login'], $now);
+
+        if (!$remember) {
+            return AuthResult::ok($user, usedRecoveryCode: $usedRecoveryCode);
+        }
+
+        $token = $this->newToken();
+        $hash = self::hashToken($token);
+        $expiresUnix = $now + self::REMEMBER_LIFETIME_SECONDS;
+        $this->users->updateRememberToken(
+            $user['login'],
+            $hash,
+            date('Y-m-d H:i:s', $expiresUnix)
+        );
+
+        return AuthResult::ok($user, $token, $expiresUnix, usedRecoveryCode: $usedRecoveryCode);
     }
 
     /**
@@ -150,6 +240,13 @@ final class AuthService
             $this->users->updateRememberToken($user['login'], null, null);
 
             return AuthResult::fail('expired_token');
+        }
+
+        // HC-090: remember-me cannot skip TOTP. The cookie was minted
+        // during a successful post-TOTP login, but the account may have
+        // enabled 2FA afterward -- force a fresh TOTP prompt either way.
+        if ($user['totp_enabled'] === 'Y' && $user['totp_secret'] !== null) {
+            return AuthResult::requiresTotp($user);
         }
 
         return AuthResult::ok($user);

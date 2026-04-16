@@ -125,11 +125,57 @@ final class UserRepository implements UserRepositoryInterface
         );
     }
 
+    public function setTotpSecret(string $login, string $base32Secret): bool
+    {
+        return $this->db->execute(
+            'UPDATE hc_user SET totp_secret = ? WHERE login = ?',
+            [$base32Secret, $login]
+        );
+    }
+
+    public function enableTotp(string $login, array $recoveryCodeHashes): bool
+    {
+        return $this->db->execute(
+            "UPDATE hc_user SET totp_enabled = 'Y', totp_recovery_codes = ? WHERE login = ?",
+            [self::encodeRecoveryCodes($recoveryCodeHashes), $login]
+        );
+    }
+
+    public function disableTotp(string $login): bool
+    {
+        return $this->db->execute(
+            "UPDATE hc_user SET totp_secret = NULL, totp_enabled = 'N', totp_recovery_codes = NULL WHERE login = ?",
+            [$login]
+        );
+    }
+
+    public function setRecoveryCodes(string $login, array $recoveryCodeHashes): bool
+    {
+        return $this->db->execute(
+            'UPDATE hc_user SET totp_recovery_codes = ? WHERE login = ?',
+            [self::encodeRecoveryCodes($recoveryCodeHashes), $login]
+        );
+    }
+
+    /**
+     * @param list<string> $hashes
+     */
+    private static function encodeRecoveryCodes(array $hashes): ?string
+    {
+        if ($hashes === []) {
+            return null;
+        }
+        $encoded = json_encode($hashes);
+
+        return $encoded === false ? null : $encoded;
+    }
+
     private function selectColumns(): string
     {
         return 'SELECT login, passwd, is_admin, role, enabled, '
             . 'remember_token, remember_token_expires, '
-            . 'failed_attempts, locked_until, api_key_hash FROM hc_user';
+            . 'failed_attempts, locked_until, api_key_hash, '
+            . 'totp_secret, totp_enabled, totp_recovery_codes FROM hc_user';
     }
 
     /**
@@ -151,6 +197,10 @@ final class UserRepository implements UserRepositoryInterface
             'failed_attempts' => (int) ($row['failed_attempts'] ?? 0),
             'locked_until' => $row['locked_until'] === null ? null : (string) $row['locked_until'],
             'api_key_hash' => $row['api_key_hash'] === null ? null : (string) $row['api_key_hash'],
+            'totp_secret' => $row['totp_secret'] === null ? null : (string) $row['totp_secret'],
+            'totp_enabled' => (string) ($row['totp_enabled'] ?? 'N'),
+            'totp_recovery_codes' => $row['totp_recovery_codes'] === null
+                ? null : (string) $row['totp_recovery_codes'],
         ];
     }
 }

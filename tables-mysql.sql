@@ -35,6 +35,12 @@ CREATE TABLE hc_user (
   locked_until DATETIME NULL,
   /* SHA-256 hash of the user's API bearer token; NULL if none (HC-030) */
   api_key_hash VARCHAR(255) NULL,
+  /* Base32 TOTP seed, null when not enrolled (HC-090) */
+  totp_secret VARCHAR(64) NULL,
+  /* Y only after first-code verification during enrollment (HC-090) */
+  totp_enabled CHAR(1) NOT NULL DEFAULT 'N',
+  /* JSON array of SHA-256 hashes of single-use recovery codes (HC-090) */
+  totp_recovery_codes TEXT NULL,
   PRIMARY KEY (login)
 );
 

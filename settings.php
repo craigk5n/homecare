@@ -15,8 +15,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/init.php';
 require_role('caregiver');
 
+use BaconQrCode\Renderer\GDLibRenderer;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 use HomeCare\Auth\ApiKeyAuth;
 use HomeCare\Auth\Authorization;
+use HomeCare\Auth\TotpService;
 use HomeCare\Config\NtfyConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\UserRepository;
@@ -24,12 +30,16 @@ use HomeCare\Repository\UserRepository;
 $db = new DbiAdapter();
 $users = new UserRepository($db);
 $ntfyConfig = new NtfyConfig($db);
+$totpService = new TotpService();
 /** @var string $login */
 $login = $GLOBALS['login'];
 $currentRole = getCurrentUserRole();
 $isAdmin = (new Authorization($currentRole))->canAdmin();
 
 $freshKey = null;
+/** @var list<string>|null $freshRecoveryCodes */
+$freshRecoveryCodes = null;
+$enrollSecret = null;
 $flash = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -43,6 +53,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $users->updateApiKeyHash($login, null);
         audit_log('apikey.revoked', 'user');
         $flash = ['type' => 'warning', 'text' => 'API key revoked. Any clients using it will start returning 401 immediately.'];
+    } elseif ($action === 'begin_totp') {
+        $enrollSecret = $totpService->generateSecret();
+        $_SESSION['totp_enroll_secret'] = $enrollSecret;
+    } elseif ($action === 'cancel_totp') {
+        unset($_SESSION['totp_enroll_secret']);
+        $flash = ['type' => 'info', 'text' => '2FA enrollment cancelled.'];
+    } elseif ($action === 'confirm_totp') {
+        $pending = is_string($_SESSION['totp_enroll_secret'] ?? null)
+            ? (string) $_SESSION['totp_enroll_secret'] : null;
+        $code = (string) getPostValue('totp_code');
+        if ($pending === null) {
+            $flash = ['type' => 'danger', 'text' => 'Enrollment expired. Please start again.'];
+        } elseif (!$totpService->verifyCode($pending, $code)) {
+            $flash = ['type' => 'danger', 'text' => 'Code did not verify. Try again — the code rolls every 30 seconds.'];
+            $enrollSecret = $pending;
+        } else {
+            $freshRecoveryCodes = $totpService->generateRecoveryCodes();
+            $hashes = array_values(array_map(
+                static fn (string $c): string => TotpService::hashRecoveryCode($c),
+                $freshRecoveryCodes
+            ));
+            $users->setTotpSecret($login, $pending);
+            $users->enableTotp($login, $hashes);
+            unset($_SESSION['totp_enroll_secret']);
+            audit_log('totp.enabled', 'user');
+            $flash = ['type' => 'success', 'text' => '2FA enabled. Copy your recovery codes now — they are shown only once.'];
+        }
+    } elseif ($action === 'disable_totp') {
+        $currentUser = $users->findByLogin($login);
+        $code = (string) getPostValue('totp_code');
+        $secret = $currentUser['totp_secret'] ?? null;
+        $enabledFlag = $currentUser['totp_enabled'] ?? 'N';
+        if ($enabledFlag !== 'Y' || $secret === null) {
+            $flash = ['type' => 'info', 'text' => '2FA is already disabled.'];
+        } elseif (!$totpService->verifyCode($secret, $code)) {
+            $flash = ['type' => 'danger', 'text' => 'Code did not verify. 2FA is still enabled.'];
+        } else {
+            $users->disableTotp($login);
+            audit_log('totp.disabled', 'user');
+            $flash = ['type' => 'warning', 'text' => '2FA disabled for your account.'];
+        }
 } elseif ($action === 'save_ntfy' && $isAdmin) {
     $ntfyConfig->setUrl(trim((string) getPostValue('ntfy_url')));
     $ntfyConfig->setTopic(trim((string) getPostValue('ntfy_topic')));
@@ -107,6 +158,29 @@ $flash = [
 
 $user = $users->findByLogin($login);
 $hasKey = $user !== null && $user['api_key_hash'] !== null && $user['api_key_hash'] !== '';
+$totpEnabled = $user !== null && ($user['totp_enabled'] ?? 'N') === 'Y';
+
+// An in-progress enrollment survives GET reloads via the session.
+if ($enrollSecret === null) {
+    $stashed = $_SESSION['totp_enroll_secret'] ?? null;
+    if (is_string($stashed) && $stashed !== '') {
+        $enrollSecret = $stashed;
+    }
+}
+
+/**
+ * Render an SVG QR for an otpauth:// URI at the given edge size (px).
+ *
+ * Pure-PHP via bacon/bacon-qr-code's SVG backend — no GD dependency,
+ * and the output inlines cleanly into the settings page.
+ */
+$renderQrSvg = static function (string $uri, int $size = 220): string {
+    $renderer = new ImageRenderer(
+        new RendererStyle($size),
+        new SvgImageBackEnd()
+    );
+    return (new Writer($renderer))->writeString($uri);
+};
 
 print_header();
 ?>
@@ -161,6 +235,95 @@ print_header();
             data-confirm="Revoke the current API key? Clients will start returning 401 immediately.">
       Revoke
     </button>
+  </form>
+<?php endif; ?>
+
+<hr class="my-4">
+<h4 id="totp">Two-factor authentication (TOTP)</h4>
+<p class="text-muted">
+  A time-based one-time code from your authenticator app
+  (Google Authenticator, 1Password, Authy, etc.) is required on
+  every login in addition to your password. Recovery codes cover
+  the lost-phone case.
+</p>
+
+<?php if ($freshRecoveryCodes !== null): ?>
+  <div class="card border-warning mb-3">
+    <div class="card-header bg-warning text-dark"><strong>Your recovery codes</strong></div>
+    <div class="card-body">
+      <p class="mb-2">
+        Save these somewhere safe. Each code works exactly once and
+        bypasses the authenticator app. This is the only time they
+        will be shown.
+      </p>
+      <pre class="bg-light p-2 border mb-0" style="column-count:2; font-size: 1.05rem;"><?php
+        foreach ($freshRecoveryCodes as $c) {
+            echo htmlspecialchars($c) . "\n";
+        }
+      ?></pre>
+    </div>
+  </div>
+<?php endif; ?>
+
+<div class="mb-3">
+  <strong>Status:</strong>
+  <?php if ($totpEnabled): ?>
+    <span class="badge badge-success">Enabled</span>
+  <?php else: ?>
+    <span class="badge badge-secondary">Disabled</span>
+  <?php endif; ?>
+</div>
+
+<?php if ($totpEnabled): ?>
+  <form method="post" class="form" style="max-width: 420px;">
+    <?php print_form_key(); ?>
+    <input type="hidden" name="action" value="disable_totp">
+    <div class="form-group mb-3">
+      <label for="disable_totp_code" class="form-label">
+        Enter current 6-digit code to disable 2FA
+      </label>
+      <input type="text" class="form-control" id="disable_totp_code"
+             name="totp_code" inputmode="numeric" pattern="[0-9]{6}"
+             autocomplete="one-time-code" required>
+      <small class="form-text text-muted">
+        Required so a stolen session can't disable your second factor.
+      </small>
+    </div>
+    <button type="submit" class="btn btn-outline-danger"
+            data-confirm="Disable 2FA? You'll lose the second-factor protection on login.">
+      Disable 2FA
+    </button>
+  </form>
+<?php elseif ($enrollSecret !== null): ?>
+  <?php
+    $uri = $totpService->provisioningUri($enrollSecret, $login, 'HomeCare');
+    $qr = $renderQrSvg($uri);
+  ?>
+  <div class="card mb-3" style="max-width: 720px;">
+    <div class="card-body">
+      <p><strong>1.</strong> Scan this QR in your authenticator app:</p>
+      <div class="mb-2"><?= $qr ?></div>
+      <p class="small text-muted">Or enter this secret manually:
+        <code><?= htmlspecialchars(chunk_split($enrollSecret, 4, ' ')) ?></code>
+      </p>
+      <p><strong>2.</strong> Then enter the 6-digit code the app shows:</p>
+      <form method="post" class="form-inline">
+        <?php print_form_key(); ?>
+        <input type="hidden" name="action" value="confirm_totp">
+        <input type="text" class="form-control mr-2" name="totp_code"
+               inputmode="numeric" pattern="[0-9]{6}" required autofocus
+               autocomplete="one-time-code" placeholder="000000">
+        <button type="submit" class="btn btn-primary">Verify &amp; Enable</button>
+        <button type="submit" name="action" value="cancel_totp"
+                class="btn btn-link text-muted ml-2">Cancel</button>
+      </form>
+    </div>
+  </div>
+<?php else: ?>
+  <form method="post" class="d-inline-block">
+    <?php print_form_key(); ?>
+    <input type="hidden" name="action" value="begin_totp">
+    <button type="submit" class="btn btn-primary">Enable 2FA</button>
   </form>
 <?php endif; ?>
 

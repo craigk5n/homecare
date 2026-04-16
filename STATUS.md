@@ -1834,7 +1834,7 @@ tokens)
 
 ### HC-090: TOTP 2FA enrollment and verification
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-010, HC-013
@@ -1845,37 +1845,74 @@ Authy/1Password/Google Authenticator/etc.; subsequent logins prompt
 for a 6-digit code after password verification. Recovery codes
 cover the lost-phone case.
 
+**Notes on implementation**:
+- Two composer deps: `pragmarx/google2fa` for the RFC-6238
+  primitives and `bacon/bacon-qr-code` for the pure-PHP SVG QR
+  (no GD, no network). Both pin pure-PHP so the Docker image
+  stays slim.
+- `TotpService` wraps Google2FA with a ±1-step verification
+  window (30-sec clock skew each way) and never throws on bad
+  input — all "no" responses are indistinguishable. Recovery
+  codes normalise case + strip separators before hashing, so
+  "ab12-cd34" and "AB12CD34" compare equal.
+- `AuthResult` gains a third shape: `requiresTotp($user)`.
+  Password success plus `totp_enabled='Y'` returns this instead
+  of `ok()`; `last_login` isn't touched and no remember-me
+  token is minted. The session-level `pending_login` slot is
+  purely a convenience for the UI; the service trusts nothing
+  from the client between steps.
+- `AuthService::verifyTotp()` is the new second-step entry
+  point. It tries the 6-digit code first, then attempts
+  recovery-code consumption, and rolls into the existing
+  lockout counter on failure — a flooded TOTP prompt is
+  bounded by the same `MAX_FAILED_ATTEMPTS` ceiling as the
+  password step.
+- **Remember-me cannot bypass TOTP.** `loginWithRememberToken()`
+  now re-checks `totp_enabled` and returns `requiresTotp` when
+  set, so a stolen cookie cannot skip the second factor even
+  if the device that originally minted it is long gone.
+- Enrollment in `settings.php` holds the pending secret in the
+  session until the user verifies their first code; on success
+  we generate 10 recovery codes, show them exactly once, and
+  persist only the SHA-256 hashes.
+- Disabling 2FA requires a current TOTP code — this is a
+  compromised-session guard: an attacker on a live session
+  can't quietly turn the second factor off.
+
 **Acceptance Criteria**:
-- [ ] `pragmarx/google2fa` added as a Composer dep (pure PHP, no
-      curl / network required for verification)
-- [ ] Migration: `hc_user.totp_secret VARCHAR(64) NULL`,
+- [x] `pragmarx/google2fa` added as a Composer dep (pure PHP, no
+      curl / network required for verification). Plus
+      `bacon/bacon-qr-code` for QR rendering.
+- [x] Migration (011): `hc_user.totp_secret VARCHAR(64) NULL`,
       `hc_user.totp_enabled CHAR(1) NOT NULL DEFAULT 'N'`,
       `hc_user.totp_recovery_codes TEXT NULL` (JSON array of
       sha256-hashed single-use codes)
-- [ ] `src/Auth/TotpService.php`: generateSecret(),
+- [x] `src/Auth/TotpService.php`: generateSecret(),
       verifyCode(string $secret, string $code): bool (with ±1
       window), generateRecoveryCodes(int $n = 10): array
-- [ ] `AuthService::login()` short-circuits after password success
+- [x] `AuthService::login()` short-circuits after password success
       when `totp_enabled='Y'` and returns a new
-      `AuthResult::REQUIRES_TOTP` state; session stores pending
+      `AuthResult::requiresTotp()` state; session stores pending
       user id but does NOT mark the session authenticated
-- [ ] `login.php` second step prompts for the 6-digit code or a
+- [x] `login.php` second step prompts for the 6-digit code or a
       recovery code; both verify via `TotpService` or hash-compare
-- [ ] Recovery-code use invalidates the used code (pop from the
+- [x] Recovery-code use invalidates the used code (pop from the
       list, re-hash, save)
-- [ ] `settings.php` self-service enroll:
+- [x] `settings.php` self-service enroll:
       - "Enable 2FA" renders QR + backup codes (shown once)
       - "Disable 2FA" requires current TOTP code to prevent
         compromised-session abuse
-- [ ] Audit rows: `totp.enabled`, `totp.disabled`,
+- [x] Audit rows: `totp.enabled`, `totp.disabled`,
       `totp.verified_recovery_code_used`, `totp.verification_failed`
-- [ ] Remember-me cookies (HC-014) DO NOT bypass TOTP — set the
+- [x] Remember-me cookies (HC-014) DO NOT bypass TOTP — set the
       remember token only after TOTP verification
-- [ ] `tests/Unit/Auth/TotpServiceTest.php`: generate / verify
+      (`loginWithRememberToken()` also forces the TOTP prompt)
+- [x] `tests/Unit/Auth/TotpServiceTest.php`: generate / verify
       round-trip; ±1-window accept; replay rejection; recovery
-      code single-use
-- [ ] `tests/Integration/Auth/Login2faTest.php`: full flow with
+      code single-use (15 cases)
+- [x] `tests/Integration/Auth/Login2faTest.php`: full flow with
       pending state, verification, and recovery code path
+      (10 cases, including the lockout-on-TOTP-failure guard)
 
 ---
 

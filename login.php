@@ -21,6 +21,7 @@ require_once __DIR__ . '/includes/homecare.php';
 
 use HomeCare\Auth\AuthService;
 use HomeCare\Auth\PasswordHasher;
+use HomeCare\Auth\TotpService;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\UserRepository;
 
@@ -47,11 +48,87 @@ if (!empty($_SESSION['hc_login'])) {
     exit;
 }
 
-$auth = new AuthService(new UserRepository(new DbiAdapter()), new PasswordHasher());
+$totpService = new TotpService();
+$auth = new AuthService(
+    new UserRepository(new DbiAdapter()),
+    new PasswordHasher(),
+    totp: $totpService
+);
 $error = null;
 $prefillLogin = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+/**
+ * Finalise a successful login. Shared by the password path (no 2FA)
+ * and the TOTP-verified path.
+ */
+$completeLogin = static function (
+    \HomeCare\Auth\AuthResult $result,
+    bool $remember
+): void {
+    if ($result->user === null) {
+        return;
+    }
+
+    session_regenerate_id(true);
+    $_SESSION['hc_login'] = $result->user['login'];
+    $_SESSION['last_activity'] = time();
+    unset($_SESSION['pending_login'], $_SESSION['pending_remember']);
+
+    $GLOBALS['login'] = $result->user['login'];
+    audit_log('user.login', 'user', null, [
+        'remember' => $remember,
+        'used_recovery_code' => $result->usedRecoveryCode,
+    ]);
+    if ($result->usedRecoveryCode) {
+        audit_log('totp.verified_recovery_code_used', 'user', null, []);
+    }
+
+    if ($remember && $result->rememberToken !== null && $result->rememberExpires !== null) {
+        setcookie('hc_remember', $result->rememberToken, [
+            'expires' => $result->rememberExpires,
+            'path' => '/',
+            'secure' => !empty($_SERVER['HTTPS']),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
+    }
+
+    $returnPath = is_string($_GET['return_path'] ?? null)
+        ? (string) $_GET['return_path']
+        : 'index.php';
+    if (!preg_match('#^[a-z_]+\.php(\?.*)?$#i', $returnPath)) {
+        $returnPath = 'index.php';
+    }
+    header('Location: ' . $returnPath);
+    exit;
+};
+
+$pendingLogin = is_string($_SESSION['pending_login'] ?? null)
+    ? (string) $_SESSION['pending_login']
+    : null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['totp_code']) && $pendingLogin !== null) {
+    // TOTP step.
+    $code = is_string($_POST['totp_code']) ? (string) $_POST['totp_code'] : '';
+    $remember = !empty($_SESSION['pending_remember']);
+
+    $result = $auth->verifyTotp($pendingLogin, $code, $remember);
+    if ($result->success) {
+        $completeLogin($result, $remember);
+    }
+
+    audit_log('totp.verification_failed', 'user', null, [
+        'attempted_login' => $pendingLogin,
+        'reason' => $result->reason,
+    ]);
+
+    $error = match ($result->reason) {
+        'account_disabled' => 'This account has been disabled.',
+        'account_locked' => 'Account temporarily locked. Please try again in a few minutes.',
+        default => 'Invalid code. Try again or use a recovery code.',
+    };
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Password step.
     $login = is_string($_POST['login'] ?? null) ? trim((string) $_POST['login']) : '';
     $password = is_string($_POST['password'] ?? null) ? (string) $_POST['password'] : '';
     $remember = !empty($_POST['remember']);
@@ -59,48 +136,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $result = $auth->attemptLogin($login, $password, $remember);
 
-    if ($result->success && $result->user !== null) {
-        // Mitigate session fixation: rotate the ID on privilege change.
-        session_regenerate_id(true);
-        $_SESSION['hc_login'] = $result->user['login'];
-        $_SESSION['last_activity'] = time();
-
-        // $login global is set so audit_log() picks up the user context.
-        $GLOBALS['login'] = $result->user['login'];
-        audit_log('user.login', 'user', null, ['remember' => $remember]);
-
-        if ($remember && $result->rememberToken !== null && $result->rememberExpires !== null) {
-            setcookie('hc_remember', $result->rememberToken, [
-                'expires' => $result->rememberExpires,
-                'path' => '/',
-                'secure' => !empty($_SERVER['HTTPS']),
-                'httponly' => true,
-                'samesite' => 'Lax',
-            ]);
-        }
-
-        $returnPath = is_string($_GET['return_path'] ?? null)
-            ? (string) $_GET['return_path']
-            : 'index.php';
-        // Only follow same-origin relative paths.
-        if (!preg_match('#^[a-z_]+\.php(\?.*)?$#i', $returnPath)) {
-            $returnPath = 'index.php';
-        }
-
-        header('Location: ' . $returnPath);
-        exit;
+    if ($result->success) {
+        $completeLogin($result, $remember);
     }
 
-    audit_log('user.login_failed', 'user', null, [
-        'attempted_login' => $login,
-        'reason' => $result->reason,
-    ]);
+    if ($result->isTotpRequired() && $result->user !== null) {
+        // Stash pending login; session is NOT marked authenticated.
+        $_SESSION['pending_login'] = $result->user['login'];
+        $_SESSION['pending_remember'] = $remember;
+        $pendingLogin = $result->user['login'];
+        // Fall through to render the code prompt.
+    } else {
+        audit_log('user.login_failed', 'user', null, [
+            'attempted_login' => $login,
+            'reason' => $result->reason,
+        ]);
 
-    $error = match ($result->reason) {
-        'account_disabled' => 'This account has been disabled.',
-        'account_locked' => 'Account temporarily locked. Please try again in a few minutes.',
-        default => 'Invalid login or password.',
-    };
+        $error = match ($result->reason) {
+            'account_disabled' => 'This account has been disabled.',
+            'account_locked' => 'Account temporarily locked. Please try again in a few minutes.',
+            default => 'Invalid login or password.',
+        };
+    }
+}
+
+// GET requests with a lingering pending_login (e.g. page reload after
+// password step) should still show the TOTP form.
+$showTotpPrompt = $pendingLogin !== null && !isset($result);
+if (isset($result) && $result->isTotpRequired()) {
+    $showTotpPrompt = true;
 }
 
 ?><!DOCTYPE html>
@@ -332,39 +396,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </div>
     <?php endif; ?>
 
-    <form method="post" autocomplete="on" novalidate aria-describedby="login-title">
-      <div class="form-group">
-        <label for="login" class="form-label">Username</label>
-        <input type="text"
-               class="form-control"
-               id="login"
-               name="login"
-               value="<?= htmlspecialchars($prefillLogin) ?>"
-               autocomplete="username"
-               autocapitalize="none"
-               autocorrect="off"
-               spellcheck="false"
-               required
-               autofocus>
-      </div>
+    <?php if ($showTotpPrompt): ?>
+      <form method="post" autocomplete="off" novalidate aria-describedby="login-title">
+        <p class="brand-subtitle" style="margin-bottom:1rem;">
+          Enter the 6-digit code from your authenticator app, or use one of your recovery codes.
+        </p>
 
-      <div class="form-group">
-        <label for="password" class="form-label">Password</label>
-        <input type="password"
-               class="form-control"
-               id="password"
-               name="password"
-               autocomplete="current-password"
-               required>
-      </div>
+        <div class="form-group">
+          <label for="totp_code" class="form-label">Authentication code</label>
+          <input type="text"
+                 class="form-control"
+                 id="totp_code"
+                 name="totp_code"
+                 inputmode="numeric"
+                 autocomplete="one-time-code"
+                 pattern="[0-9a-zA-Z\-]{6,16}"
+                 required
+                 autofocus>
+        </div>
 
-      <label class="remember" for="remember">
-        <input type="checkbox" id="remember" name="remember" value="1">
-        <span>Remember me for 365 days</span>
-      </label>
+        <button type="submit" class="btn-signin">Verify</button>
+      </form>
+    <?php else: ?>
+      <form method="post" autocomplete="on" novalidate aria-describedby="login-title">
+        <div class="form-group">
+          <label for="login" class="form-label">Username</label>
+          <input type="text"
+                 class="form-control"
+                 id="login"
+                 name="login"
+                 value="<?= htmlspecialchars($prefillLogin) ?>"
+                 autocomplete="username"
+                 autocapitalize="none"
+                 autocorrect="off"
+                 spellcheck="false"
+                 required
+                 autofocus>
+        </div>
 
-      <button type="submit" class="btn-signin">Sign in</button>
-    </form>
+        <div class="form-group">
+          <label for="password" class="form-label">Password</label>
+          <input type="password"
+                 class="form-control"
+                 id="password"
+                 name="password"
+                 autocomplete="current-password"
+                 required>
+        </div>
+
+        <label class="remember" for="remember">
+          <input type="checkbox" id="remember" name="remember" value="1">
+          <span>Remember me for 365 days</span>
+        </label>
+
+        <button type="submit" class="btn-signin">Sign in</button>
+      </form>
+    <?php endif; ?>
   </div>
 
   <p class="footnote">HomeCare &middot; Secure medication tracking</p>

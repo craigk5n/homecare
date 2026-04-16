@@ -196,7 +196,7 @@ final class AuthServiceTest extends TestCase
     }
 
     /**
-     * @return array{login:string,passwd:string,is_admin:string,role:string,enabled:string,remember_token:?string,remember_token_expires:?string,failed_attempts:int,locked_until:?string,api_key_hash:?string}
+     * @return array{login:string,passwd:string,is_admin:string,role:string,enabled:string,remember_token:?string,remember_token_expires:?string,failed_attempts:int,locked_until:?string,api_key_hash:?string,totp_secret:?string,totp_enabled:string,totp_recovery_codes:?string}
      */
     private function userRow(
         string $login = 'alice',
@@ -209,6 +209,9 @@ final class AuthServiceTest extends TestCase
         int $failed_attempts = 0,
         ?string $locked_until = null,
         ?string $api_key_hash = null,
+        ?string $totp_secret = null,
+        string $totp_enabled = 'N',
+        ?string $totp_recovery_codes = null,
     ): array {
         return [
             'login' => $login,
@@ -221,6 +224,9 @@ final class AuthServiceTest extends TestCase
             'failed_attempts' => $failed_attempts,
             'locked_until' => $locked_until,
             'api_key_hash' => $api_key_hash,
+            'totp_secret' => $totp_secret,
+            'totp_enabled' => $totp_enabled,
+            'totp_recovery_codes' => $totp_recovery_codes,
         ];
     }
 }

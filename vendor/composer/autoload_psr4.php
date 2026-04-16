@@ -8,7 +8,9 @@ $baseDir = dirname($vendorDir);
 return array(
     'Svg\\' => array($vendorDir . '/dompdf/php-svg-lib/src/Svg'),
     'Sabberworm\\CSS\\' => array($vendorDir . '/sabberworm/php-css-parser/src'),
+    'PragmaRX\\Google2FA\\' => array($vendorDir . '/pragmarx/google2fa/src'),
     'PhpParser\\' => array($vendorDir . '/nikic/php-parser/lib/PhpParser'),
+    'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
     'PHPStan\\' => array($vendorDir . '/phpstan/phpstan-phpunit/src'),
     'Masterminds\\' => array($vendorDir . '/masterminds/html5/src'),
     'HomeCare\\Tests\\' => array($baseDir . '/tests'),
@@ -16,4 +18,6 @@ return array(
     'FontLib\\' => array($vendorDir . '/dompdf/php-font-lib/src/FontLib'),
     'Dompdf\\' => array($vendorDir . '/dompdf/dompdf/src'),
     'DeepCopy\\' => array($vendorDir . '/myclabs/deep-copy/src/DeepCopy'),
+    'DASPRiD\\Enum\\' => array($vendorDir . '/dasprid/enum/src'),
+    'BaconQrCode\\' => array($vendorDir . '/bacon/bacon-qr-code/src'),
 );

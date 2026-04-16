@@ -28,6 +28,9 @@ CREATE TABLE hc_user (
   failed_attempts INTEGER NOT NULL DEFAULT 0,
   locked_until DATETIME NULL,
   api_key_hash VARCHAR(255) NULL,
+  totp_secret VARCHAR(64) NULL,
+  totp_enabled CHAR(1) NOT NULL DEFAULT 'N',
+  totp_recovery_codes TEXT NULL,
   PRIMARY KEY (login)
 );
 

@@ -8,9 +8,13 @@
 # them via `composer install`.
 /vendor/*
 !/vendor/autoload.php
+!/vendor/bacon
 !/vendor/composer
+!/vendor/dasprid
 !/vendor/dompdf
 !/vendor/masterminds
+!/vendor/paragonie
+!/vendor/pragmarx
 !/vendor/sabberworm
 !/vendor/thecodingmachine
 
