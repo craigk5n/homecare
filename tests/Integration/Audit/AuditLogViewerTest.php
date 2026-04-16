@@ -8,18 +8,13 @@ use HomeCare\Tests\Factory\PatientFactory;
 use HomeCare\Tests\Factory\MedicineFactory;
 use HomeCare\Tests\Factory\ScheduleFactory;
 use HomeCare\Tests\Factory\IntakeFactory;
-use function Safe\json_decode;
 use function Safe\json_encode;
-use function Safe\preg_match_all;
 use const JSON_PRETTY_PRINT;
 use const JSON_UNESCAPED_SLASHES;
 
 class AuditLogViewerTest extends DatabaseTestCase
 {
     private const AUDIT_TABLE = 'hc_audit_log';
-
-    /** @var array<string, string|array<string,mixed>> */
-    private array $getMock = [];
 
     protected function setUp(): void
     {
@@ -40,33 +35,9 @@ class AuditLogViewerTest extends DatabaseTestCase
         );
     }
 
-
-
-
-    private function stubPrintFunctions(): void
-    {
-        if (!function_exists('print_header')) {
-function print_header(string $title = ''): void {
-    echo "&lt;!-- Mock header for $title --&gt;";
-}
-        }
-
-        if (!function_exists('print_trailer')) {
-function print_trailer(): void {
-    echo '&lt;!-- Mock trailer --&gt;';
-}
-        }
-    }
-
-    private function stubRequireRole(): void
-    {
-        if (!function_exists('require_role')) {
-function require_role(string $role): void {
-    // Assume admin for test
-}
-        }
-    }
-
+    /**
+     * @param array<string, mixed> $data
+     */
     private function insertAuditLog(array $data): int
     {
         $defaults = [
@@ -87,21 +58,10 @@ function require_role(string $role): void {
         return (int) $this->getDb()->lastInsertId();
     }
 
-    private function renderPage(array $getParams = []): string
-    {
-        $_GET = $getParams;
-        ob_start();
-        include __DIR__ . '/../../../audit_log.php';
-        /** @var string $output */
-        $output = ob_get_clean() ?: '';
-
-        return $output;
-    }
-
     public function testNoFiltersReturnsAllEntries(): void
     {
         $this->getDb()->execute(
-            'INSERT INTO ' . self::AUDIT_TABLE . ' (user_login, action, ip_address, created_at) VALUES 
+            'INSERT INTO ' . self::AUDIT_TABLE . ' (user_login, action, ip_address, created_at) VALUES
             ("admin", "user.login", "127.0.0.1", "2026-04-13 10:00:00"),
             ("caregiver", "intake.recorded", "10.0.0.1", "2026-04-13 11:00:00"),
             ("admin", "schedule.created", "127.0.0.1", "2026-04-13 12:00:00")'

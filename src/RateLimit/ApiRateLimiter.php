@@ -12,25 +12,6 @@ final class ApiRateLimiter
         private DatabaseInterface $db
     ) {}
 
-    private function getConfigValue(string $key, int $default): int
-    {
-        static $cache = [];
-
-        if (isset($cache[$key])) {
-            return $cache[$key];
-        }
-
-        $rows = $this->db->query('SELECT value FROM hc_config WHERE setting = ?', [$key]);
-
-        $val = $rows ? (int) ($rows[0]['value'] ?? $default) : $default;
-
-        if ($val <= 0) {
-            $val = $default;
-        }
-
-        return $cache[$key] = $val;
-    }
-
     private function getCurrentWindow(): int
     {
         return (int) (floor(time() / 60) * 60);

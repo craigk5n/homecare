@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace HomeCare\Tests\Integration\Migration;
 
-use HomeCare\Integration\DatabaseTestCase;
+use HomeCare\Tests\Integration\DatabaseTestCase;
 use HomeCare\Database\SqliteDatabase;
 use PHPUnit\Framework\Attributes\CoversNothing; // CLI script
 
@@ -80,10 +80,11 @@ INSERT INTO test_table (name) VALUES (\'test\');');
         $this->assertStringContainsString('No pending migrations', $output);
     }
 
+/**
+ * @param list<string> $args
+ */
 private function runMigration(array $args): string
 {
     $this->markTestIncomplete('Migration runner integration test pending full implementation');
-    
-    return '';
 }
 }

@@ -44,7 +44,11 @@ final readonly class CadenceCheck
         // Filter and sort ASC
         $times = [];
         foreach ($recent as $intake) {
-            $ts = strtotime($intake['taken_time']);
+            $takenTime = $intake['taken_time'];
+            if (!is_string($takenTime)) {
+                continue;
+            }
+            $ts = strtotime($takenTime);
             if ($ts !== false) {
                 $times[] = $ts;
             }
@@ -72,6 +76,9 @@ final readonly class CadenceCheck
 
     public function getWarningText(int $scheduleId, int $sampleSize = 5): ?string
     {
+        if ($scheduleId < 1 || $sampleSize < 1) {
+            return null;
+        }
         $divergence = $this->divergence($scheduleId, $sampleSize);
         if ($divergence === null || !($divergence < 0.5 || $divergence > 2.0)) {
             return null;

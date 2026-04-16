@@ -27,7 +27,6 @@ final class SignedUrlTest extends TestCase
 
         $token = $this->signedUrl->sign($params, $ttl);
 
-        $this->assertIsString($token);
         $this->assertGreaterThan(0, strlen($token));
         $this->assertStringContainsString('.', $token);
     }
@@ -86,10 +85,6 @@ final class SignedUrlTest extends TestCase
         $this->assertNull($decoded);
     }
 
-    public function testInstanceReturnsValidObject(): void
-    {
-        // Test static method
-        $instance = SignedUrl::instance();
-        $this->assertInstanceOf(SignedUrl::class, $instance);
-    }
+    // testInstanceReturnsValidObject moved to tests/Integration/Auth/SignedUrlTest.php
+    // because SignedUrl::instance() requires the DB bootstrap stack.
 }

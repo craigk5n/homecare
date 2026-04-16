@@ -9,14 +9,19 @@ use HomeCare\Repository\IntakeRepositoryInterface;
 use HomeCare\Repository\ScheduleRepositoryInterface;
 use HomeCare\Service\CadenceCheck;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CadenceCheck::class)]
 final class CadenceCheckTest extends TestCase
 {
     private CadenceCheck $check;
-    private IntakeRepositoryInterface|\PHPUnit\Framework\MockObject\MockObject $intakeRepo;
-    private ScheduleRepositoryInterface|\PHPUnit\Framework\MockObject\MockObject $scheduleRepo;
+
+    /** @var IntakeRepositoryInterface&MockObject */
+    private IntakeRepositoryInterface $intakeRepo;
+
+    /** @var ScheduleRepositoryInterface&MockObject */
+    private ScheduleRepositoryInterface $scheduleRepo;
 
     protected function setUp(): void
     {

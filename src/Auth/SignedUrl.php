@@ -4,6 +4,9 @@
  *
  * Uses HMAC-SHA256 over JSON-serialized params + expiration timestamp.
  * Secret fetched from hc_config.signing_secret (generated if missing).
+ *
+ * Token format: base64url(payload) . '.' . base64url(signature)
+ * where payload is JSON and signature is HMAC-SHA256 of the payload.
  */
 
 declare(strict_types=1);
@@ -15,33 +18,42 @@ use const JSON_UNESCAPED_SLASHES;
 
 final class SignedUrl
 {
+    private static ?string $cachedSecret = null;
+
     public function __construct(private readonly string $secret) {}
 
     /**
      * Sign parameters with TTL in seconds.
      *
-     * @param array&lt;string, int|string&gt; $params
+     * @param array<string, int|string> $params
      */
     public function sign(array $params, int $ttl): string
     {
         $payload = json_encode($params + ['exp' => time() + $ttl], JSON_UNESCAPED_SLASHES);
+        if ($payload === false) {
+            throw new \RuntimeException('Failed to JSON-encode params for signing.');
+        }
         $signature = hash_hmac('sha256', $payload, $this->secret, true);
-        return base64_encode($payload . $signature);
+        return base64_encode($payload) . '.' . base64_encode($signature);
     }
 
 
     public function verify(string $token): bool
     {
-$decoded = \base64_decode($token, true);
-if ($decoded === false) {
-    return false;
-}
-$dotPos = \strrpos($decoded, '.');
-if ($dotPos === false) {
-    return false;
-}
-$payload = \substr($decoded, 0, $dotPos);
-$signature = \substr($decoded, $dotPos + 1);
+        $dotPos = \strpos($token, '.');
+        if ($dotPos === false) {
+            return false;
+        }
+
+        $payloadB64 = \substr($token, 0, $dotPos);
+        $sigB64 = \substr($token, $dotPos + 1);
+
+        $payload = \base64_decode($payloadB64, true);
+        $signature = \base64_decode($sigB64, true);
+
+        if ($payload === false || $signature === false) {
+            return false;
+        }
 
         $expectedSig = hash_hmac('sha256', $payload, $this->secret, true);
 
@@ -49,16 +61,18 @@ $signature = \substr($decoded, $dotPos + 1);
             return false;
         }
 
-$data = \json_decode($payload, true);
-if (!is_array($data) || !isset($data['exp']) || \time() > $data['exp']) {
-    return false;
-}
+        $data = \json_decode($payload, true);
+        if (!is_array($data) || !isset($data['exp']) || \time() > $data['exp']) {
+            return false;
+        }
 
         return true;
     }
 
     /**
      * Extract verified params from token (null if invalid/expired).
+     *
+     * @return array<string, mixed>|null
      */
     public function getParams(string $token): ?array
     {
@@ -66,17 +80,30 @@ if (!is_array($data) || !isset($data['exp']) || \time() > $data['exp']) {
             return null;
         }
 
-$decoded = \base64_decode($token, true);
-if ($decoded === false) {
-    return null;
-}
-$dotPos = \strrpos($decoded, '.');
-if ($dotPos === false) {
-    return null;
-}
-$payload = \substr($decoded, 0, $dotPos);
+        $dotPos = \strpos($token, '.');
+        if ($dotPos === false) {
+            return null;
+        }
 
-return \json_decode($payload, true);
+        $payloadB64 = \substr($token, 0, $dotPos);
+        $payload = \base64_decode($payloadB64, true);
+
+        if ($payload === false) {
+            return null;
+        }
+
+        $decoded = \json_decode($payload, true);
+        if (!is_array($decoded)) {
+            return null;
+        }
+
+        // Ensure string keys (JSON objects always have string keys when decoded as associative)
+        $data = [];
+        foreach ($decoded as $k => $v) {
+            $data[(string) $k] = $v;
+        }
+
+        return $data;
     }
 
     /**
@@ -88,29 +115,27 @@ return \json_decode($payload, true);
         return new self($secret);
     }
 
-private static function getSecret(): string
+    private static function getSecret(): string
     {
-        static $secret = null;
-
-        if ($secret !== null) {
-            return $secret;
+        if (self::$cachedSecret !== null) {
+            return self::$cachedSecret;
         }
 
-        // Fetch or generate
-        require_once __DIR__ . '/../includes/init.php'; // Globals
-        $result = dbi_execute('SELECT value FROM hc_config WHERE name = "signing_secret"');
-        $row = dbi_fetch_row($result);
-        if ($row && $row[0]) {
-            $secret = $row[0];
+        $db = new DbiAdapter();
+
+        $rows = $db->query('SELECT value FROM hc_config WHERE setting = ?', ['signing_secret']);
+        if (!empty($rows) && !empty($rows[0]['value'])) {
+            self::$cachedSecret = (string) $rows[0]['value'];
         } else {
             // Generate 32-byte hex
-            $secret = \bin2hex(\random_bytes(32));
-            dbi_execute('INSERT INTO hc_config (name, value) VALUES ("signing_secret", ?)', [$secret]);
+            self::$cachedSecret = \bin2hex(\random_bytes(32));
+            $db->execute('INSERT INTO hc_config (setting, value) VALUES (?, ?)', ['signing_secret', self::$cachedSecret]);
             // Require homecare for audit
-            require_once __DIR__ . '/../includes/homecare.php';
-            audit_log('signedurl.secret_generated', 'config'); // Log once
+            if (function_exists('audit_log')) {
+                audit_log('signedurl.secret_generated', 'config');
+            }
         }
 
-        return $secret;
+        return self::$cachedSecret;
     }
 }
