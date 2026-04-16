@@ -172,6 +172,30 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
         $this->assertSame([], $svc->findPendingAlerts(60));
     }
 
+    public function testPrnSchedulesAreSkipped(): void
+    {
+        // HC-120: PRN rows have no cadence -- "late" is not a meaningful
+        // state for them, so findPendingAlerts() must ignore them even
+        // with intakes far in the past.
+        [$p, $m] = $this->seedPatientAndMedicine();
+        $db = $this->getDb();
+        $db->execute(
+            "INSERT INTO hc_medicine_schedules
+                (patient_id, medicine_id, start_date, frequency, unit_per_dose, is_prn)
+             VALUES (?, ?, ?, NULL, ?, 'Y')",
+            [$p, $m, '2026-01-01', 0.5]
+        );
+        $sid = $db->lastInsertId();
+        $db->execute(
+            'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
+            [$sid, '2026-04-01 08:00:00']
+        );
+
+        $svc = $this->service(now: '2026-04-16 18:00:00');
+
+        $this->assertSame([], $svc->findPendingAlerts(60));
+    }
+
     public function testLogMarksPersistAcrossCalls(): void
     {
         [$p, $m] = $this->seedPatientAndMedicine();

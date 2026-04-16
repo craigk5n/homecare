@@ -143,6 +143,31 @@ final class InventoryServiceTest extends TestCase
         $this->assertSame(0.0, $report['unitPerDose']);
     }
 
+    public function testPrnScheduleReportsStockButNoDaysOfSupply(): void
+    {
+        // PRN schedules have no cadence, so the service can report stock
+        // and doses-remaining (stock / unit_per_dose) but must NOT project
+        // "N days of supply" -- that projection assumes a fixed cadence.
+        $this->inventory->method('getMedicineName')->willReturn('Xanax');
+        $this->inventory->method('getLatestStock')->willReturn([
+            'id' => 1, 'medicine_id' => 1, 'quantity' => 20.0,
+            'current_stock' => 20.0, 'recorded_at' => '2026-04-01 00:00:00', 'note' => null,
+        ]);
+        $this->inventory->method('getTotalConsumedSince')->willReturn(4.0);
+        $this->schedules->method('getScheduleById')->willReturn(
+            self::schedule(['unit_per_dose' => 0.5, 'frequency' => null, 'is_prn' => true])
+        );
+
+        $report = $this->service->calculateRemaining(1, 10);
+
+        // 20 - 4 = 16 units. unit_per_dose 0.5 -> 32 doses remaining.
+        $this->assertSame(32.0, $report['remainingDoses']);
+        $this->assertSame(20.0, $report['lastInventory']);
+        $this->assertSame(4.0, $report['quantityTakenSince']);
+        // No cadence, so remainingDays cannot be projected.
+        $this->assertSame(0, $report['remainingDays']);
+    }
+
     /**
      * @param array{
      *     id?:int,
@@ -150,12 +175,13 @@ final class InventoryServiceTest extends TestCase
      *     medicine_id?:int,
      *     start_date?:string,
      *     end_date?:?string,
-     *     frequency?:string,
+     *     frequency?:?string,
      *     unit_per_dose?:float,
+     *     is_prn?:bool,
      *     created_at?:?string
      * } $overrides
      *
-     * @return array{id:int,patient_id:int,medicine_id:int,start_date:string,end_date:?string,frequency:string,unit_per_dose:float,created_at:?string}
+     * @return array{id:int,patient_id:int,medicine_id:int,start_date:string,end_date:?string,frequency:?string,unit_per_dose:float,is_prn:bool,created_at:?string}
      */
     private static function schedule(array $overrides = []): array
     {
@@ -165,8 +191,9 @@ final class InventoryServiceTest extends TestCase
             'medicine_id' => $overrides['medicine_id'] ?? 1,
             'start_date' => $overrides['start_date'] ?? '2026-01-01',
             'end_date' => $overrides['end_date'] ?? null,
-            'frequency' => $overrides['frequency'] ?? '8h',
+            'frequency' => array_key_exists('frequency', $overrides) ? $overrides['frequency'] : '8h',
             'unit_per_dose' => $overrides['unit_per_dose'] ?? 1.0,
+            'is_prn' => $overrides['is_prn'] ?? false,
             'created_at' => $overrides['created_at'] ?? '2026-01-01 00:00:00',
         ];
     }

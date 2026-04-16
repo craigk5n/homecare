@@ -94,16 +94,25 @@ final class SupplyAlertService
         // across ALL schedules for that medicine internally, so which
         // schedule_id we pass only matters for the unit_per_dose override
         // layer.
+        //
+        // HC-120: exclude PRN schedules from the walk. A medicine with
+        // only PRN prescriptions has no projected depletion date -- the
+        // InventoryService would report remainingDays=0 and trigger a
+        // spurious alert every run. Medicines with any fixed-cadence
+        // schedule still appear; the non-PRN filter guarantees the
+        // MIN(ms.id) we picked has a computable cadence.
         $rows = $this->db->query(
-            'SELECT ms.medicine_id AS medicine_id,
+            "SELECT ms.medicine_id AS medicine_id,
                     MIN(ms.id) AS schedule_id,
                     MIN(m.name) AS name
              FROM hc_medicine_schedules ms
              JOIN hc_medicines m ON ms.medicine_id = m.id
              WHERE ms.start_date <= ?
+               AND ms.is_prn = 'N'
+               AND ms.frequency IS NOT NULL
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
              GROUP BY ms.medicine_id
-             ORDER BY m.name ASC',
+             ORDER BY m.name ASC",
             [$today, $today]
         );
 

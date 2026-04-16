@@ -108,6 +108,40 @@ final class ScheduleCalculator
     }
 
     /**
+     * PRN-aware wrapper for {@see calculateSecondsUntilDue()}.
+     *
+     * Returns null when $frequency is null (the PRN case — see HC-120): a
+     * PRN schedule has no expected cadence, so "seconds until next dose"
+     * is not a meaningful question and callers must treat the row as
+     * "no timer".
+     */
+    public static function calculateSecondsUntilDueOrNull(
+        string $lastTaken,
+        ?string $frequency,
+        bool $showNegative = false
+    ): ?int {
+        if ($frequency === null) {
+            return null;
+        }
+
+        return self::calculateSecondsUntilDue($lastTaken, $frequency, $showNegative);
+    }
+
+    /**
+     * PRN-aware wrapper for {@see calculateNextDueDate()}.
+     *
+     * Returns null when $frequency is null (the PRN case — see HC-120).
+     */
+    public static function calculateNextDueDateOrNull(string $lastTaken, ?string $frequency): ?string
+    {
+        if ($frequency === null) {
+            return null;
+        }
+
+        return self::calculateNextDueDate($lastTaken, $frequency);
+    }
+
+    /**
      * @return array{0:positive-int,1:'d'|'h'|'m'} [amount, unit]
      *
      * @throws InvalidArgumentException

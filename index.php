@@ -55,6 +55,11 @@ if ($patientCount === 1) {
 // data (dozens of rows, not thousands) and avoids N+1 queries.
 $dueSoonSeconds = 1800; // 30 minutes — matches list_schedule.php
 
+// HC-120: PRN schedules have no cadence, so exclude them from the
+// overdue/due-soon badge aggregation. They can't produce a meaningful
+// "seconds until next due" value. The `empty($frequency)` guard below
+// catches them as a safety net, but filtering at the SQL level avoids
+// the unnecessary rows entirely.
 $sql = "SELECT p.id, p.name,
                ms.frequency,
                (SELECT MAX(mi.taken_time)
@@ -63,6 +68,8 @@ $sql = "SELECT p.id, p.name,
           FROM hc_patients p
      LEFT JOIN hc_medicine_schedules ms
             ON ms.patient_id = p.id
+           AND ms.is_prn = 'N'
+           AND ms.frequency IS NOT NULL
            AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())
          WHERE p.is_active = 1
          ORDER BY p.name, ms.id";

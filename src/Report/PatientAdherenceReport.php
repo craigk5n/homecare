@@ -63,15 +63,19 @@ final class PatientAdherenceReport
 
         // Overlap filter: schedule lifetime [start_date, end_date?] intersects
         // the filter window [filterStart, filterEnd].
+        // HC-120: PRN schedules have no expected cadence, so adherence
+        // is not a meaningful metric — exclude them from the report.
         $rows = $this->db->query(
-            'SELECT ms.id, ms.medicine_id, m.name, m.dosage, ms.frequency,
+            "SELECT ms.id, ms.medicine_id, m.name, m.dosage, ms.frequency,
                     ms.start_date, ms.end_date
              FROM hc_medicine_schedules ms
              JOIN hc_medicines m ON ms.medicine_id = m.id
              WHERE ms.patient_id = ?
+               AND ms.is_prn = 'N'
+               AND ms.frequency IS NOT NULL
                AND ms.start_date <= ?
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
-             ORDER BY m.name ASC, ms.id ASC',
+             ORDER BY m.name ASC, ms.id ASC",
             [$patientId, $filterEnd, $filterStart]
         );
 

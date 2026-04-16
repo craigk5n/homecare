@@ -124,4 +124,37 @@ final class ScheduleCalculatorTest extends TestCase
     {
         $this->assertNull(ScheduleCalculator::getIntervalSpecFromFrequency('30m'));
     }
+
+    // PRN (as-needed) handling — HC-120 ----------------------------------
+
+    public function testCalculateSecondsUntilDueOrNullReturnsNullForNullFrequency(): void
+    {
+        $this->assertNull(
+            ScheduleCalculator::calculateSecondsUntilDueOrNull(
+                date('Y-m-d H:i:s', time() - 3600),
+                null,
+            )
+        );
+    }
+
+    public function testCalculateSecondsUntilDueOrNullDelegatesForFixedFrequency(): void
+    {
+        $eightHoursAgo = date('Y-m-d H:i:s', time() - 8 * 3600);
+        $this->assertSame(0, ScheduleCalculator::calculateSecondsUntilDueOrNull($eightHoursAgo, '8h'));
+    }
+
+    public function testCalculateNextDueDateOrNullReturnsNullForNullFrequency(): void
+    {
+        $this->assertNull(
+            ScheduleCalculator::calculateNextDueDateOrNull('2026-04-13 10:00:00', null)
+        );
+    }
+
+    public function testCalculateNextDueDateOrNullDelegatesForFixedFrequency(): void
+    {
+        $this->assertSame(
+            '2026-04-13 18:00',
+            ScheduleCalculator::calculateNextDueDateOrNull('2026-04-13 10:00:00', '8h')
+        );
+    }
 }

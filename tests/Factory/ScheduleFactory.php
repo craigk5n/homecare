@@ -19,8 +19,9 @@ use HomeCare\Database\DatabaseInterface;
  *     medicine_id:int,
  *     start_date?:string,
  *     end_date?:?string,
- *     frequency?:string,
- *     unit_per_dose?:float
+ *     frequency?:?string,
+ *     unit_per_dose?:float,
+ *     is_prn?:bool
  * }
  * @phpstan-type ScheduleRecord array{
  *     id:int,
@@ -28,8 +29,9 @@ use HomeCare\Database\DatabaseInterface;
  *     medicine_id:int,
  *     start_date:string,
  *     end_date:?string,
- *     frequency:string,
- *     unit_per_dose:float
+ *     frequency:?string,
+ *     unit_per_dose:float,
+ *     is_prn:bool
  * }
  */
 final class ScheduleFactory
@@ -45,19 +47,26 @@ final class ScheduleFactory
      */
     public function create(array $overrides): array
     {
+        $isPrn = ($overrides['is_prn'] ?? false) === true;
+        $frequency = array_key_exists('frequency', $overrides) ? $overrides['frequency'] : '8h';
+        if ($isPrn) {
+            $frequency = null;
+        }
+
         $record = [
             'patient_id' => $overrides['patient_id'],
             'medicine_id' => $overrides['medicine_id'],
             'start_date' => $overrides['start_date'] ?? '2026-01-01',
             'end_date' => $overrides['end_date'] ?? null,
-            'frequency' => $overrides['frequency'] ?? '8h',
+            'frequency' => $frequency,
             'unit_per_dose' => $overrides['unit_per_dose'] ?? 1.0,
+            'is_prn' => $isPrn,
         ];
 
         $this->db->execute(
             'INSERT INTO hc_medicine_schedules
-                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose)
-             VALUES (?, ?, ?, ?, ?, ?)',
+                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
                 $record['patient_id'],
                 $record['medicine_id'],
@@ -65,6 +74,7 @@ final class ScheduleFactory
                 $record['end_date'],
                 $record['frequency'],
                 $record['unit_per_dose'],
+                $isPrn ? 'Y' : 'N',
             ]
         );
 

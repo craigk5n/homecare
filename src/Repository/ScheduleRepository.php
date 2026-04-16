@@ -21,8 +21,9 @@ use InvalidArgumentException;
  *     medicine_id:int,
  *     start_date:string,
  *     end_date:?string,
- *     frequency:string,
+ *     frequency:?string,
  *     unit_per_dose:float,
+ *     is_prn:bool,
  *     created_at:?string
  * }
  *
@@ -31,8 +32,9 @@ use InvalidArgumentException;
  *     medicine_id:int,
  *     start_date:string,
  *     end_date?:?string,
- *     frequency:string,
- *     unit_per_dose:float
+ *     frequency?:?string,
+ *     unit_per_dose:float,
+ *     is_prn?:bool
  * }
  */
 final class ScheduleRepository implements ScheduleRepositoryInterface
@@ -83,23 +85,37 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
      */
     public function createSchedule(array $data): int
     {
-        foreach (['patient_id', 'medicine_id', 'start_date', 'frequency', 'unit_per_dose'] as $required) {
+        foreach (['patient_id', 'medicine_id', 'start_date', 'unit_per_dose'] as $required) {
             if (!array_key_exists($required, $data)) {
                 throw new InvalidArgumentException("createSchedule: missing required field '{$required}'");
             }
         }
 
+        // Frequency is required for fixed-cadence schedules but must be NULL
+        // for PRN schedules (HC-120) so downstream math can short-circuit.
+        $isPrn = ($data['is_prn'] ?? false) === true;
+        $frequency = $data['frequency'] ?? null;
+        if (!$isPrn && ($frequency === null || $frequency === '')) {
+            throw new InvalidArgumentException(
+                "createSchedule: 'frequency' is required unless is_prn is true"
+            );
+        }
+        if ($isPrn) {
+            $frequency = null;
+        }
+
         $this->db->execute(
             'INSERT INTO hc_medicine_schedules
-                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose)
-             VALUES (?, ?, ?, ?, ?, ?)',
+                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
                 $data['patient_id'],
                 $data['medicine_id'],
                 $data['start_date'],
                 $data['end_date'] ?? null,
-                $data['frequency'],
+                $frequency,
                 $data['unit_per_dose'],
+                $isPrn ? 'Y' : 'N',
             ]
         );
 
@@ -108,8 +124,8 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
 
     private function selectAllColumns(): string
     {
-        return 'SELECT id, patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, created_at'
-            . ' FROM hc_medicine_schedules';
+        return 'SELECT id, patient_id, medicine_id, start_date, end_date, frequency, '
+            . 'unit_per_dose, is_prn, created_at FROM hc_medicine_schedules';
     }
 
     /**
@@ -119,14 +135,18 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
      */
     private static function hydrate(array $row): array
     {
+        $frequency = $row['frequency'];
+        $isPrn = isset($row['is_prn']) && (string) $row['is_prn'] === 'Y';
+
         return [
             'id' => (int) $row['id'],
             'patient_id' => (int) $row['patient_id'],
             'medicine_id' => (int) $row['medicine_id'],
             'start_date' => (string) $row['start_date'],
             'end_date' => $row['end_date'] === null ? null : (string) $row['end_date'],
-            'frequency' => (string) $row['frequency'],
+            'frequency' => $frequency === null || $frequency === '' ? null : (string) $frequency,
             'unit_per_dose' => (float) $row['unit_per_dose'],
+            'is_prn' => $isPrn,
             'created_at' => $row['created_at'] === null ? null : (string) $row['created_at'],
         ];
     }

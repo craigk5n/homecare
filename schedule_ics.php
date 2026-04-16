@@ -48,11 +48,15 @@ echo "BEGIN:VCALENDAR\r\n";
 echo "VERSION:2.0\r\n";
 echo "PRODID:-//k5n/medtrack//NONSGML v1.0//EN\r\n";
 
+// HC-120: PRN schedules have no cadence to express in iCal events.
 $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date,
         (SELECT GROUP_CONCAT(mi.taken_time ORDER BY mi.taken_time) FROM hc_medicine_intake mi WHERE mi.schedule_id = ms.id AND DATE(mi.taken_time) = ?) AS taken_times_today
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
-        WHERE ms.patient_id = ? AND (ms.start_date <= ? AND (ms.end_date IS NULL OR ms.end_date >= ?))
+        WHERE ms.patient_id = ?
+          AND ms.is_prn = 'N'
+          AND ms.frequency IS NOT NULL
+          AND (ms.start_date <= ? AND (ms.end_date IS NULL OR ms.end_date >= ?))
         ORDER BY ms.start_date ASC";
 $params = [$date, $patient_id, $date, $date];
 

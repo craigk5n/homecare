@@ -50,33 +50,43 @@ final class InventoryApi
         $today = ($clock)();
 
         // Active schedules for this medicine: sum unit_per_dose × doses/day.
+        // PRN schedules contribute no daily consumption (no cadence), so
+        // exclude them from the projected-days math -- the projection is
+        // "how long will stock last at scheduled rate of consumption."
         $schedRows = $this->db->query(
-            'SELECT id, patient_id, frequency, unit_per_dose
+            "SELECT id, patient_id, frequency, unit_per_dose, is_prn
              FROM hc_medicine_schedules
              WHERE medicine_id = ?
                AND start_date <= ?
-               AND (end_date IS NULL OR end_date >= ?)',
+               AND (end_date IS NULL OR end_date >= ?)",
             [$medicineId, $today, $today]
         );
 
         $totalDaily = 0.0;
         $schedules = [];
         foreach ($schedRows as $r) {
-            $freq = (string) $r['frequency'];
+            $isPrn = isset($r['is_prn']) && (string) $r['is_prn'] === 'Y';
             $upd = (float) $r['unit_per_dose'];
-            try {
-                $dailyForSched = $upd * (86400 / ScheduleCalculator::frequencyToSeconds($freq));
-            } catch (\InvalidArgumentException) {
-                // Corrupt/legacy frequency strings -- skip so one bad row
-                // doesn't break the whole endpoint.
-                continue;
+            $freq = $r['frequency'] === null ? null : (string) $r['frequency'];
+            $dailyForSched = 0.0;
+
+            if (!$isPrn && $freq !== null && $freq !== '') {
+                try {
+                    $dailyForSched = $upd * (86400 / ScheduleCalculator::frequencyToSeconds($freq));
+                } catch (\InvalidArgumentException) {
+                    // Corrupt/legacy frequency strings -- skip so one bad row
+                    // doesn't break the whole endpoint.
+                    continue;
+                }
+                $totalDaily += $dailyForSched;
             }
-            $totalDaily += $dailyForSched;
+
             $schedules[] = [
                 'schedule_id' => (int) $r['id'],
                 'patient_id' => (int) $r['patient_id'],
                 'frequency' => $freq,
                 'unit_per_dose' => $upd,
+                'is_prn' => $isPrn,
                 'daily_consumption' => $dailyForSched,
             ];
         }

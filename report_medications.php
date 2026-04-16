@@ -16,7 +16,7 @@ $patientName = $patient['name'];
 $showCompleted = !empty(getIntValue('show_completed'));
 $assumePastIntake = !empty(getIntValue('assume_past_intake'));
 
-$sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medicine_id,
+$sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medicine_id, ms.is_prn,
         (SELECT MAX(mi.taken_time) FROM hc_medicine_intake mi WHERE mi.schedule_id = ms.id) AS last_taken
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
@@ -32,10 +32,11 @@ foreach ($rawRows as $row) {
     $scheduleId = (int) $row[0];
     $medicineId = (int) $row[5];
     $name = (string) $row[1];
-    $frequency = (string) $row[2];
+    $frequency = $row[2] === null ? null : (string) $row[2];
     $startDate = (string) $row[3];
     $endDate = $row[4] === null ? null : (string) $row[4];
-    $lastTaken = $row[6] !== null ? formatDateNicely((string) $row[6]) : 'Not yet taken';
+    $isPrn = isset($row[6]) && $row[6] === 'Y';
+    $lastTaken = $row[7] !== null ? formatDateNicely((string) $row[7]) : 'Not yet taken';
 
     $remaining = dosesRemaining($medicineId, $scheduleId, $assumePastIntake, $startDate, $frequency);
     $days = (int) $remaining['remainingDays'];
@@ -45,6 +46,11 @@ foreach ($rawRows as $row) {
     if ($isEnded) {
         $remainText = sprintf('%s doses, %d days', $doses, $days);
         $sortKey = sprintf('Z-%06d %s', $days, $name);
+    } elseif ($isPrn) {
+        // HC-120: PRN schedules have no cadence, so "days of supply"
+        // is not a meaningful projection. Show doses only.
+        $remainText = $doses > 0 ? sprintf('%s doses (PRN)', $doses) : 'None (PRN)';
+        $sortKey = sprintf('Y-%06d %s', 0, $name);
     } else {
         $until = date('M j, Y', strtotime("+$days days"));
         $remainText = sprintf('Until %s — %s doses, %d days', $until, $doses, $days);
@@ -66,7 +72,7 @@ foreach ($rawRows as $row) {
 
     $rows[$sortKey] = [
         'name' => $name,
-        'frequency' => $frequency,
+        'frequency' => $isPrn ? 'PRN' : ($frequency ?? ''),
         'last_taken' => $lastTaken,
         'remain' => $remainText,
         'status' => $statusClass,

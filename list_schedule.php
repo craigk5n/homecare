@@ -33,7 +33,7 @@ if (!$showCompleted) {
 } else {
     $includeCompletedSql = '';
 }
-$sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medicine_id,
+$sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medicine_id, ms.is_prn,
         (SELECT MAX(mi.taken_time) FROM hc_medicine_intake mi WHERE mi.schedule_id = ms.id) AS last_taken
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
@@ -43,10 +43,15 @@ $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medic
 $rows = dbi_get_cached_rows($sql, [$patient_id]);
 
 // ── Build medication data and group by urgency ──
+// HC-120: PRN ("as-needed") schedules land in their own bucket — they
+// never compute a "next due" and never surface an Overdue badge. They
+// still accept Record-intake actions, so the row UI is otherwise the
+// same as a normal schedule.
 $groups = [
     'overdue'  => [],
     'due_soon' => [],
     'ok'       => [],
+    'prn'      => [],
     'done'     => [],
 ];
 
@@ -57,7 +62,8 @@ foreach ($rows as $row) {
     $start_date   = $row[3];
     $end_date     = $row[4];
     $medicine_id  = $row[5];
-    $lastTaken    = $row[6] ? $row[6] : null;
+    $isPrn        = isset($row[6]) && $row[6] === 'Y';
+    $lastTaken    = !empty($row[7]) ? $row[7] : null;
     $lastTakenNicely = formatDateNicely($lastTaken);
 
     $secondsUntilDue = null;
@@ -69,7 +75,23 @@ foreach ($rows as $row) {
 
     $remainingDoses = dosesRemaining($medicine_id, $schedule_id, $assumePastIntake, $start_date, $frequency);
 
-    if ($lastTaken) {
+    if ($isPrn) {
+        // PRN rows have no next-due, sort alphabetically within the PRN
+        // bucket so the list is stable regardless of last-intake time.
+        $nextDueLabel = 'PRN — no schedule';
+        $nextDueDetail = 'Take as needed';
+        $sortKey = 'PRN-' . strtolower($medName) . '-' . sprintf('%06d', $schedule_id);
+        $statusGroup = 'prn';
+        // Still honour end_date for PRN so an ended PRN schedule rolls
+        // into the Completed bucket like any other.
+        if (!empty($end_date) && $end_date < date('Y-m-d')) {
+            $isCompleted   = true;
+            $statusGroup   = 'done';
+            $nextDueLabel  = 'Completed';
+            $nextDueDetail = '';
+            $sortKey       = sprintf("999999-%06d", $schedule_id);
+        }
+    } elseif ($lastTaken) {
         $secondsUntilDue = calculateSecondsUntilDue($lastTaken, $frequency);
         $hours   = floor($secondsUntilDue / 3600);
         $minutes = floor(($secondsUntilDue % 3600) / 60);
@@ -124,11 +146,16 @@ foreach ($rows as $row) {
     $cadenceCheck = new \HomeCare\Service\CadenceCheck($intakesRepo, $schedulesRepo, $calc);
     $warningText = $cadenceCheck->getWarningText($schedule_id);
 
-    // Build remaining display
+    // Build remaining display. PRN schedules have no cadence, so the
+    // "(N days)" and "Until <date>" framings don't apply — show doses
+    // only, or "None" when stock is depleted.
     $days = $remainingDoses['remainingDays'];
     $futureDate = date('M j, Y', strtotime("+$days days"));
     if (empty($remainingDoses['remainingDoses'])) {
         $remainShort  = translate('None');
+        $remainDetail = '';
+    } elseif ($isPrn) {
+        $remainShort  = sprintf("%s doses", $remainingDoses['remainingDoses']);
         $remainDetail = '';
     } else {
         $doseCount    = $remainingDoses['remainingDoses'];
@@ -147,11 +174,11 @@ foreach ($rows as $row) {
     $entry = [
         'sortKey'         => $sortKey,
         'medName'         => $medName,
-        'frequency'       => $frequency,
+        'frequency'       => $isPrn ? 'PRN' : $frequency,
         'lastTakenNicely' => $lastTakenNicely,
         'nextDueLabel'    => $nextDueLabel,
         'nextDueDetail'   => $nextDueDetail,
-        'secondsUntilDue' => $secondsUntilDue,
+        'secondsUntilDue' => $isPrn ? null : $secondsUntilDue,
         'remainShort'     => $remainShort,
         'remainDetail'    => $remainDetail,
         'recordUrl'       => $recordUrl,
@@ -159,6 +186,7 @@ foreach ($rows as $row) {
         'adjustUrl'       => $adjustUrl,
         'statusGroup'     => $statusGroup,
         'isCompleted'     => $isCompleted,
+        'isPrn'           => $isPrn,
     ];
 
     $groups[$statusGroup][] = $entry;
@@ -253,6 +281,7 @@ $sectionConfig = [
     'overdue'  => ['label' => 'Overdue',   'sectionClass' => 'section-overdue',  'statusClass' => 'status-overdue',  'icon' => 'exclamation-triangle-fill'],
     'due_soon' => ['label' => 'Due Soon',  'sectionClass' => 'section-due-soon', 'statusClass' => 'status-due-soon', 'icon' => 'clock'],
     'ok'       => ['label' => 'Upcoming',  'sectionClass' => 'section-ok',       'statusClass' => 'status-ok',       'icon' => ''],
+    'prn'      => ['label' => 'As-Needed (PRN)', 'sectionClass' => 'section-ok', 'statusClass' => 'status-ok',       'icon' => ''],
     'done'     => ['label' => 'Completed', 'sectionClass' => 'section-done',     'statusClass' => 'status-done',     'icon' => 'check-circle'],
 ];
 
@@ -354,6 +383,9 @@ function renderCard($entry, $statusClass) {
     $html .= '<div class="card-due js-countdown"' . $dueAttr . '>' . $warningIcon;
     if ($entry['isCompleted']) {
         $html .= 'Completed';
+    } elseif (!empty($entry['isPrn'])) {
+        // PRN rows: no countdown, no "Due in ..." — just the static label.
+        $html .= htmlspecialchars($entry['nextDueLabel']);
     } else {
         $html .= htmlspecialchars($entry['nextDueLabel'] === 'Overdue' ? 'Overdue' : 'Due in ' . $entry['nextDueLabel']);
         if ($entry['nextDueDetail']) {
@@ -377,7 +409,7 @@ function renderCard($entry, $statusClass) {
 // ══════════════════════════════════════════
 echo '<div class="d-none d-md-block">';
 
-foreach (['overdue', 'due_soon', 'ok', 'done'] as $groupKey) {
+foreach (['overdue', 'due_soon', 'ok', 'prn', 'done'] as $groupKey) {
     $entries = $groups[$groupKey];
     if (empty($entries)) {
         continue;
@@ -420,7 +452,7 @@ foreach (['overdue', 'due_soon', 'ok', 'done'] as $groupKey) {
 }
 
 // If all groups empty
-$totalEntries = count($groups['overdue']) + count($groups['due_soon']) + count($groups['ok']) + count($groups['done']);
+$totalEntries = count($groups['overdue']) + count($groups['due_soon']) + count($groups['ok']) + count($groups['prn']) + count($groups['done']);
 if ($totalEntries === 0) {
     echo '<div class="alert alert-info mt-3">No medications scheduled for this patient.</div>';
 }
@@ -433,7 +465,7 @@ echo '</div>'; // close d-none d-md-block
 // ══════════════════════════════════════════
 echo '<div class="d-md-none">';
 
-foreach (['overdue', 'due_soon', 'ok', 'done'] as $groupKey) {
+foreach (['overdue', 'due_soon', 'ok', 'prn', 'done'] as $groupKey) {
     $entries = $groups[$groupKey];
     if (empty($entries)) {
         continue;

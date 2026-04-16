@@ -113,8 +113,10 @@ final class LateDoseAlertService
             return [];
         }
 
+        // HC-120: skip PRN schedules -- they have no expected cadence,
+        // so "late" is not a meaningful concept for them.
         $rows = $this->db->query(
-            'SELECT ms.id AS schedule_id, ms.frequency,
+            "SELECT ms.id AS schedule_id, ms.frequency,
                     m.name AS medicine_name, p.name AS patient_name,
                     (SELECT MAX(mi.taken_time)
                        FROM hc_medicine_intake mi
@@ -123,8 +125,10 @@ final class LateDoseAlertService
              JOIN hc_medicines m ON ms.medicine_id = m.id
              JOIN hc_patients p ON ms.patient_id = p.id
              WHERE ms.start_date <= ?
+               AND ms.is_prn = 'N'
+               AND ms.frequency IS NOT NULL
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
-             ORDER BY ms.id ASC',
+             ORDER BY ms.id ASC",
             [$today, $today]
         );
 

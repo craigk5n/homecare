@@ -6,6 +6,7 @@ namespace HomeCare\Tests\Integration\Repository;
 
 use HomeCare\Repository\ScheduleRepository;
 use HomeCare\Tests\Integration\DatabaseTestCase;
+use InvalidArgumentException;
 
 final class ScheduleRepositoryTest extends DatabaseTestCase
 {
@@ -71,7 +72,7 @@ final class ScheduleRepositoryTest extends DatabaseTestCase
         $rows = $this->repo->getActiveSchedules($this->patientId, '2026-04-13');
 
         $this->assertCount(2, $rows);
-        $frequencies = array_map(static fn (array $r): string => $r['frequency'], $rows);
+        $frequencies = array_map(static fn (array $r): ?string => $r['frequency'], $rows);
         sort($frequencies);
         $this->assertSame(['12h', '8h'], $frequencies);
     }
@@ -108,6 +109,84 @@ final class ScheduleRepositoryTest extends DatabaseTestCase
         // SQLite's UPDATE silently touches 0 rows; we still return true because
         // the statement executed without error. Higher layers check existence.
         $this->assertTrue($this->repo->endSchedule(9999, '2026-04-13'));
+    }
+
+    // HC-120: PRN schedules ---------------------------------------------
+
+    public function testCreateScheduleStoresPrnRowWithNullFrequency(): void
+    {
+        $id = $this->repo->createSchedule([
+            'patient_id' => $this->patientId,
+            'medicine_id' => $this->medicineId,
+            'start_date' => '2026-04-01',
+            'unit_per_dose' => 0.5,
+            'is_prn' => true,
+        ]);
+
+        $row = $this->repo->getScheduleById($id);
+        $this->assertNotNull($row);
+        $this->assertTrue($row['is_prn']);
+        $this->assertNull($row['frequency']);
+    }
+
+    public function testCreatePrnScheduleIgnoresCallerSuppliedFrequency(): void
+    {
+        // Caller may accidentally pass a frequency alongside is_prn — we
+        // still store NULL so downstream math reliably detects PRN.
+        $id = $this->repo->createSchedule([
+            'patient_id' => $this->patientId,
+            'medicine_id' => $this->medicineId,
+            'start_date' => '2026-04-01',
+            'frequency' => '8h',
+            'unit_per_dose' => 1.0,
+            'is_prn' => true,
+        ]);
+
+        $row = $this->repo->getScheduleById($id);
+        $this->assertNotNull($row);
+        $this->assertNull($row['frequency']);
+    }
+
+    public function testCreateScheduleRejectsMissingFrequencyForFixedCadence(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->repo->createSchedule([
+            'patient_id' => $this->patientId,
+            'medicine_id' => $this->medicineId,
+            'start_date' => '2026-04-01',
+            'unit_per_dose' => 1.0,
+        ]);
+    }
+
+    public function testFixedCadenceScheduleHasIsPrnFalse(): void
+    {
+        $id = $this->repo->createSchedule([
+            'patient_id' => $this->patientId,
+            'medicine_id' => $this->medicineId,
+            'start_date' => '2026-04-01',
+            'frequency' => '8h',
+            'unit_per_dose' => 1.0,
+        ]);
+        $row = $this->repo->getScheduleById($id);
+        $this->assertNotNull($row);
+        $this->assertFalse($row['is_prn']);
+        $this->assertSame('8h', $row['frequency']);
+    }
+
+    public function testGetActiveSchedulesIncludesPrnRows(): void
+    {
+        $this->repo->createSchedule([
+            'patient_id' => $this->patientId,
+            'medicine_id' => $this->medicineId,
+            'start_date' => '2026-03-01',
+            'unit_per_dose' => 0.5,
+            'is_prn' => true,
+        ]);
+
+        $rows = $this->repo->getActiveSchedules($this->patientId, '2026-04-13');
+        $this->assertCount(1, $rows);
+        $this->assertTrue($rows[0]['is_prn']);
+        $this->assertNull($rows[0]['frequency']);
     }
 
     private function seedPatient(string $name = 'Daisy'): int

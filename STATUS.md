@@ -2598,7 +2598,7 @@ than real-time pings.
 
 ### HC-108: Email delivery of exports
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: HC-104
@@ -2811,7 +2811,7 @@ tapers, specific wall-clock times, and pauses.
 
 ### HC-120: PRN / as-needed schedules
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-002
@@ -2821,19 +2821,38 @@ anxiety, seizure rescue). A schedule marked PRN should accept
 intake records but not compute "next due" or "overdue" — and not
 count against adherence.
 
+**Notes on implementation**:
+- `ScheduleCalculator` gained two nullable-input wrappers
+  (`calculateSecondsUntilDueOrNull`, `calculateNextDueDateOrNull`)
+  rather than changing the return types of the existing strict
+  methods. Existing callers are unaffected; PRN-aware code opts
+  into the nullable variants.
+- The `frequency` column in `hc_medicine_schedules` was relaxed
+  to `NULL`. PRN rows store `NULL` frequency and `is_prn='Y'`.
+  Non-PRN rows keep their existing `Nd/Nh/Nm` string;
+  `createSchedule()` enforces that fixed-cadence rows still
+  require a frequency.
+- All cadence-dependent subsystems filter out PRN at the SQL
+  level (`ms.is_prn = 'N' AND ms.frequency IS NOT NULL`):
+  send_reminders, LateDoseAlertService, SupplyAlertService,
+  schedule_daily, schedule_ics, report_missed, and
+  PatientAdherenceReport. The InventoryApi and
+  MedicationSummaryReport include PRN rows but show them with
+  `frequency='PRN'` and zero daily-consumption.
+
 **Acceptance Criteria**:
-- [ ] Migration: `hc_medicine_schedules.is_prn CHAR(1) NOT NULL
+- [x] Migration: `hc_medicine_schedules.is_prn CHAR(1) NOT NULL
       DEFAULT 'N'`
-- [ ] `add_to_schedule.php` gets a "Take as needed (PRN)" checkbox;
+- [x] `add_to_schedule.php` gets a "Take as needed (PRN)" checkbox;
       when checked, `frequency` input is hidden + stored as NULL
-- [ ] `ScheduleCalculator::calculateSecondsUntilDue()` and
+- [x] `ScheduleCalculator::calculateSecondsUntilDue()` and
       friends return null / special-case PRN schedules
-- [ ] `list_schedule.php` renders PRN rows with a dedicated status
+- [x] `list_schedule.php` renders PRN rows with a dedicated status
       ("PRN — no schedule") and no Overdue badge
-- [ ] `AdherenceService` skips PRN schedules (they have no
+- [x] `AdherenceService` skips PRN schedules (they have no
       expected-count)
-- [ ] `send_reminders.php` skips PRN schedules
-- [ ] Tests: PRN intake records correctly, no reminder fires,
+- [x] `send_reminders.php` skips PRN schedules
+- [x] Tests: PRN intake records correctly, no reminder fires,
       adherence excludes, math helpers return null
 
 ---

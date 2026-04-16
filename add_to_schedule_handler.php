@@ -18,15 +18,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($unit_per_dose)) {
         $unit_per_dose = 1.00;
     }
+    // HC-120: PRN ("as-needed") schedules store frequency as NULL so
+    // downstream math can short-circuit. Any caller-submitted frequency
+    // is discarded when the box is checked.
+    $is_prn = !empty(getPostValue('is_prn'));
+    if ($is_prn) {
+        $frequency = null;
+    }
 
-    // Validate the input
-    if (!empty($patient_id) && !empty($medicine_id) && !empty($start_date) && !empty($frequency)) {
+    // Validate the input -- frequency is required for fixed-cadence rows
+    // but must be absent for PRN rows (the form suppresses it via JS).
+    $frequencyValid = $is_prn ? true : !empty($frequency);
+    if (!empty($patient_id) && !empty($medicine_id) && !empty($start_date) && $frequencyValid) {
+        $prnFlag = $is_prn ? 'Y' : 'N';
         if (!empty($schedule_id)) {
             // Updating schedule
             $sql = "UPDATE hc_medicine_schedules SET " .
-                "patient_id = ?, medicine_id = ?, start_date = ?, end_date = ?, frequency = ?, unit_per_dose = ? " .
+                "patient_id = ?, medicine_id = ?, start_date = ?, end_date = ?, frequency = ?, unit_per_dose = ?, is_prn = ? " .
                 "WHERE id = ?";
-            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $schedule_id];
+            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $schedule_id];
             if (!dbi_execute($sql, $values)) {
                 echo "<p>Error updating schedule: " . dbi_error() . "</p>";
                 exit;
@@ -36,15 +46,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'medicine_id' => (int) $medicine_id,
                 'frequency' => $frequency,
                 'unit_per_dose' => (float) $unit_per_dose,
+                'is_prn' => $is_prn,
                 'start_date' => $start_date,
                 'end_date' => $end_date,
             ]);
         } else {
             // Adding schedule
             $sql = "INSERT INTO hc_medicine_schedules " .
-                "(patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose) " .
-                "VALUES (?, ?, ?, ?, ?, ?)";
-            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose];
+                "(patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn) " .
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
+            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag];
             if (!dbi_execute($sql, $values)) {
                 echo "<p>Error adding schedule: " . dbi_error() . "</p>";
                 exit;
@@ -55,6 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'medicine_id' => (int) $medicine_id,
                 'frequency' => $frequency,
                 'unit_per_dose' => (float) $unit_per_dose,
+                'is_prn' => $is_prn,
                 'start_date' => $start_date,
                 'end_date' => $end_date,
             ]);

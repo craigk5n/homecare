@@ -108,7 +108,7 @@ final class MedicationSummaryReport
     {
         $rows = $this->db->query(
             'SELECT ms.id, ms.medicine_id, m.name, m.dosage, ms.frequency,
-                    ms.unit_per_dose, ms.start_date, ms.end_date
+                    ms.unit_per_dose, ms.start_date, ms.end_date, ms.is_prn
              FROM hc_medicine_schedules ms
              JOIN hc_medicines m ON ms.medicine_id = m.id
              WHERE ms.patient_id = ?
@@ -122,6 +122,7 @@ final class MedicationSummaryReport
         foreach ($rows as $row) {
             $medicineId = (int) $row['medicine_id'];
             $scheduleId = (int) $row['id'];
+            $isPrn = isset($row['is_prn']) && (string) $row['is_prn'] === 'Y';
             $remaining = $this->inventory->calculateRemaining($medicineId, $scheduleId);
 
             $active[] = [
@@ -129,7 +130,7 @@ final class MedicationSummaryReport
                 'medicine_id' => $medicineId,
                 'medicine_name' => (string) $row['name'],
                 'dosage' => (string) $row['dosage'],
-                'frequency' => (string) $row['frequency'],
+                'frequency' => $isPrn ? 'PRN' : (string) ($row['frequency'] ?? ''),
                 'unit_per_dose' => (float) $row['unit_per_dose'],
                 'start_date' => (string) $row['start_date'],
                 'end_date' => $row['end_date'] === null ? null : (string) $row['end_date'],
@@ -156,7 +157,7 @@ final class MedicationSummaryReport
 
         $rows = $this->db->query(
             'SELECT ms.id, ms.medicine_id, m.name, m.dosage, ms.frequency,
-                    ms.unit_per_dose, ms.start_date, ms.end_date
+                    ms.unit_per_dose, ms.start_date, ms.end_date, ms.is_prn
              FROM hc_medicine_schedules ms
              JOIN hc_medicines m ON ms.medicine_id = m.id
              WHERE ms.patient_id = ?
@@ -169,12 +170,13 @@ final class MedicationSummaryReport
 
         $out = [];
         foreach ($rows as $row) {
+            $isPrn = isset($row['is_prn']) && (string) $row['is_prn'] === 'Y';
             $out[] = [
                 'schedule_id' => (int) $row['id'],
                 'medicine_id' => (int) $row['medicine_id'],
                 'medicine_name' => (string) $row['name'],
                 'dosage' => (string) $row['dosage'],
-                'frequency' => (string) $row['frequency'],
+                'frequency' => $isPrn ? 'PRN' : (string) ($row['frequency'] ?? ''),
                 'unit_per_dose' => (float) $row['unit_per_dose'],
                 'start_date' => (string) $row['start_date'],
                 'end_date' => (string) $row['end_date'],

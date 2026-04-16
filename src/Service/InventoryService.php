@@ -101,8 +101,13 @@ final class InventoryService
         $remainingDoses = max(0.0, $remainingAmount / $report['unitPerDose']);
         $report['remainingDoses'] = $remainingDoses;
 
+        // PRN (as-needed) schedules have no cadence, so "N days of supply"
+        // cannot be projected -- leave remainingDays at zero. The caller
+        // ($schedule['is_prn']) is the authoritative signal; a null
+        // frequency on a non-PRN schedule is a data bug, not a PRN row.
+        $isPrn = ($schedule['is_prn'] ?? false) === true;
         $freqForDays = $frequency ?? ($schedule['frequency'] ?? null);
-        if ($freqForDays !== null && $freqForDays !== '') {
+        if (!$isPrn && $freqForDays !== null && $freqForDays !== '') {
             $secondsPerDose = ScheduleCalculator::frequencyToSeconds($freqForDays);
             $dosesPerDay = 86400 / $secondsPerDose;
             $report['remainingDays'] = max(0, (int) floor($remainingDoses / $dosesPerDay));

@@ -28,18 +28,20 @@ $medicationsResult = dbi_query($medicationsSql);
 // If medicine id specified, load that
 if (!empty($medicine_id) && !empty($schedule_id)) {
   echo "<h2>Edit Medication to Patient Schedule</h2>\n";
-  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose FROM hc_medicine_schedules ' .
+  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn FROM hc_medicine_schedules ' .
     'WHERE patient_id = ? and medicine_id = ? AND id = ?';
   $rows = dbi_get_cached_rows($sql, [$patient_id, $medicine_id, $schedule_id]);
   $start_date = $rows[0][1];
   $end_date = $rows[0][2];
   $frequency = $rows[0][3];
   $unit_per_dose = $rows[0][4];
+  $is_prn = ($rows[0][5] ?? 'N') === 'Y';
 } else {
   echo "<h2>Add Medication to Patient Schedule</h2>\n";
   $start_date = $end_date = '';
   $frequency = '1d'; // default
   $unit_per_dose = '1.00';
+  $is_prn = false;
 }
 
 echo "<div class='container mt-3'>\n";
@@ -88,7 +90,17 @@ echo "<input type='date' name='end_date' id='end_date' class='form-control'" .
   ">\n";
 echo "</div>\n";
 
-echo "<div class='form-group'>\n";
+// HC-120: PRN (as-needed) schedules have no fixed cadence. When the
+// checkbox is on, the frequency dropdown is hidden (the browser won't
+// submit its value, so the handler sees it as empty and stores NULL).
+echo "<div class='form-group form-check'>\n";
+echo "<input type='checkbox' class='form-check-input' name='is_prn' id='is_prn' value='1'"
+  . ($is_prn ? ' checked' : '') . ">\n";
+echo "<label class='form-check-label' for='is_prn'>Take as needed (PRN) "
+  . "&mdash; no schedule, no reminders</label>\n";
+echo "</div>\n";
+
+echo "<div class='form-group' id='frequency-group'" . ($is_prn ? " style='display:none'" : '') . ">\n";
 echo "<label for='frequency'>Frequency:</label>\n";
 echo "<select name='frequency' id='frequency' class='form-control'>\n";
 foreach ($frequencies as $value => $description) {
@@ -97,6 +109,33 @@ foreach ($frequencies as $value => $description) {
 }
 echo "</select>\n";
 echo "</div>\n";
+
+// Show/hide the frequency row in response to the PRN checkbox. No
+// network call; pure DOM toggle. When PRN is on, we also clear the
+// `name` attribute on the <select> so the browser omits it from the
+// submitted form and the handler treats frequency as absent.
+echo <<<HTML
+<script>
+(function () {
+  var box = document.getElementById('is_prn');
+  var wrap = document.getElementById('frequency-group');
+  var sel = document.getElementById('frequency');
+  if (!box || !wrap || !sel) return;
+  function sync() {
+    if (box.checked) {
+      wrap.style.display = 'none';
+      sel.removeAttribute('name');
+    } else {
+      wrap.style.display = '';
+      sel.setAttribute('name', 'frequency');
+    }
+  }
+  box.addEventListener('change', sync);
+  sync();
+})();
+</script>
+HTML;
+
 
 echo "<div class='form-group'>\n";
 echo "<label for='unit_per_dose'>Unit Per Dose:</label>\n";

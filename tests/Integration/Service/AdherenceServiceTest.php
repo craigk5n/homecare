@@ -220,4 +220,32 @@ final class AdherenceServiceTest extends DatabaseTestCase
         $this->assertSame(4, $result['actual'], 'actual must exclude intakes before schedule start');
         $this->assertSame(66.7, $result['percentage']);
     }
+
+    public function testPrnScheduleIsExcludedFromAdherence(): void
+    {
+        // HC-120: PRN schedules have no expected cadence, so adherence is
+        // not a meaningful metric for them. The service must report zeros
+        // (with coverage_days=0 so the UI renders "N/A") regardless of
+        // how many intakes were recorded.
+        $db = $this->getDb();
+        $prnSched = (new ScheduleFactory($db))->create([
+            'patient_id' => 1,
+            'medicine_id' => 1,
+            'start_date' => '2026-04-01',
+            'is_prn' => true,
+            'unit_per_dose' => 0.5,
+        ])['id'];
+
+        foreach (['2026-04-02 10:00:00', '2026-04-05 14:00:00', '2026-04-06 20:00:00'] as $t) {
+            $this->intakes->create(['schedule_id' => $prnSched, 'taken_time' => $t]);
+        }
+
+        $result = $this->service->calculateAdherence($prnSched, '2026-04-01', '2026-04-07');
+
+        $this->assertSame(0, $result['expected']);
+        $this->assertSame(0, $result['actual']);
+        $this->assertSame(0.0, $result['percentage']);
+        $this->assertSame(0, $result['coverage_days']);
+        $this->assertSame(7, $result['window_days']);
+    }
 }

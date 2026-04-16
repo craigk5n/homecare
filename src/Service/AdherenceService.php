@@ -64,10 +64,22 @@ final class AdherenceService
             return self::empty($windowDays);
         }
 
-        $effectiveStart = $startDate > $schedule['start_date'] ? $startDate : $schedule['start_date'];
+        // PRN (as-needed) schedules have no expected cadence -- excluding
+        // them from adherence keeps the percentage honest. Returning an
+        // empty report with coverage_days=0 matches the "schedule wasn't
+        // active in this window" convention, which callers already handle
+        // as "N/A".
+        $frequency = $schedule['frequency'];
+        if ($schedule['is_prn'] || $frequency === null) {
+            return self::empty($windowDays);
+        }
+
+        $schedStart = $schedule['start_date'];
+        $schedEnd = $schedule['end_date'];
+        $effectiveStart = $startDate > $schedStart ? $startDate : $schedStart;
         $effectiveEnd = $endDate;
-        if ($schedule['end_date'] !== null && $schedule['end_date'] < $endDate) {
-            $effectiveEnd = $schedule['end_date'];
+        if ($schedEnd !== null && $schedEnd < $endDate) {
+            $effectiveEnd = $schedEnd;
         }
 
         $expected = 0;
@@ -76,18 +88,11 @@ final class AdherenceService
         if ($effectiveStart <= $effectiveEnd) {
             $coverageDays = self::inclusiveDayCount($effectiveStart, $effectiveEnd);
             if ($coverageDays > 0) {
-                $secondsPerDose = ScheduleCalculator::frequencyToSeconds($schedule['frequency']);
+                $secondsPerDose = ScheduleCalculator::frequencyToSeconds($frequency);
                 $dosesPerDay = 86400 / $secondsPerDose;
                 $expected = (int) round($coverageDays * $dosesPerDay);
             }
 
-            // Count actual intakes inside the SAME clamped window used
-            // for expected. Using the raw query window would credit
-            // intakes recorded before the schedule started (or after it
-            // ended) to this schedule, which surfaces as noisy >100%
-            // figures on newly-started schedules where a caregiver
-            // backdated intakes from a prior schedule into the same
-            // query range.
             $actual = $this->intakes->countIntakesBetween(
                 $scheduleId,
                 $effectiveStart . ' 00:00:00',

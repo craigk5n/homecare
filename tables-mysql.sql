@@ -94,15 +94,17 @@ CREATE TABLE `hc_medicine_inventory` (
 
 
 /* Prescription: links a product to a patient with dosing instructions.
-   unit_per_dose and frequency are authoritative here (not on hc_medicines). */
+   unit_per_dose is authoritative here (not on hc_medicines).
+   frequency is NULL for PRN ("as-needed") schedules (HC-120). */
 CREATE TABLE `hc_medicine_schedules` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `patient_id` INT NOT NULL,
   `medicine_id` INT NOT NULL,
   `start_date` DATE NOT NULL,
   `end_date` DATE,
-  `frequency` VARCHAR(255) NOT NULL,
+  `frequency` VARCHAR(255) NULL,
   `unit_per_dose` DECIMAL(10, 2) NOT NULL DEFAULT 1.00,
+  `is_prn` CHAR(1) NOT NULL DEFAULT 'N',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`patient_id`) REFERENCES `hc_patients`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`medicine_id`) REFERENCES `hc_medicines`(`id`) ON DELETE CASCADE

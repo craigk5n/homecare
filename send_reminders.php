@@ -67,11 +67,16 @@ foreach ($patients as $patient) {
     $patient_id = $patient['id'];
     $patient_name = $patient['name'];
 
+    // HC-120: PRN rows have no cadence, so `ms.is_prn = 'N'` excludes
+    // them from the reminder fan-out entirely -- the cron job has
+    // nothing to remind about until a caregiver takes one voluntarily.
     $sql = "SELECT ms.id, m.name, ms.frequency,
             (SELECT MAX(mi.taken_time) FROM hc_medicine_intake mi WHERE mi.schedule_id = ms.id) AS last_taken
             FROM hc_medicine_schedules ms
             JOIN hc_medicines m ON ms.medicine_id = m.id
             WHERE ms.patient_id = ?
+            AND ms.is_prn = 'N'
+            AND ms.frequency IS NOT NULL
             AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())";
     $schedules = dbi_get_cached_rows($sql, [$patient_id]);
 
@@ -79,7 +84,7 @@ foreach ($patients as $patient) {
         $lastTaken = $schedule[3];
         $frequency = $schedule[2];
 
-        if (!$lastTaken) {
+        if (!$lastTaken || $frequency === null || $frequency === '') {
             continue;
         }
 

@@ -21,11 +21,15 @@ $patient = getPatient($patient_id);
 print_header();
 
 // Walk each schedule's intake history, collect deviations.
-$schedulesSql = 'SELECT ms.id, m.name, ms.frequency
+// HC-120: skip PRN (as-needed) schedules — they have no cadence, so
+// "late" and "missed" are not meaningful.
+$schedulesSql = "SELECT ms.id, m.name, ms.frequency
                  FROM hc_medicine_schedules ms
                  JOIN hc_medicines m ON ms.medicine_id = m.id
                  WHERE ms.patient_id = ?
-                 ORDER BY m.name ASC';
+                   AND ms.is_prn = 'N'
+                   AND ms.frequency IS NOT NULL
+                 ORDER BY m.name ASC";
 $schedules = dbi_get_cached_rows($schedulesSql, [$patient_id]);
 
 $rows = []; // list<['name','frequency','prev','expected','actual','status']>
