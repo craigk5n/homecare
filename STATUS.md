@@ -2479,7 +2479,7 @@ permanently-overdue schedule doesn't fire hourly forever.
 
 ### HC-106: Security-event email notifications
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-104
@@ -2489,24 +2489,54 @@ should reach the account owner out-of-band so a compromised
 session can't silently degrade security. Pipe existing audit
 write-points through the email channel with a tight template.
 
+**Notes on implementation**:
+- `SecurityNotifier` is intentionally caller-driven — no pub/sub,
+  no audit-log subscription magic. Each audit write site that
+  should trigger an email invokes `notify($login, $event)`
+  inline. Explicit, greppable, and trivially tested.
+- Gating is intentionally NOT on `hc_user.email_notifications`
+  (that's for reminders). Security emails reach the account
+  owner even if they muted pings — the threat model calls for
+  breach notification, not noise control.
+- `AuthResult` grew a `justLockedOut` flag that the lockout
+  path sets to `true` ONLY on the attempt that actually tripped
+  `applyLockout`. Subsequent attempts while locked keep the
+  flag false. login.php fires the lockout email from this
+  edge-trigger, never on every attempt.
+- New-IP detection reads the stored `hc_user.last_login_ip`
+  BEFORE writing the new one, so the email body can quote both.
+  First successful login ever (previous_ip === null) does NOT
+  fire — the whole point is flagging changes, and everyone has
+  a first login.
+- Same check path runs for TOTP-verified logins (they go
+  through the shared `$completeLogin` closure) and for TOTP
+  failures that trip lockout.
+- `isEnabled()` is fail-OPEN: missing row or stray value = on.
+  Only literal `'N'` suppresses. Under-alerting on security
+  emails is the worse failure mode.
+- Transport exceptions are swallowed into `error_log()` — the
+  audit row remains the authoritative record if SMTP is down.
+
 **Acceptance Criteria**:
-- [ ] Emails fire for each of: `totp.disabled`,
-      `password.changed`, `apikey.generated`, `apikey.revoked`,
-      `user.login_failed` (only when a lockout just tripped, not
-      every failed attempt), `user.login` from a new IP (first
-      seen vs `hc_user.last_login_ip`).
-- [ ] New column `hc_user.last_login_ip VARCHAR(45) NULL` (IPv6-
-      wide) for the new-IP check.
-- [ ] Messages are short, actionable, and link back to
-      `settings.php` so the user can verify or react.
-- [ ] Fire-and-forget — a transient SMTP failure logs but does
-      NOT block the underlying action (the audit row is the
-      authoritative record).
-- [ ] `hc_config.security_email_enabled` master toggle (default
-      `'Y'`) so an operator can mute these globally during a
-      known-noisy migration.
-- [ ] Integration test: each trigger produces exactly one
-      dispatch with the expected subject / body.
+- [x] Emails fire for each of: `totp_disabled`,
+      `password_changed`, `apikey_generated`, `apikey_revoked`,
+      `login_lockout` (edge-triggered via
+      `AuthResult::justLockedOut`, not on every failed attempt),
+      `login_new_ip` (via stored `hc_user.last_login_ip`).
+- [x] New column `hc_user.last_login_ip VARCHAR(45) NULL`
+      (migration 016, applied live).
+- [x] Messages are short, actionable, and include a link back
+      to `settings.php` for verification.
+- [x] Fire-and-forget — `SecurityNotifier::notify()` swallows
+      every Throwable into `error_log()`; the underlying action
+      (login, password change, etc.) never blocks.
+- [x] `hc_config.security_email_enabled` master toggle (defaults
+      ON when the row is absent). Set to `'N'` to mute.
+- [x] Integration tests (11): each trigger dispatches with the
+      expected subject/body, master-toggle-off skips, missing
+      email skips, unknown user skips, unknown event no-ops,
+      transport failure is swallowed. Plus 1 AuthService test
+      covering the edge-triggered `justLockedOut` flag.
 
 ---
 

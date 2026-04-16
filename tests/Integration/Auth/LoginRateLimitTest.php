@@ -62,6 +62,29 @@ final class LoginRateLimitTest extends DatabaseTestCase
         $this->assertNotNull($row['locked_until']);
     }
 
+    public function testJustLockedOutFlagIsEdgeTriggered(): void
+    {
+        $auth = $this->auth();
+
+        // Attempts 1–4: failed, not yet locked.
+        for ($i = 0; $i < 4; $i++) {
+            $r = $auth->attemptLogin('alice', 'wrong');
+            $this->assertFalse($r->justLockedOut,
+                "attempt {$i} should not be flagged as just-locked-out");
+        }
+
+        // Attempt 5: this is the one that trips the lockout.
+        $fifth = $auth->attemptLogin('alice', 'wrong');
+        $this->assertTrue($fifth->justLockedOut,
+            'the Nth failure that trips applyLockout must be edge-triggered');
+
+        // Subsequent attempts while locked must NOT re-fire the flag,
+        // otherwise the security email would fire on every attempt.
+        $sixth = $auth->attemptLogin('alice', 'wrong');
+        $this->assertFalse($sixth->justLockedOut,
+            'already-locked attempts must not re-fire justLockedOut');
+    }
+
     public function testLoginAttemptWhileLockedIsRejected(): void
     {
         $auth = $this->auth();

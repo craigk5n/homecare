@@ -21,8 +21,11 @@ require_once __DIR__ . '/includes/homecare.php';
 
 use HomeCare\Auth\AuthService;
 use HomeCare\Auth\PasswordHasher;
+use HomeCare\Auth\SecurityNotifier;
 use HomeCare\Auth\TotpService;
+use HomeCare\Config\EmailConfig;
 use HomeCare\Database\DbiAdapter;
+use HomeCare\Notification\EmailChannel;
 use HomeCare\Repository\UserRepository;
 
 do_config();
@@ -49,13 +52,39 @@ if (!empty($_SESSION['hc_login'])) {
 }
 
 $totpService = new TotpService();
+$db = new DbiAdapter();
+$userRepo = new UserRepository($db);
 $auth = new AuthService(
-    new UserRepository(new DbiAdapter()),
+    $userRepo,
     new PasswordHasher(),
     totp: $totpService
 );
 $error = null;
 $prefillLogin = '';
+
+// HC-106: out-of-band security-event emails. Reuses the HC-101
+// EmailChannel; no-ops when SMTP isn't configured.
+$securityNotifier = new SecurityNotifier(
+    $db,
+    $userRepo,
+    new EmailChannel(new EmailConfig($db)),
+    baseUrl: (!empty($_SERVER['HTTPS']) ? 'https' : 'http')
+        . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+        . rtrim(dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/')), '/'),
+);
+
+/** Best-effort IP resolver. X-Forwarded-For first token if set. */
+$resolveClientIp = static function (): ?string {
+    $xff = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? null;
+    if (is_string($xff) && $xff !== '') {
+        $first = trim(explode(',', $xff)[0]);
+        if ($first !== '') {
+            return $first;
+        }
+    }
+    $remote = $_SERVER['REMOTE_ADDR'] ?? null;
+    return is_string($remote) && $remote !== '' ? $remote : null;
+};
 
 /**
  * Finalise a successful login. Shared by the password path (no 2FA)
@@ -64,7 +93,7 @@ $prefillLogin = '';
 $completeLogin = static function (
     \HomeCare\Auth\AuthResult $result,
     bool $remember
-): void {
+) use ($userRepo, $securityNotifier, $resolveClientIp): void {
     if ($result->user === null) {
         return;
     }
@@ -81,6 +110,23 @@ $completeLogin = static function (
     ]);
     if ($result->usedRecoveryCode) {
         audit_log('totp.verified_recovery_code_used', 'user', null, []);
+    }
+
+    // HC-106: new-IP detection. Compare the incoming IP against the
+    // column we last stored, email the user on any change, then
+    // update. Order matters: fire BEFORE we overwrite the column
+    // so the email can quote both values.
+    $currentIp = $resolveClientIp();
+    $previousIp = $result->user['last_login_ip'] ?? null;
+    if ($currentIp !== null && $previousIp !== null && $currentIp !== $previousIp) {
+        $securityNotifier->notify(
+            $result->user['login'],
+            SecurityNotifier::EVENT_LOGIN_NEW_IP,
+            ['ip' => $currentIp, 'previous_ip' => $previousIp]
+        );
+    }
+    if ($currentIp !== null) {
+        $userRepo->updateLastLoginIp($result->user['login'], $currentIp);
     }
 
     if ($remember && $result->rememberToken !== null && $result->rememberExpires !== null) {
@@ -120,7 +166,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['totp_code']) && $pend
     audit_log('totp.verification_failed', 'user', null, [
         'attempted_login' => $pendingLogin,
         'reason' => $result->reason,
+        'just_locked_out' => $result->justLockedOut,
     ]);
+
+    if ($result->justLockedOut) {
+        $securityNotifier->notify(
+            $pendingLogin,
+            SecurityNotifier::EVENT_LOGIN_LOCKOUT
+        );
+    }
 
     $error = match ($result->reason) {
         'account_disabled' => 'This account has been disabled.',
@@ -150,7 +204,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['totp_code']) && $pend
         audit_log('user.login_failed', 'user', null, [
             'attempted_login' => $login,
             'reason' => $result->reason,
+            'just_locked_out' => $result->justLockedOut,
         ]);
+
+        // HC-106: the attempt that just tripped the lockout sends a
+        // security email to the real account holder. Subsequent
+        // failures while locked don't re-fire -- justLockedOut is
+        // edge-triggered.
+        if ($result->justLockedOut) {
+            $securityNotifier->notify(
+                $login,
+                SecurityNotifier::EVENT_LOGIN_LOCKOUT
+            );
+        }
 
         $error = match ($result->reason) {
             'account_disabled' => 'This account has been disabled.',

@@ -46,6 +46,9 @@ CREATE TABLE hc_user (
   /* Per-user channel preference: JSON array of channel names, e.g.
    * ["ntfy","email"]. Empty array ⇒ fall back to system default (HC-103). */
   notification_channels TEXT NOT NULL DEFAULT ('[]'),
+  /* Last IP we saw on a successful login (HC-106 new-IP alerts).
+   * VARCHAR(45) is wide enough for IPv4-mapped IPv6. */
+  last_login_ip VARCHAR(45) NULL,
   PRIMARY KEY (login)
 );
 

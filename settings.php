@@ -24,6 +24,7 @@ use HomeCare\Auth\ApiKeyAuth;
 use HomeCare\Auth\Authorization;
 use HomeCare\Auth\PasswordHasher;
 use HomeCare\Auth\PasswordPolicy;
+use HomeCare\Auth\SecurityNotifier;
 use HomeCare\Auth\TotpService;
 use HomeCare\Config\EmailConfig;
 use HomeCare\Config\NtfyConfig;
@@ -68,6 +69,14 @@ $myChannels->register(new WebhookChannel(
 ));
 $passwordHasher = new PasswordHasher();
 $passwordPolicy = new PasswordPolicy($db);
+$securityNotifier = new SecurityNotifier(
+    $db,
+    $users,
+    new EmailChannel($emailConfig),
+    baseUrl: (!empty($_SERVER['HTTPS']) ? 'https' : 'http')
+        . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+        . rtrim(dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/')), '/'),
+);
 /** @var string $login */
 $login = $GLOBALS['login'];
 $currentRole = getCurrentUserRole();
@@ -85,10 +94,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $freshKey = ApiKeyAuth::generateRawKey();
         $users->updateApiKeyHash($login, ApiKeyAuth::hashKey($freshKey));
         audit_log('apikey.generated', 'user');
+        $securityNotifier->notify($login, SecurityNotifier::EVENT_APIKEY_GENERATED);
         $flash = ['type' => 'success', 'text' => 'New API key generated. Copy it now -- it will not be shown again.'];
     } elseif ($action === 'revoke') {
         $users->updateApiKeyHash($login, null);
         audit_log('apikey.revoked', 'user');
+        $securityNotifier->notify($login, SecurityNotifier::EVENT_APIKEY_REVOKED);
         $flash = ['type' => 'warning', 'text' => 'API key revoked. Any clients using it will start returning 401 immediately.'];
     } elseif ($action === 'begin_totp') {
         $enrollSecret = $totpService->generateSecret();
@@ -173,6 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $users->disableTotp($login);
             audit_log('totp.disabled', 'user');
+            $securityNotifier->notify($login, SecurityNotifier::EVENT_TOTP_DISABLED);
             $flash = ['type' => 'warning', 'text' => '2FA disabled for your account.'];
         }
     } elseif ($action === 'change_password') {
@@ -203,6 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // can't outlive the password change.
                 $users->updateRememberToken($login, null, null);
                 audit_log('password.changed', 'user');
+                $securityNotifier->notify($login, SecurityNotifier::EVENT_PASSWORD_CHANGED);
                 $flash = [
                     'type' => 'success',
                     'text' => 'Password updated. Existing "remember me" sessions have been signed out.',

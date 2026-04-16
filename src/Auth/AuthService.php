@@ -77,14 +77,25 @@ final class AuthService
 
         if (!$this->hasher->verify($password, $user['passwd'])) {
             $attempts = $this->users->incrementFailedAttempts($user['login']);
+            $justLockedOut = false;
             if ($attempts >= self::MAX_FAILED_ATTEMPTS) {
                 $this->users->applyLockout(
                     $user['login'],
                     date('Y-m-d H:i:s', $now + self::LOCKOUT_MINUTES * 60)
                 );
+                // Flag the edge-triggered lockout so the caller can
+                // fire the security email exactly once. `attempts`
+                // keeps climbing on subsequent failures but
+                // `locked_until` is re-evaluated each time -- we
+                // cannot trust count() >= N alone.
+                $justLockedOut = $attempts === self::MAX_FAILED_ATTEMPTS;
             }
 
-            return AuthResult::fail('invalid_credentials');
+            return new AuthResult(
+                success: false,
+                reason: 'invalid_credentials',
+                justLockedOut: $justLockedOut,
+            );
         }
 
         // Successful password: clear the lockout counter.
@@ -162,14 +173,20 @@ final class AuthService
         // step is bounded by the same MAX_FAILED_ATTEMPTS ceiling as
         // the password step.
         $attempts = $this->users->incrementFailedAttempts($user['login']);
+        $justLockedOut = false;
         if ($attempts >= self::MAX_FAILED_ATTEMPTS) {
             $this->users->applyLockout(
                 $user['login'],
                 date('Y-m-d H:i:s', $now + self::LOCKOUT_MINUTES * 60)
             );
+            $justLockedOut = $attempts === self::MAX_FAILED_ATTEMPTS;
         }
 
-        return AuthResult::fail('invalid_totp');
+        return new AuthResult(
+            success: false,
+            reason: 'invalid_totp',
+            justLockedOut: $justLockedOut,
+        );
     }
 
     /**

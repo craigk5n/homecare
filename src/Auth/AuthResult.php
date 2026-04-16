@@ -31,6 +31,14 @@ final class AuthResult
         public readonly ?string $rememberToken = null,
         public readonly ?int $rememberExpires = null,
         public readonly bool $usedRecoveryCode = false,
+        /**
+         * True when THIS attempt is the one that tripped the
+         * failed-attempts lockout (i.e. the Nth failure that
+         * applied `locked_until`). Callers use it to fire a
+         * one-shot "your account was just locked" security
+         * email without re-firing on every subsequent attempt.
+         */
+        public readonly bool $justLockedOut = false,
     ) {
     }
 

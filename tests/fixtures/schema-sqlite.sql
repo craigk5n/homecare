@@ -33,6 +33,7 @@ CREATE TABLE hc_user (
   totp_recovery_codes TEXT NULL,
   email_notifications CHAR(1) NOT NULL DEFAULT 'N',
   notification_channels TEXT NOT NULL DEFAULT ('[]'),
+  last_login_ip VARCHAR(45) NULL,
   PRIMARY KEY (login)
 );
 

@@ -207,6 +207,16 @@ final class UserRepository implements UserRepositoryInterface
         ), static fn (string $v): bool => $v !== ''));
     }
 
+    public function updateLastLoginIp(string $login, ?string $ip): bool
+    {
+        $stored = $ip === null || trim($ip) === '' ? null : trim($ip);
+
+        return $this->db->execute(
+            'UPDATE hc_user SET last_login_ip = ? WHERE login = ?',
+            [$stored, $login]
+        );
+    }
+
     public function updateNotificationChannels(string $login, array $channelNames): bool
     {
         // Defensive: filter to strings, drop duplicates, reindex so the
@@ -246,7 +256,8 @@ final class UserRepository implements UserRepositoryInterface
             . 'remember_token, remember_token_expires, '
             . 'failed_attempts, locked_until, api_key_hash, '
             . 'totp_secret, totp_enabled, totp_recovery_codes, '
-            . 'email_notifications, notification_channels FROM hc_user';
+            . 'email_notifications, notification_channels, '
+            . 'last_login_ip FROM hc_user';
     }
 
     /**
@@ -275,6 +286,8 @@ final class UserRepository implements UserRepositoryInterface
                 ? null : (string) $row['totp_recovery_codes'],
             'email_notifications' => (string) ($row['email_notifications'] ?? 'N'),
             'notification_channels' => (string) ($row['notification_channels'] ?? '[]'),
+            'last_login_ip' => $row['last_login_ip'] === null
+                ? null : (string) $row['last_login_ip'],
         ];
     }
 }

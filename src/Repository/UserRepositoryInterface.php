@@ -23,7 +23,8 @@ namespace HomeCare\Repository;
  *     totp_enabled:string,
  *     totp_recovery_codes:?string,
  *     email_notifications:string,
- *     notification_channels:string
+ *     notification_channels:string,
+ *     last_login_ip:?string
  * }
  */
 interface UserRepositoryInterface
@@ -150,4 +151,11 @@ interface UserRepositoryInterface
      * @return list<string>
      */
     public function getEmailSubscribers(): array;
+
+    /**
+     * Record the IP this user just successfully logged in from.
+     * Callers read the previous value first with
+     * `findByLogin()['last_login_ip']` so a new-IP email can fire.
+     */
+    public function updateLastLoginIp(string $login, ?string $ip): bool;
 }
