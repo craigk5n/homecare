@@ -1,6 +1,6 @@
 # STATUS.md -- Project Backlog & Progress
 
-*Last updated: 2026-04-13*
+*Last updated: 2026-04-16*
 
 This file tracks epics, stories, and progress using a Jira-style format.
 All development follows **Test-Driven Development (TDD)**: write tests first (RED),
@@ -1464,6 +1464,901 @@ need periodic refresh. Automate it.
 
 ---
 
+## EPIC-8: Caregiver Notes UX
+
+**Goal**: `hc_caregiver_notes` has existed at the schema level since
+day one but has no UI for creating, browsing, editing, or importing
+entries. A real caregiver has existing notes in an external file and
+needs both a UI to write new notes and a one-shot import path to
+load the historical batch.
+
+**Priority**: HIGH -- user has data waiting to be ingested and no
+way to enter new notes today.
+
+**Depends on**: HC-004 (repository pattern), HC-011 (role gating),
+HC-013 (audit logging)
+
+---
+
+### HC-082: Caregiver notes entry & edit UI
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-004, HC-011, HC-013
+
+**Description**: Add a page for caregivers to write a new note against
+a patient, edit an existing note, and delete one. The table already
+carries `patient_id`, `note` (text), `note_time` (when the event
+occurred, user-editable), and `created_at` (immutable).
+
+**Acceptance Criteria**:
+- [ ] `src/Repository/CaregiverNoteRepository.php` with
+      `create(int $patientId, string $note, string $noteTime): int`,
+      `update(int $id, string $note, string $noteTime): bool`,
+      `delete(int $id): bool`, `getById(int $id): ?array`,
+      `getForPatient(int $patientId, int $limit = 50, int $offset = 0): array`
+- [ ] `note_caregiver.php` (entry / edit) with fields:
+      patient (prefilled + editable when `patient_id` in query),
+      note (textarea, required, 4000 char max),
+      note_time (datetime-local, defaults to now)
+- [ ] CSRF-protected form handler `note_caregiver_handler.php`
+- [ ] Role gate: `require_role('caregiver')` (viewers cannot write)
+- [ ] Audit log entries: `note.created`, `note.updated`, `note.deleted`
+      with `details = {patient_id, note_time, note_len}`
+- [ ] Menu entry ("Notes") under the patient-context menu
+- [ ] `tests/Integration/Repository/CaregiverNoteRepositoryTest.php`
+      covers CRUD round-trip + getForPatient ordering (newest-first)
+
+---
+
+### HC-083: Caregiver notes list / browse view
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 2
+**Depends on**: HC-082
+
+**Description**: Per-patient notes list page with filter + pagination.
+Entries render newest-first with the `note_time` (when the caregiver
+observed the event) shown prominently and `created_at` (when the
+record was written) as a secondary subtitle. Viewers can read; only
+caregivers/admins see Edit / Delete affordances.
+
+**Acceptance Criteria**:
+- [ ] `list_caregiver_notes.php?patient_id=N` with:
+      - Patient name in sticky header
+      - Card (mobile) + table (desktop) dual layout per the HC-061
+        pattern
+      - Date-range filter (start/end `note_time`)
+      - Free-text search across `note` (LIKE %q%)
+      - 50-per-page pagination
+- [ ] Edit / Delete buttons per row, hidden for `viewer` role
+- [ ] Link from `list_schedule.php` sticky header: "Notes"
+- [ ] Print-optimized stylesheet (hide controls, keep body text)
+- [ ] Integration test: filter + pagination narrow correctly
+
+---
+
+### HC-084: Caregiver notes CSV import
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-082
+
+**Description**: One-shot import path for a caregiver with existing
+notes in an external file. Accepts CSV (or tab-separated) with a
+header row; columns `note_time` and `note` are required, `patient_id`
+or `patient_name` picks the patient. A preview step shows what will
+be inserted before commit so the operator can catch column-mapping
+errors before they land in the DB.
+
+**Acceptance Criteria**:
+- [ ] `import_caregiver_notes.php` (admin-only, `require_role('admin')`):
+      - File upload (max 2 MB, `.csv` / `.tsv` / `.txt` MIME check)
+      - Auto-detect delimiter (comma / tab / semicolon) from first line
+      - Header row required; accepted columns: `note_time`, `note`,
+        and one of (`patient_id` | `patient_name`)
+      - Default `patient_id` query param applies when column absent
+- [ ] Preview step: table of parsed rows (first 100) + row-count +
+      row-level validation errors ("Row 7: no patient matched
+      'Fozzie the Cat'"). Import commits only after explicit
+      confirmation.
+- [ ] `note_time` parser accepts ISO 8601 (`2026-04-01T14:30`),
+      common US (`4/1/2026 2:30 PM`), and date-only (midnight).
+      Rejects ambiguous strings with a clear row error.
+- [ ] Transaction per file: either all rows insert or none
+      (rollback on any validation failure during commit).
+- [ ] Audit row `note.imported` with `details = {filename,
+      row_count, patient_id}` (one row per import, not per note)
+- [ ] `tests/Integration/Import/CaregiverNoteImportTest.php`:
+      good CSV round-trips; column-missing errors; patient_name
+      resolution (exact + fuzzy-case); date parser edge cases;
+      rollback on mid-file failure
+
+---
+
+## EPIC-9: Auth Hardening (Defense in Depth)
+
+**Goal**: Close the remaining gaps between HomeCare's auth and the
+standard set for self-hosted PHP apps handling sensitive data
+(OpenEMR, Firefly III, Monica, BookStack). The role / rate-limit /
+audit / session-timeout foundations from EPIC-1 are in place;
+what's still missing is TOTP, a self-service reset path, a
+password-policy gate, and a cookie-flag audit.
+
+**Priority**: HIGH for internet-facing deploys; MEDIUM for LAN-only.
+
+**Depends on**: EPIC-1 (HC-010..HC-014), HC-071 (SignedUrl for reset
+tokens)
+
+---
+
+### HC-090: TOTP 2FA enrollment and verification
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-010, HC-013
+
+**Description**: Add time-based one-time-password (RFC 6238) as an
+optional second factor. Enrollment renders a QR code for
+Authy/1Password/Google Authenticator/etc.; subsequent logins prompt
+for a 6-digit code after password verification. Recovery codes
+cover the lost-phone case.
+
+**Acceptance Criteria**:
+- [ ] `pragmarx/google2fa` added as a Composer dep (pure PHP, no
+      curl / network required for verification)
+- [ ] Migration: `hc_user.totp_secret VARCHAR(64) NULL`,
+      `hc_user.totp_enabled CHAR(1) NOT NULL DEFAULT 'N'`,
+      `hc_user.totp_recovery_codes TEXT NULL` (JSON array of
+      sha256-hashed single-use codes)
+- [ ] `src/Auth/TotpService.php`: generateSecret(),
+      verifyCode(string $secret, string $code): bool (with ±1
+      window), generateRecoveryCodes(int $n = 10): array
+- [ ] `AuthService::login()` short-circuits after password success
+      when `totp_enabled='Y'` and returns a new
+      `AuthResult::REQUIRES_TOTP` state; session stores pending
+      user id but does NOT mark the session authenticated
+- [ ] `login.php` second step prompts for the 6-digit code or a
+      recovery code; both verify via `TotpService` or hash-compare
+- [ ] Recovery-code use invalidates the used code (pop from the
+      list, re-hash, save)
+- [ ] `settings.php` self-service enroll:
+      - "Enable 2FA" renders QR + backup codes (shown once)
+      - "Disable 2FA" requires current TOTP code to prevent
+        compromised-session abuse
+- [ ] Audit rows: `totp.enabled`, `totp.disabled`,
+      `totp.verified_recovery_code_used`, `totp.verification_failed`
+- [ ] Remember-me cookies (HC-014) DO NOT bypass TOTP — set the
+      remember token only after TOTP verification
+- [ ] `tests/Unit/Auth/TotpServiceTest.php`: generate / verify
+      round-trip; ±1-window accept; replay rejection; recovery
+      code single-use
+- [ ] `tests/Integration/Auth/Login2faTest.php`: full flow with
+      pending state, verification, and recovery code path
+
+---
+
+### HC-091: Password reset flow
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-071 (SignedUrl), EPIC-10 (for email delivery)
+
+**Description**: Self-service password reset via emailed single-use
+HMAC-signed link. Reuses the `SignedUrl` service from HC-071 with a
+dedicated `purpose=password_reset` claim so a leaked export token
+can't double as a reset token.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_password_reset_tokens (token_hash CHAR(64)
+      PRIMARY KEY, user_login VARCHAR(25) NOT NULL, created_at
+      DATETIME, used_at DATETIME NULL, expires_at DATETIME)`
+- [ ] `forgot_password.php`: accepts a login or email, always
+      returns the same "check your email" message (no user
+      enumeration); enqueues email only if the account exists AND
+      is `enabled='Y'`
+- [ ] `src/Auth/PasswordResetService.php`:
+      - `initiate(string $loginOrEmail, string $baseUrl): void`
+        inserts token, sends email
+      - `validate(string $token): ?string` returns the login if
+        valid + unused + unexpired, null otherwise
+      - `complete(string $token, string $newPassword): bool`
+        verifies, hashes, updates `hc_user.passwd`, marks token
+        used, clears `failed_attempts` / `locked_until`
+- [ ] TTL: 60 minutes (constant on the service)
+- [ ] Reset consumes (marks used_at) even on failure to write the
+      new password — prevents replay
+- [ ] `reset_password.php?token=...` form validates the token on
+      GET, requires new password + confirm on POST
+- [ ] Resetting the password invalidates all existing remember-me
+      cookies for that user
+- [ ] Audit rows: `password_reset.requested`, `password_reset.completed`,
+      `password_reset.failed_invalid_token`
+- [ ] Unit + integration tests covering: valid round-trip, expired
+      token, already-used token, unknown user (silent), rate
+      limit of requests per hour per login (max 3)
+
+---
+
+### HC-092: Password complexity policy
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 2
+**Depends on**: Nothing
+
+**Description**: `password_hash()` accepts any non-empty string
+today. Add a minimum-viable policy that rejects obvious weak
+choices at change / reset / create time.
+
+**Acceptance Criteria**:
+- [ ] `src/Auth/PasswordPolicy.php` with `validate(string $pw):
+      array` returning list of violation strings (empty = pass)
+- [ ] Default rules: min length 10, at least one non-alphanum OR
+      length ≥ 14, no substring match against login/email/firstname/
+      lastname, rejects the 10k most common passwords (bundled list)
+- [ ] Policy configurable via `hc_config` (`password_min_length`,
+      `password_require_symbol`); defaults match the rule list
+- [ ] Applied at: `settings.php` change-password, `reset_password.php`,
+      `forgot_password.php` (when the reset completes), the admin
+      user-create page (when that lands)
+- [ ] Error messages are user-facing and actionable ("at least 10
+      characters", not "policy violation code 3")
+- [ ] Unit tests for each rule and for the combined validation
+
+---
+
+### HC-093: Session cookie hardening audit
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 1
+**Depends on**: Nothing
+
+**Description**: Audit session + remember-me cookies against the
+OWASP session-management cheatsheet and fix anything missing.
+
+**Acceptance Criteria**:
+- [ ] Session cookie: `HttpOnly`, `Secure` (on HTTPS),
+      `SameSite=Lax` — verify via `session_set_cookie_params()`
+      in `init.php` boot
+- [ ] Remember-me cookie (`hc_remember`): same three flags, plus
+      a dedicated path scope of `/` and a 365-day max-age
+- [ ] `session_regenerate_id(true)` called after successful login
+      AND after 2FA verification (HC-090 dependency noted)
+- [ ] Integration test verifies Set-Cookie header flags on the
+      login response (parses `Set-Cookie:` and asserts each
+      attribute is present)
+
+---
+
+## EPIC-10: Notification Channels
+
+**Goal**: Break the ntfy monopoly. Today, supply alerts and reminder
+pushes fire only through ntfy. Email is required by HC-091
+(password reset) and is the most-requested missing channel.
+Webhooks unlock Home Assistant / Slack / Discord in one line.
+
+**Priority**: MEDIUM (HIGH for HC-100/HC-101 since HC-091 depends
+on them)
+
+**Depends on**: HC-041 (ntfy config pattern)
+
+---
+
+### HC-100: `NotificationChannel` abstraction + ntfy adapter
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-041
+
+**Description**: Introduce an interface so `send_reminders.php`
+and the supply-alert path talk to channels uniformly, then migrate
+the existing ntfy logic behind it. No new channels yet — this is
+the refactor that unblocks HC-101 and HC-102.
+
+**Acceptance Criteria**:
+- [ ] `src/Notification/NotificationChannel.php` (interface):
+      `send(NotificationMessage $msg): bool`, `isReady(): bool`,
+      `name(): string`
+- [ ] `NotificationMessage` value object: title, body, priority
+      (1-5), tags (array), recipient (login or email or topic,
+      channel decides interpretation)
+- [ ] `src/Notification/NtfyChannel.php` implements the interface
+      using the existing `NtfyConfig`; call-sites in
+      `send_reminders.php` migrated
+- [ ] `src/Notification/ChannelRegistry.php`: keyed by name,
+      resolves default or per-user channel list
+- [ ] No behavioral change: `composer test` still passes, reminders
+      still fire through ntfy for existing users
+- [ ] Unit test: `NtfyChannel::send()` shape verified against a
+      fake HTTP client; ready/not-ready state matches
+      `NtfyConfig::isReady()`
+
+---
+
+### HC-101: Email notification channel
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-100
+
+**Description**: Add email as a first-class channel alongside ntfy.
+Required by HC-091 (password reset) and wanted on its own by
+caregivers who do not use ntfy.
+
+**Acceptance Criteria**:
+- [ ] `symfony/mailer` added as a Composer dep (works with
+      SMTP / Sendmail / LMTP transports; no framework lock-in)
+- [ ] `src/Notification/EmailChannel.php` implements
+      `NotificationChannel`; renders title as Subject, body as
+      text/plain, supports HTML via a `?html` body variant later
+- [ ] `hc_config` settings: `smtp_dsn` (Symfony Mailer DSN),
+      `smtp_from_address`, `smtp_from_name`, `smtp_enabled` (Y/N)
+- [ ] Admin settings UI section ("Email") beside the ntfy block in
+      `settings.php`, admin-only, audit-logged on change
+- [ ] Graceful degrade: if the channel fires when `smtp_enabled='N'`
+      it logs a warning and returns false; caller (e.g. password
+      reset) maps that to a user-visible "email delivery disabled"
+      message
+- [ ] Migration: `hc_user.email_notifications CHAR(1) NOT NULL
+      DEFAULT 'N'` (per-user opt-in for reminders; password-reset
+      bypasses the flag because the user needs it to log back in)
+- [ ] Unit test: renders message, uses configured DSN, respects
+      the enabled toggle; integration test with a null transport
+      round-trips a sample message
+
+---
+
+### HC-102: Generic webhook channel
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 2
+**Depends on**: HC-100
+
+**Description**: POST a signed JSON payload to an arbitrary URL.
+Enables Home Assistant / Slack / Discord / n8n / Zapier integrations
+without per-service code.
+
+**Acceptance Criteria**:
+- [ ] `src/Notification/WebhookChannel.php` implements the
+      interface
+- [ ] Payload shape: `{title, body, priority, tags,
+      timestamp, message_id}`; body is the raw text, title
+      separate
+- [ ] Each POST includes `X-HomeCare-Signature: sha256=<hmac>`
+      using the `SignedUrl` secret as the HMAC key (reuses the
+      existing key-rotation story)
+- [ ] Config in `hc_config`: `webhook_url`, `webhook_enabled`
+      (Y/N), `webhook_timeout_seconds` (default 5)
+- [ ] Admin UI section in `settings.php`; audit-logged
+- [ ] 5-second hard timeout per request, 3 retries with
+      exponential backoff (1s / 3s / 9s), no blocking of
+      reminder loop on slow endpoints
+- [ ] Integration test: posts a message to a local echo server
+      and asserts the signature header + payload body
+
+---
+
+### HC-103: Per-caregiver channel preferences
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 2
+**Depends on**: HC-101, HC-102
+
+**Description**: Let each caregiver pick which channel(s) receive
+their reminders. The system default stays (admin-configured
+ntfy/email/webhook); a caregiver can override with their own
+preference.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_user.notification_channels JSON NOT NULL
+      DEFAULT '[]'` (MySQL) / `TEXT` with JSON in SQLite
+- [ ] `settings.php` adds a "My notifications" section with
+      checkboxes for each enabled channel
+- [ ] `send_reminders.php` resolves the per-user channel list,
+      falls back to the system default when empty
+- [ ] Unit test: resolver prefers per-user, falls back to system
+- [ ] Audit row on user-pref change
+
+---
+
+## EPIC-11: Medication Data Breadth
+
+**Goal**: Stop treating medications as free-text strings. Adds a
+drug catalogue, barcode-based inventory check-in, interaction
+checking, and veterinary-specific fields. Each raises the clinical
+utility of HomeCare without requiring the operator to become a
+pharmacist.
+
+**Priority**: MEDIUM
+
+**Depends on**: HC-004 (repository pattern)
+
+---
+
+### HC-110: Drug database autocomplete (RxNorm)
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-004
+
+**Description**: Let caregivers pick medications from a standardised
+list rather than typing free-text names. Feeds directly into future
+interaction-checking and barcode lookup.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_drug_catalog (id, rxnorm_id, name, strength,
+      dosage_form, ingredient_names TEXT, generic CHAR(1))` plus
+      indexes on `name` and `rxnorm_id`
+- [ ] `hc_medicines.drug_catalog_id INT NULL FK` (nullable — free-
+      text entries still allowed)
+- [ ] CLI `bin/import_rxnorm.php`: downloads or reads a local
+      RxNorm RRF dump, loads `RXNCONSO` → `hc_drug_catalog`;
+      idempotent (upserts on `rxnorm_id`)
+- [ ] Medication entry / edit pages: autocomplete field driven by
+      `api/v1/drugs.php?q=...` (debounced, 250 ms, min 2 chars)
+- [ ] Selecting a catalogue entry pre-fills name, strength, and
+      dosage form; operator can still override
+- [ ] "I don't see my medication" fallback keeps free-text entry
+- [ ] Veterinary-friendly: RxNorm covers human drugs; vet entries
+      can be added manually with `rxnorm_id=NULL` and a `notes`
+      column — documented in the import script
+- [ ] Unit test: catalogue search; integration test: full picker
+      flow populates the schedule form
+
+---
+
+### HC-111: Barcode / NDC scanning for inventory
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-110
+
+**Description**: Scan a prescription bottle's barcode to record a
+refill. NDC (11-digit) is the standard on US prescription labels;
+UPC/EAN on veterinary products.
+
+**Acceptance Criteria**:
+- [ ] `inventory_refill.php` gets a "Scan barcode" button (visible
+      on mobile + cameras-attached desktops)
+- [ ] Uses `html5-qrcode` or `zxing-js` (bundled, no CDN) to decode
+      the barcode client-side; hands the NDC/UPC to a server
+      endpoint
+- [ ] `api/v1/drug_lookup.php?ndc=...` returns matching
+      `hc_drug_catalog` entries (via RxNorm `RXNSAT NDC` attribute)
+      or a 404 with a free-text fallback
+- [ ] Preview shows the matched medication name + strength + dose
+      form before the caregiver commits the refill quantity
+- [ ] Audit row: `inventory.refilled` with `details.source='barcode'`
+- [ ] Manual-entry remains the default path — scanner is additive
+- [ ] E2E test verifies a seeded NDC maps to the expected catalogue
+      entry
+
+---
+
+### HC-112: Drug interaction checking
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-110
+
+**Description**: Warn caregivers when a new schedule interacts with
+an active one on the same patient. Uses RxNorm's ingredient-level
+interaction pairs.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_drug_interactions (ingredient_a VARCHAR(64),
+      ingredient_b VARCHAR(64), severity ENUM('minor','moderate',
+      'major'), description TEXT, PRIMARY KEY (ingredient_a,
+      ingredient_b))`
+- [ ] CLI `bin/import_interactions.php` loads a curated DrugBank
+      / RxNav interaction set (licence-compatible subset;
+      documented source in the script)
+- [ ] `src/Service/InteractionService.php`:
+      `checkForPatient(int $patientId, int $newMedicineId): array`
+      returns a list of interaction records against active
+      schedules
+- [ ] `add_to_schedule.php` calls the service; moderate / major
+      interactions render a confirmation gate ("Dr. has OK'd
+      this combination? ☐"); minor interactions render an info
+      banner
+- [ ] `report_medications.php` shows an "Interactions" badge per
+      patient with a link to detail
+- [ ] Unit + integration tests; no-interaction and multi-
+      interaction cases
+
+---
+
+### HC-113: Veterinary profile
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: Nothing
+
+**Description**: The codebase has implicit vet-use (Tobramycin
+example from HC-075). Make veterinary patients a first-class
+concept.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_patients.species VARCHAR(32) NULL`,
+      `hc_patients.weight_kg DECIMAL(6,2) NULL`,
+      `hc_patients.weight_as_of DATE NULL`
+- [ ] Edit patient page adds species dropdown (cat/dog/horse/
+      rabbit/bird/reptile/other/human) and weight + date
+- [ ] `hc_medicine_schedules.dose_basis ENUM('fixed','per_kg')
+      DEFAULT 'fixed'`; when `per_kg`, `unit_per_dose` is
+      interpreted as mg/kg
+- [ ] `dosesRemaining()` + inventory math multiply `unit_per_dose`
+      by `weight_kg` when `dose_basis='per_kg'`
+- [ ] Warning when schedule uses `per_kg` and patient has no
+      `weight_kg` on file
+- [ ] Medication summary print view shows species + weight
+- [ ] Tests cover per_kg math at multiple weights + missing-weight
+      edge case
+
+---
+
+## EPIC-12: Schedule Semantics
+
+**Goal**: Extend the `frequency` model beyond `Nh` / `Nd` to cover
+common real-world dosing patterns: as-needed, pulse cycles, step
+tapers, specific wall-clock times, and pauses.
+
+**Priority**: MEDIUM
+
+**Depends on**: HC-002 (ScheduleCalculator), HC-005 (InventoryService)
+
+---
+
+### HC-120: PRN / as-needed schedules
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-002
+
+**Description**: Some medications are taken when needed (pain,
+anxiety, seizure rescue). A schedule marked PRN should accept
+intake records but not compute "next due" or "overdue" — and not
+count against adherence.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_medicine_schedules.is_prn CHAR(1) NOT NULL
+      DEFAULT 'N'`
+- [ ] `add_to_schedule.php` gets a "Take as needed (PRN)" checkbox;
+      when checked, `frequency` input is hidden + stored as NULL
+- [ ] `ScheduleCalculator::calculateSecondsUntilDue()` and
+      friends return null / special-case PRN schedules
+- [ ] `list_schedule.php` renders PRN rows with a dedicated status
+      ("PRN — no schedule") and no Overdue badge
+- [ ] `AdherenceService` skips PRN schedules (they have no
+      expected-count)
+- [ ] `send_reminders.php` skips PRN schedules
+- [ ] Tests: PRN intake records correctly, no reminder fires,
+      adherence excludes, math helpers return null
+
+---
+
+### HC-121: Pulse / cycle dosing
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-002
+
+**Description**: Support "3 weeks on, 1 week off" patterns common
+in veterinary antibiotics, hormonal therapy, and chemotherapy.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_medicine_schedules.cycle_on_days INT NULL`,
+      `hc_medicine_schedules.cycle_off_days INT NULL`
+- [ ] Schedule edit form: optional "Cycle" section, two number
+      inputs
+- [ ] `ScheduleCalculator` handles the cycle:
+      - During on-period: behaves as normal
+      - During off-period: no "next due", doses not expected
+- [ ] Adherence expected-count honours the cycle (counts only
+      on-days)
+- [ ] Reminder + supply alert loops skip off-days
+- [ ] Unit tests around cycle boundary (last hour of on-period,
+      first hour of off-period)
+
+---
+
+### HC-122: Step / taper dosing
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-002
+
+**Description**: "Week 1: 5mg, Week 2: 10mg, Week 3+: 20mg" is
+common in steroid tapers and SSRIs. Today caregivers have to end
+the schedule and start a new one for each step — losing adherence
+continuity. Model it as a single schedule with a step table.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_schedule_steps (id, schedule_id, start_date,
+      unit_per_dose DECIMAL(10,3), note VARCHAR(255))`
+- [ ] Schedule edit form: "Add step" repeater; first step is the
+      base schedule, additional steps layer on
+- [ ] `InventoryService` and `AdherenceService` pick the correct
+      `unit_per_dose` by date (latest step whose `start_date <=
+      current_date`)
+- [ ] Dose-adjustment history (the original adjust flow)
+      deprecates gracefully — reads from the step table
+- [ ] Tests: boundary dates, zero-step schedule (current behavior),
+      overlapping-step rejection
+
+---
+
+### HC-123: Multiple wall-clock times per day
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-002
+
+**Description**: "8am + 2pm + 8pm" is a common human schedule.
+`12h` frequency covers it but drifts over weeks as intake times
+vary; a wall-clock schedule keeps doses anchored.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_medicine_schedules.wall_clock_times VARCHAR(128)
+      NULL` (CSV of `HH:MM` times)
+- [ ] Schedule edit form: "Fixed times per day" option, renders
+      N `<input type="time">` rows
+- [ ] `ScheduleCalculator` resolves the next-due to the nearest
+      future clock time
+- [ ] Supply and adherence math: expected doses per day =
+      `count(wall_clock_times)`
+- [ ] `list_schedule.php` next-due label shows the actual clock
+      time ("Due at 2:00 PM") rather than "in 4h 30m"
+- [ ] Tests over DST transition days (US/America/New_York) — the
+      doses stay anchored to local wall time, not UTC
+
+---
+
+### HC-124: Pause / skip-today for active schedules
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 2
+**Depends on**: Nothing
+
+**Description**: "My cat goes to the groomer Tuesday, skip
+today's dose" or "Holding this med during vacation". Today the
+only option is ending the schedule and restarting it, which loses
+continuity.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_schedule_pauses (id, schedule_id, start_date,
+      end_date NULL, reason VARCHAR(255))`
+- [ ] `list_schedule.php` row action: "Pause" / "Skip today"
+      (behind the kebab overflow from the recent UI refactor)
+- [ ] "Skip today" inserts a 1-day pause ending end-of-day local
+- [ ] "Pause" opens a date-range picker
+- [ ] `dosesRemaining`, reminders, adherence, and cadence-check
+      all honour active pauses
+- [ ] Audit rows: `schedule.paused`, `schedule.resumed`
+- [ ] Tests: overlapping pauses, open-ended pauses, pause over
+      DST boundary
+
+---
+
+## EPIC-13: Data Portability & Attachments
+
+**Goal**: Close the "data in, data out, data attached" loop. Export
+is already rich (CSV / FHIR / PDF); import and attachments are
+missing.
+
+**Priority**: MEDIUM
+
+**Depends on**: HC-004 (repository pattern)
+
+---
+
+### HC-130: Photo / document attachments
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-011
+
+**Description**: Attach photos (prescription labels, medication
+bottles) and documents (PDFs of vet notes, lab results) to a
+patient, a schedule, or a caregiver note.
+
+**Acceptance Criteria**:
+- [ ] Migration: `hc_attachments (id, owner_type ENUM('patient',
+      'schedule','note'), owner_id, filename, mime_type, size_bytes,
+      sha256, storage_path, uploaded_by, uploaded_at)`
+- [ ] Server-side allow-list: `image/jpeg`, `image/png`, `image/heic`,
+      `application/pdf`; max 10 MB
+- [ ] Files stored under `data/attachments/<sha256[:2]>/<sha256>`
+      outside the web root; served through
+      `attachment.php?id=N` with role + ownership check
+- [ ] MIME sniffed server-side (don't trust client Content-Type)
+- [ ] Thumbnail generation for images via GD (lazy, cached on
+      first read)
+- [ ] UI: drag-and-drop zone on patient / schedule / note pages;
+      list + download + delete inline
+- [ ] Audit rows: `attachment.uploaded`, `attachment.deleted`
+- [ ] Tests: upload + sniff + serve round-trip, MIME rejection,
+      role-based access (viewer can download, only owner/admin
+      can delete), 10MB cap enforced
+
+---
+
+### HC-131: CSV import for schedules + intakes
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-004
+
+**Description**: Symmetric to the existing CSV export. Enables
+migration from another tracker, disaster-recovery from a backup,
+and periodic sandbox-to-prod promotions.
+
+**Acceptance Criteria**:
+- [ ] `import_schedules.php` (admin-only) accepts the same CSV
+      shape `export_intake_csv.php` emits, plus an optional
+      `schedules.csv` for the schedule catalogue
+- [ ] Preview step identical to HC-084's pattern: row-level
+      validation, row count, commit only on confirm
+- [ ] Foreign-key resolution: patient by `patient_name` or id,
+      medicine by `medicine_name` or id; creates the FK targets
+      only if the operator ticks "create missing" (explicit
+      opt-in)
+- [ ] Transaction per file
+- [ ] De-dup protection: intakes with the same (`schedule_id`,
+      `taken_time`) are skipped with a row-level "already
+      exists" note rather than erroring the whole import
+- [ ] Audit row: `data.imported` with row counts by entity
+- [ ] Integration test: export → wipe → import → verify
+      round-trip equality
+
+---
+
+## EPIC-14: Polish & Reach
+
+**Goal**: Remaining nice-to-haves that don't fit the other epics:
+real-time updates, i18n content, richer E2E coverage, and optional
+reverse-proxy auth for users behind Authelia/Authentik.
+
+**Priority**: LOW
+
+---
+
+### HC-140: Real-time multi-caregiver updates (SSE)
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-013 (audit log drives the event stream)
+
+**Description**: When caregiver A records an intake, caregiver B's
+open schedule view should update without a refresh. Minimal-surface
+approach: a Server-Sent Events endpoint tailing `hc_audit_log`
+since the connection's `last_event_id`.
+
+**Acceptance Criteria**:
+- [ ] `events.php` (SSE) streams events since `?since_id=` or the
+      `Last-Event-ID` header
+- [ ] Event format: `{id, action, entity_type, entity_id,
+      user_login, created_at}`
+- [ ] Patient-scoped subscription: `?patient_id=N` filters to
+      events on that patient's schedules / intakes / notes
+- [ ] `list_schedule.php` + `report_adherence.php` subscribe on
+      load, re-fetch the relevant row when a matching event
+      arrives (debounced 500 ms)
+- [ ] No forever-open DB connections: poll the audit table every
+      2 s, yield new rows, close on client disconnect
+- [ ] Graceful fallback when `EventSource` is unsupported
+      (no regression)
+- [ ] Integration test: concurrent caregivers scenario
+
+---
+
+### HC-141: Additional translations
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: Nothing
+
+**Description**: Only `translations/English-US.txt` exists today,
+though `translate()` is wired everywhere. Add Spanish and
+Portuguese-BR as the next two most-requested languages.
+
+**Acceptance Criteria**:
+- [ ] `translations/Spanish.txt` with all keys from
+      `English-US.txt` translated
+- [ ] `translations/Portuguese-BR.txt` with all keys translated
+- [ ] Language picker in `settings.php` (per-user preference,
+      stored in `hc_user.language`)
+- [ ] `init.php` picks the user's language, falls back to
+      `$LANGUAGE` config, then English-US
+- [ ] Missing-key coverage check in CI (new test: every key in
+      English-US appears in each other language file)
+- [ ] Date/number formatting follows locale (PHP `IntlDateFormatter`)
+
+---
+
+### HC-142: E2E fixture seeding + richer Playwright suite
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-078
+
+**Description**: HC-078's acceptance asked for smoke + merge +
+adherence flows. We shipped smoke-only because richer flows needed
+seeded fixtures that don't exist in CI. Close the gap.
+
+**Acceptance Criteria**:
+- [ ] `bin/seed_e2e_fixtures.php`: creates 2 patients, 5
+      medicines, 3 active schedules, 30 days of intakes with
+      ~85% adherence, one cadence-mismatch case, one low-supply
+      case
+- [ ] `e2e.yml` runs the seeder after `docker compose up` and
+      before Playwright
+- [ ] New specs: record-intake flow, merge-medicines flow,
+      adherence-report renders chart with colour-correct cells,
+      supply-alert appears on the dashboard
+- [ ] Each spec under 30s; total suite under 3 min
+- [ ] Fixtures are additive — re-running the seeder is idempotent
+
+---
+
+### HC-143: Reverse-proxy auth mode
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-010
+
+**Description**: Users already running Authelia / Authentik /
+Caddy-forward-auth / Traefik-forward-auth want to delegate auth
+entirely. The old WebCalendar HTTP-auth hook was removed in
+HC-073; add a narrower, explicit mode.
+
+**Acceptance Criteria**:
+- [ ] `hc_config`: `auth_mode` ENUM('native','reverse_proxy')
+      DEFAULT 'native', `reverse_proxy_header`
+      (default `X-Forwarded-User`)
+- [ ] When `auth_mode='reverse_proxy'`:
+      - `login.php` / `logout.php` redirect to `$HOME_LINK`
+      - `validate.php` reads the configured header and resolves
+        the user via `UserRepository::findByLogin`
+      - Missing / mismatched users trigger a 401 (no auto-provision
+        by default to avoid confusion)
+      - TOTP / password reset / password-policy gates are all
+        bypassed — the proxy owns the factor
+- [ ] Admin UI toggle in `settings.php`, with a prominent warning
+      about requiring a proxy that sets the trusted header
+- [ ] Docs page: "Reverse proxy auth with Authelia / Authentik /
+      Caddy" with sample configs
+- [ ] Integration test: fake proxy header resolves to the right
+      user; missing header → 401
+
+---
+
 ## Story Dependency Graph
 
 ```
@@ -1498,7 +2393,7 @@ HC-051 (CI) -- depends on HC-001, HC-003
 HC-060 (PWA) -- no dependencies
 HC-061 (UI redesign) -- no dependencies
 
-EPIC-7 (follow-ups, all currently BACKLOG):
+EPIC-7 (follow-ups, all DONE):
 HC-070 (Audit log viewer)         <- HC-013
 HC-071 (Signed-URL feeds/exports) <- HC-030
 HC-072 (Migrations runner)        <- HC-001
@@ -1511,6 +2406,47 @@ HC-078 (Playwright E2E)           <- HC-050, HC-051
 HC-079 (CSP + security headers)   -- no dependencies
 HC-080 (PHP 8.3/8.4 matrix)       <- HC-051
 HC-081 (Dependabot)               <- HC-051
+
+EPIC-8 Caregiver Notes UX (BACKLOG):
+HC-082 (Notes entry & edit UI)    <- HC-004, HC-011, HC-013
+HC-083 (Notes list / browse)     <- HC-082
+HC-084 (Notes CSV import)        <- HC-082
+
+EPIC-9 Auth Hardening (BACKLOG):
+HC-090 (TOTP 2FA)                 <- HC-010, HC-013
+HC-091 (Password reset flow)      <- HC-071, HC-101
+HC-092 (Password complexity)      -- no dependencies
+HC-093 (Session cookie audit)     -- no dependencies
+
+EPIC-10 Notification Channels (BACKLOG):
+HC-100 (Channel abstraction)      <- HC-041
+  ├── HC-101 (Email channel)     <- HC-100
+  │     └── HC-091 (Password reset needs email)
+  ├── HC-102 (Webhook channel)   <- HC-100
+  └── HC-103 (Per-user prefs)    <- HC-101, HC-102
+
+EPIC-11 Medication Data Breadth (BACKLOG):
+HC-110 (Drug DB autocomplete)     <- HC-004
+  ├── HC-111 (Barcode / NDC)     <- HC-110
+  └── HC-112 (Interaction check) <- HC-110
+HC-113 (Veterinary profile)       -- no dependencies
+
+EPIC-12 Schedule Semantics (BACKLOG):
+HC-120 (PRN / as-needed)          <- HC-002
+HC-121 (Pulse / cycle dosing)     <- HC-002
+HC-122 (Step / taper)             <- HC-002
+HC-123 (Wall-clock times)         <- HC-002
+HC-124 (Pause / skip today)       -- no dependencies
+
+EPIC-13 Portability & Attachments (BACKLOG):
+HC-130 (Photo / doc attachments)  <- HC-011
+HC-131 (CSV import all entities)  <- HC-004
+
+EPIC-14 Polish & Reach (BACKLOG):
+HC-140 (Real-time SSE)            <- HC-013
+HC-141 (Additional translations)  -- no dependencies
+HC-142 (E2E fixture seeding)      <- HC-078
+HC-143 (Reverse-proxy auth)       <- HC-010
 ```
 
 ---
@@ -1554,25 +2490,84 @@ HC-081 (Dependabot)               <- HC-051
 - HC-060: PWA support
 - HC-061: Page redesign
 
-### Sprint 7: Hardening & Operability (EPIC-7) — *new follow-ups*
-The 12 stories in EPIC-7 don't form a single sprint -- they're a
-prioritised backlog for the team to pull from. Suggested ordering by
-risk-reduction-per-point:
+### Sprint 7: Hardening & Operability (EPIC-7) — *DONE*
+All 12 stories in EPIC-7 shipped between 2026-04-13 and 2026-04-16.
 
-1. **HC-077** (Coverage in CI) — single small change, tells us where
-   the test gaps actually live before we touch anything else.
-2. **HC-078** (Playwright E2E) — three real bugs (CSRF, jQuery CDN,
-   double session_start) shipped past PHPStan + PHPUnit. Browser
-   coverage closes that gap.
-3. **HC-072** (Migrations runner) — unblocks HC-073 and HC-074 and
-   removes a class of "did anyone run that ALTER?" deploy mistakes.
-4. **HC-073** + **HC-074** — strip the WebCalendar / dual-auth
-   scaffolding now that the native flow has bedded in.
-5. **HC-079** (CSP + headers) — easy security wins.
-6. **HC-070** (Audit log viewer) — turns existing data into
-   operability.
-7. **HC-076** (API rate limiting), **HC-071** (Signed URLs) — security
-   hardening as the API surface area grows.
-8. **HC-075** (Cadence-mismatch warning) — UX safety net.
-9. **HC-080** (PHP 8.3/8.4) + **HC-081** (Dependabot) — automation
-   chores; pick up whenever the matrix can afford the CI minutes.
+---
+
+### Sprint 8: Caregiver Notes (EPIC-8) — *up next*
+Small epic, user has data waiting to be imported. Pull in this order:
+
+1. **HC-082** (Entry & edit UI) — foundation; can't import without
+   the repository layer and handler.
+2. **HC-083** (List / browse view) — makes the notes visible.
+3. **HC-084** (CSV import) — closes the immediate user need.
+
+Total ~8 points; realistic as a single focused sprint.
+
+---
+
+### Sprint 9: Auth Hardening + Email (EPIC-9 + start of EPIC-10)
+Security + enables password reset. Two dependent threads:
+
+1. **HC-100** (NotificationChannel abstraction) — precursor.
+2. **HC-101** (Email channel) — unlocks HC-091.
+3. **HC-092** (Password complexity) — independent, cheap.
+4. **HC-093** (Session cookie audit) — independent, 1 point.
+5. **HC-091** (Password reset) — once email lands.
+6. **HC-090** (TOTP 2FA) — biggest remaining security gap; do last
+   in the sprint since it's 5 points and independent.
+
+Total ~19 points — may spill into two sprints.
+
+---
+
+### Sprint 10: Notification reach + Schedule semantics (parts of
+### EPIC-10 + EPIC-12)
+Operational improvements users will feel immediately.
+
+1. **HC-102** (Webhook channel) — one-line Home Assistant / Slack /
+   Discord.
+2. **HC-103** (Per-user channel prefs) — completes EPIC-10.
+3. **HC-120** (PRN schedules) — common request, small change.
+4. **HC-124** (Pause / skip today) — addresses "my cat goes to the
+   groomer today" use case.
+
+Total ~9 points.
+
+---
+
+### Sprint 11+: Medication Data Breadth (EPIC-11)
+HC-110 (drug DB) unlocks HC-111 (barcode) and HC-112 (interactions);
+queue them together in a single themed sprint. HC-113 (vet profile)
+independent, can slot in.
+
+---
+
+### Later: Schedule richness + Portability (EPIC-12 cont'd, EPIC-13)
+HC-121 (pulse), HC-122 (step), HC-123 (wall-clock) each tweak the
+math engine — do them close together to batch-test
+`ScheduleCalculator`. HC-130 (attachments) + HC-131 (CSV import)
+share no dependencies with them and can run in parallel.
+
+---
+
+### Backlog: Polish & Reach (EPIC-14)
+HC-140 / HC-141 / HC-142 / HC-143 — individually small, pull when
+convenient or driven by user requests.
+
+---
+
+## Prioritisation Notes
+
+The four new epics most worth starting first:
+
+| Rank | Epic / Story | Why now |
+|------|------|---------|
+| 1 | **EPIC-8** (Caregiver Notes) | User has data waiting; small cost, immediate delivery |
+| 2 | **HC-092, HC-093** (policy + cookies) | Free wins, no dependencies |
+| 3 | **HC-100 + HC-101** (channel abstraction + email) | Unblocks HC-091 (password reset), the second-largest auth gap |
+| 4 | **HC-090** (TOTP 2FA) | Largest remaining security gap; all primitives exist |
+
+Deferrable indefinitely without real cost: HC-141 (translations),
+HC-143 (reverse-proxy auth). Pull if a user requests.
