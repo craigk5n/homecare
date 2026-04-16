@@ -1,96 +1,65 @@
 // @ts-check
-// tests/Browser/e2e.spec.js
+//
+// HomeCare Playwright smoke tests (HC-078).
+//
+// These run against the docker-compose stack stood up by
+// .github/workflows/e2e.yml. Only the admin user is seeded (no
+// patients, no medicines), so the flows we can honestly assert on
+// here are limited to login / landing / logout. Richer flows
+// (record intake, merge medicines, adherence chart) need a fixture
+// loader that seeds a patient + schedule + intake history; that's
+// a follow-up.
 
 const { test, expect } = require('@playwright/test');
-const path = require('path');
 
-test.describe('HomeCare E2E Flows', () => {
-  test.beforeEach(async ({ page }) => {
-    // Ensure clean session
-    await page.goto('http://localhost:8080');
-    if (await page.locator('text=Login').isVisible()) {
-      // Already on login
-    } else {
-      await page.goto('http://localhost:8080/login.php');
-    }
+const ADMIN_LOGIN = 'admin';
+const ADMIN_PASSWORD = 'admin';
+
+async function login(page) {
+  await page.goto('/login.php');
+  await page.fill('input[name="login"]', ADMIN_LOGIN);
+  await page.fill('input[name="password"]', ADMIN_PASSWORD);
+  // The login form uses <button type="submit"> not <input type="submit">.
+  await page.click('button[type="submit"]');
+}
+
+test.describe('HomeCare smoke', () => {
+  test('login page renders with expected fields', async ({ page }) => {
+    await page.goto('/login.php');
+    await expect(page).toHaveTitle(/HomeCare/);
+    await expect(page.locator('input[name="login"]')).toBeVisible();
+    await expect(page.locator('input[name="password"]')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
-  test('Smoke flow: login → list_schedule → record an intake → log out', async ({ page }) => {
-    // Login
-    await expect(page).toHaveURL(/.*login\.php/);
-    await page.fill('input[name="login"]', 'admin');
-    await page.fill('input[name="password"]', 'admin');
-    await page.click('input[type="submit"]');
-    await expect(page).toHaveURL(/.*list_patients\.php/);
+  test('unauthenticated request to protected page redirects to login', async ({ page }) => {
+    await page.goto('/list_schedule.php');
+    await expect(page).toHaveURL(/login\.php/);
+  });
 
-    // Go to first patient's schedule
-    await page.click('text=Schedule');
-    await expect(page).toHaveURL(/.*list_schedule\.php/);
+  test('admin can log in, sees index, and logs out', async ({ page }) => {
+    await login(page);
 
-    // Record intake (assume first dose button exists)
-    const recordButton = page.locator('[data-action="record-intake"]').first();
-    await recordButton.click();
-    await page.waitForSelector('[data-action="record-intake"][aria-label="Recorded"]', { state: 'visible' });
+    // After login, with no seeded patients, the router lands on index.php
+    // with either the empty-state card ("No patients yet") or, if a
+    // patient gets seeded in a future fixture, on list_schedule.php.
+    await expect(page).toHaveURL(/\/(index\.php|list_schedule\.php)/);
 
-    // Logout
-    await page.goto('http://localhost:8080/logout.php');
-    await expect(page).toHaveURL(/.*login\.php/);
-  }, { timeout: 30000 });
+    // Page should at least render without a PHP fatal.
+    const body = await page.locator('body').textContent();
+    expect(body).not.toMatch(/Fatal error/i);
+    expect(body).not.toMatch(/Parse error/i);
 
-  test('Merge medicines flow: login → merge_medicines → preview → confirm', async ({ page }) => {
-    // Login (same as smoke)
-    await page.fill('input[name="login"]', 'admin');
-    await page.fill('input[name="password"]', 'admin');
-    await page.click('input[type="submit"]');
+    await page.goto('/logout.php');
+    await expect(page).toHaveURL(/login\.php/);
+  });
 
-    // Navigate to merge medicines (assume link exists)
-    await page.click('a:has-text("Medications")');
-    await page.click('a:has-text("Merge Medicines")');
-    await expect(page).toHaveURL(/.*merge_medicines\.php/);
-
-    // Select two medicines and preview
-    await page.check('input[value="1"]'); // Assume IDs
-    await page.check('input[value="2"]');
-    await page.click('button:has-text("Preview Merge")');
-    await expect(page.locator('text=Preview')).toBeVisible();
-
-    // Confirm merge
-    await page.click('button:has-text("Confirm Merge")');
-    await expect(page).toHaveURL(/.*list_medications\.php/); // Or success page
-
-    // Logout
-    await page.goto('http://localhost:8080/logout.php');
-  }, { timeout: 30000 });
-
-  test('Adherence report flow: login → report_adherence → toggle range → assert chart + table', async ({ page }) => {
-    // Login
-    await page.fill('input[name="login"]', 'admin');
-    await page.fill('input[name="password"]', 'admin');
-    await page.click('input[type="submit"]');
-
-    // Go to adherence report (assume link)
-    await page.click('a:has-text("Reports")');
-    await page.click('a:has-text("Adherence")');
-    await expect(page).toHaveURL(/.*report_adherence\.php/);
-
-    // Toggle custom range
-    await page.selectOption('select#range', 'custom');
-    await page.fill('input#start-date', '2026-04-01');
-    await page.fill('input#end-date', '2026-04-15');
+  test('invalid credentials are rejected', async ({ page }) => {
+    await page.goto('/login.php');
+    await page.fill('input[name="login"]', ADMIN_LOGIN);
+    await page.fill('input[name="password"]', 'wrong-password');
     await page.click('button[type="submit"]');
-
-    // Assert chart renders (canvas element)
-    await expect(page.locator('canvas.chartjs-render-monitor')).toBeVisible();
-
-// Assert chart renders (canvas element)
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 5000 });
-
-    // Assert table cells have color classes (green/yellow/red) - inspect actual classes from CSS
-    // Assuming classes like .table-success for green, .table-warning yellow, .table-danger red
-    await expect(page.locator('.table-success')).toBeVisible(); // At least one green cell or adjust selector
-    await expect(page.locator('table tbody tr td')).toHaveCount({ min: 1 });
-
-    // Logout
-    await page.goto('http://localhost:8080/logout.php');
-  }, { timeout: 30000 });
+    // Should remain on login.php with an error (message text varies).
+    await expect(page).toHaveURL(/login\.php/);
+  });
 });
