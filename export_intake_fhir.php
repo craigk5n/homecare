@@ -21,6 +21,8 @@ use HomeCare\Database\DbiAdapter;
 use HomeCare\Export\FhirIntakeExporter;
 use HomeCare\Export\IntakeExportQuery;
 
+require_once __DIR__ . '/includes/email_export_dispatch.php';
+
 // Check auth: session or token
 $token = getGetValue('token', '');
 $patientId = (int) (getIntValue('patient_id') ?? 0);
@@ -51,6 +53,18 @@ $patient = getPatient($patientId);
 if (!$patient) {
     http_response_code(404);
     die('Patient not found.');
+}
+
+// HC-108: delivery=email branch — attach FHIR bundle to an email
+// instead of streaming it to the browser.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && getPostValue('delivery') === 'email') {
+    hc108_email_and_exit(
+        type: 'fhir',
+        patientId: $patientId,
+        startDate: $startDate,
+        endDate: $endDate,
+        patient: $patient,
+    );
 }
 
 $rows = (new IntakeExportQuery(new DbiAdapter()))->fetch($patientId, $startDate, $endDate);

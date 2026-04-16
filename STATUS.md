@@ -2610,21 +2610,50 @@ connections and is awkward to share with a vet. Add an
 `report_intake.php`, `export_intake_csv.php`,
 `export_intake_fhir.php`, and `medication_summary.php`.
 
+**Notes on implementation**:
+- `EmailExportService` bypasses `EmailChannel` because
+  attachments aren't in the `NotificationMessage` shape.
+  Uses Symfony Mailer directly via the shared DSN from
+  `EmailConfig`. `MailerInterface` is injectable so tests
+  use a `RecordingExportMailer` and capture attachment bytes
+  directly.
+- CSV + FHIR ship as attachments (`text/csv`,
+  `application/fhir+json`); medication_summary ships as
+  inline plain text (a PDF attachment would need dompdf
+  plumbing the summary report doesn't have yet, and the
+  table reads fine in email).
+- Rate limit is counted by querying `hc_audit_log` for
+  `action='export.emailed'` + `user_login=?` within the last
+  hour. Uses the audit table that already exists — no new
+  state to keep in sync.
+- Feature gate: the button only works for users with
+  `email_notifications='Y'` AND an address passing
+  `filter_var(FILTER_VALIDATE_EMAIL)`. Anyone else gets a
+  redirect to the Contact settings section with the reason.
+- Three endpoints + `report_intake.php` share the dispatch
+  via `includes/email_export_dispatch.php` so the user-lookup
+  / gating / feedback-page rendering lives in one place.
+  `function_exists` guard means stacking the include from
+  multiple endpoints in the same request is safe.
+
 **Acceptance Criteria**:
-- [ ] Each export page gets a second form that POSTs with
+- [x] Each export page gets a second form that POSTs with
       `delivery=email`; the handler renders the export in memory
-      and attaches it to a short `NotificationMessage` with
-      `recipient` set to the requester's email.
-- [ ] Requires the user to have a verified email via HC-104
-      (toggle on + filter_var passes); button disabled with a
-      helpful tooltip otherwise.
-- [ ] Rate-limit: max 3 export emails per user per hour (stored
-      in session or `hc_audit_log`) so a scripted consumer can't
-      spam the SMTP relay.
-- [ ] Audit: `export.emailed` with `{type, patient_id,
+      and attaches it to a short Symfony Email with `to` set to
+      the requester's email (bypass of NotificationMessage was
+      needed — attachments aren't on that DTO).
+- [x] Requires the user to have a verified email via HC-104
+      (toggle on + filter_var passes); otherwise the feedback
+      page explains how to fix it.
+- [x] Rate-limit: max 3 export emails per user per hour,
+      counted over `hc_audit_log` rows.
+- [x] Audit: `export.emailed` with `{type, patient_id,
       start_date, end_date, size_bytes}`.
-- [ ] Integration test: successful send attaches the expected
-      bytes; rate limit kicks in on the 4th request.
+- [x] Integration test (9): CSV attachment bytes, FHIR
+      attachment JSON, inline summary body, rate limit on
+      4th send, rate-limit reset after an hour, per-user
+      rate limit, invalid-recipient reject, audit row
+      shape, email-disabled config reject.
 
 ---
 

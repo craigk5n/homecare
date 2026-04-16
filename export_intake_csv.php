@@ -17,6 +17,8 @@ use HomeCare\Database\DbiAdapter;
 use HomeCare\Export\CsvIntakeExporter;
 use HomeCare\Export\IntakeExportQuery;
 
+require_once __DIR__ . '/includes/email_export_dispatch.php';
+
 // Check auth: session or token
 $token = getGetValue('token', '');
 $patientId = (int) (getIntValue('patient_id') ?? 0);
@@ -47,6 +49,19 @@ $patient = getPatient($patientId);
 if (!$patient) {
     http_response_code(404);
     die('Patient not found.');
+}
+
+// HC-108: delivery=email branch. Requires a POST (the email form
+// carries the CSRF token) and an opted-in user with a valid email.
+// Anything else falls through to the legacy stream-to-browser path.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && getPostValue('delivery') === 'email') {
+    hc108_email_and_exit(
+        type: 'csv',
+        patientId: $patientId,
+        startDate: $startDate,
+        endDate: $endDate,
+        patient: $patient
+    );
 }
 
 $rows = (new IntakeExportQuery(new DbiAdapter()))->fetch($patientId, $startDate, $endDate);

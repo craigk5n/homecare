@@ -19,6 +19,8 @@ use HomeCare\Repository\InventoryRepository;
 use HomeCare\Repository\ScheduleRepository;
 use HomeCare\Service\InventoryService;
 
+require_once __DIR__ . '/includes/email_export_dispatch.php';
+
 // Suppress chrome; pages that set $friendly=true get a minimal header.
 $friendly = true;
 
@@ -36,6 +38,19 @@ $report = new MedicationSummaryReport(
 $summary = $report->build($patient_id, date('Y-m-d'));
 if ($summary === null) {
     die_miserable_death('Patient not found.');
+}
+
+// HC-108: delivery=email branch renders the summary into a short
+// plain-text body instead of streaming the printable HTML page.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && getPostValue('delivery') === 'email') {
+    $friendly = false; // undo the printable-layout flag; we want the nav on the feedback page
+    hc108_email_and_exit(
+        type: 'medication_summary',
+        patientId: $patient_id,
+        startDate: null,
+        endDate: null,
+        patient: $summary['patient'],
+    );
 }
 
 print_header();
@@ -121,6 +136,13 @@ function medsum_format_float($value): string
 
   <div class="print-actions no-print">
     <button data-print class="btn btn-primary btn-sm">Print</button>
+    <form method="post" class="d-inline">
+      <?php print_form_key(); ?>
+      <input type="hidden" name="patient_id" value="<?= (int) $summary['patient']['id'] ?>">
+      <input type="hidden" name="delivery" value="email">
+      <button type="submit" class="btn btn-outline-secondary btn-sm"
+              title="Email this summary to my account's address">Email to me</button>
+    </form>
     <a href="list_schedule.php?patient_id=<?= (int) $summary['patient']['id'] ?>"
        class="btn btn-outline-secondary btn-sm">Back to Schedule</a>
   </div>
