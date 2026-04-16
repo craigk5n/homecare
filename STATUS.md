@@ -1592,7 +1592,7 @@ caregivers/admins see Edit / Delete affordances.
 
 ### HC-084: Caregiver notes CSV import
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-082
@@ -1604,28 +1604,67 @@ or `patient_name` picks the patient. A preview step shows what will
 be inserted before commit so the operator can catch column-mapping
 errors before they land in the DB.
 
+**Notes on implementation**:
+- `DatabaseInterface` gained `transactional(callable): mixed`
+  (begin + commit on return, rollback on throw). Implemented on
+  both adapters. Keeps the "all or nothing" guarantee honest --
+  if a DB error strikes mid-insert, the pre-existing notes
+  table state survives.
+- Split into three small files under `src/Import/`:
+  `NoteTimeParser` (strict date parsing), `ParsedRow` /
+  `ImportPlan` (readonly DTOs), and `CaregiverNoteImporter`
+  (the orchestrator). The split keeps each file testable in
+  isolation.
+- `NoteTimeParser` uses a priority list of strict formats.
+  Date-only formats carry a `!` prefix so `DateTimeImmutable::
+  createFromFormat` resets unspecified fields to zero -- without
+  it, "2026-04-01" would inherit the current wall-clock time.
+  After each match we check `getLastErrors()` so trailing garbage
+  ("2026-04-01 banana") is rejected instead of accepted as the
+  first 10 chars.
+- UI is intentionally stateless: the preview step embeds the raw
+  file bytes in a hidden textarea and commit re-parses them.
+  Avoids session storage or signed blobs; the second parse
+  guarantees the operator and the DB saw the same bytes.
+- MIME is detected via `finfo_file()` (not the client-supplied
+  header), with a `.csv`/`.tsv`/`.txt` extension check as a
+  second gate. 2 MB hard cap, enforced before reading the temp
+  file.
+- Patient caching: the importer loads all patients once and
+  keeps them in two in-memory indexes (by id and by lowercased
+  name). A 5000-row import then issues zero extra patient
+  lookups.
+- Audit: exactly one `note.imported` row per file with
+  `{filename, row_count, patient_id}` in details -- easy to spot
+  bulk imports in the audit log without drowning in one row
+  per note.
+
 **Acceptance Criteria**:
-- [ ] `import_caregiver_notes.php` (admin-only, `require_role('admin')`):
+- [x] `import_caregiver_notes.php` (admin-only, `require_role('admin')`):
       - File upload (max 2 MB, `.csv` / `.tsv` / `.txt` MIME check)
       - Auto-detect delimiter (comma / tab / semicolon) from first line
       - Header row required; accepted columns: `note_time`, `note`,
         and one of (`patient_id` | `patient_name`)
       - Default `patient_id` query param applies when column absent
-- [ ] Preview step: table of parsed rows (first 100) + row-count +
+- [x] Preview step: table of parsed rows (first 100) + row-count +
       row-level validation errors ("Row 7: no patient matched
       'Fozzie the Cat'"). Import commits only after explicit
       confirmation.
-- [ ] `note_time` parser accepts ISO 8601 (`2026-04-01T14:30`),
+- [x] `note_time` parser accepts ISO 8601 (`2026-04-01T14:30`),
       common US (`4/1/2026 2:30 PM`), and date-only (midnight).
       Rejects ambiguous strings with a clear row error.
-- [ ] Transaction per file: either all rows insert or none
+      (19 unit cases in `NoteTimeParserTest`.)
+- [x] Transaction per file: either all rows insert or none
       (rollback on any validation failure during commit).
-- [ ] Audit row `note.imported` with `details = {filename,
+      Verified by `testRollbackOnMidFileCommitFailure` — sabotages
+      the target table mid-commit and asserts pre-existing rows
+      survive.
+- [x] Audit row `note.imported` with `details = {filename,
       row_count, patient_id}` (one row per import, not per note)
-- [ ] `tests/Integration/Import/CaregiverNoteImportTest.php`:
+- [x] `tests/Integration/Import/CaregiverNoteImportTest.php`:
       good CSV round-trips; column-missing errors; patient_name
       resolution (exact + fuzzy-case); date parser edge cases;
-      rollback on mid-file failure
+      rollback on mid-file failure (12 integration cases).
 
 ---
 

@@ -120,6 +120,10 @@ $patients = getPatients();
               print_menu_item(translate('Add Note'), 'note_caregiver.php?patient_id=' . $patient['id']);
             }
           }
+          if (!empty($is_admin) && $is_admin) {
+            echo '<div class="dropdown-divider"></div>';
+            print_menu_item(translate('Import Notes from File'), 'import_caregiver_notes.php');
+          }
           ?>
         </div>
       </li>

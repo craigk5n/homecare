@@ -79,6 +79,22 @@ final class SqliteDatabase implements DatabaseInterface
         return (int) $this->pdo->lastInsertId();
     }
 
+    public function transactional(callable $fn): mixed
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $result = $fn();
+            $this->pdo->commit();
+
+            return $result;
+        } catch (\Throwable $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     /**
      * Expose the underlying PDO for test fixtures that need to run raw SQL
      * (e.g. loading a multi-statement schema dump).

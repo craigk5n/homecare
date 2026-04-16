@@ -43,4 +43,19 @@ interface DatabaseInterface
      * Behavior is undefined when no INSERT has been issued on this connection.
      */
     public function lastInsertId(): int;
+
+    /**
+     * Run $fn inside a transaction. Commit on normal return, roll back on
+     * any Throwable (which is then re-thrown so callers see the failure).
+     *
+     * Nesting is not supported -- callers must not invoke another
+     * `transactional()` from inside $fn.
+     *
+     * @template T
+     *
+     * @param callable():T $fn
+     *
+     * @return T
+     */
+    public function transactional(callable $fn): mixed;
 }

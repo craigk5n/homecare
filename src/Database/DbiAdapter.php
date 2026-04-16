@@ -54,6 +54,27 @@ final class DbiAdapter implements DatabaseInterface
         return $result !== false;
     }
 
+    public function transactional(callable $fn): mixed
+    {
+        $conn = $GLOBALS['c'] ?? null;
+        if (!$conn instanceof mysqli) {
+            throw new RuntimeException(
+                'No active mysqli connection; cannot start transaction.'
+            );
+        }
+
+        $conn->begin_transaction();
+        try {
+            $result = $fn();
+            $conn->commit();
+
+            return $result;
+        } catch (\Throwable $e) {
+            $conn->rollback();
+            throw $e;
+        }
+    }
+
     public function lastInsertId(): int
     {
         // dbi4php.php stashes the mysqli handle in $GLOBALS['c'] when
