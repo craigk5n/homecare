@@ -1482,7 +1482,7 @@ HC-013 (audit logging)
 
 ### HC-082: Caregiver notes entry & edit UI
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-004, HC-011, HC-013
@@ -1492,22 +1492,44 @@ a patient, edit an existing note, and delete one. The table already
 carries `patient_id`, `note` (text), `note_time` (when the event
 occurred, user-editable), and `created_at` (immutable).
 
+**Notes on implementation**:
+- `CaregiverNoteRepository` is a fresh class (no bridge to legacy
+  code -- the `hc_caregiver_notes` table had no callers yet).
+  Writes return the new id via `DatabaseInterface::lastInsertId()`;
+  reads hydrate into the same loose associative-array shape the
+  other repos use (see HC-004 notes on deferring a dedicated
+  value object).
+- `getForPatient()` orders `note_time DESC, id DESC` so two notes
+  stamped the same second still return in insert order -- the
+  plain-text journal import (HC-085) will lean on this.
+- `note_caregiver.php` uses `<input type="datetime-local">`, which
+  omits seconds. The handler appends `:00` before validating
+  through a `DateTimeImmutable::createFromFormat` round-trip so
+  malformed timestamps are rejected at the boundary.
+- Post-save redirect targets `list_schedule.php` (the patient's
+  main view) rather than the yet-to-be-built HC-083 list page so
+  the story stands alone; the menu entry opens the "Add Note"
+  form directly until HC-083 lands.
+- CSRF is enforced automatically -- the handler ends in
+  `_handler.php`, which triggers the shared token check in
+  `includes/formvars.php`.
+
 **Acceptance Criteria**:
-- [ ] `src/Repository/CaregiverNoteRepository.php` with
+- [x] `src/Repository/CaregiverNoteRepository.php` with
       `create(int $patientId, string $note, string $noteTime): int`,
       `update(int $id, string $note, string $noteTime): bool`,
       `delete(int $id): bool`, `getById(int $id): ?array`,
       `getForPatient(int $patientId, int $limit = 50, int $offset = 0): array`
-- [ ] `note_caregiver.php` (entry / edit) with fields:
+- [x] `note_caregiver.php` (entry / edit) with fields:
       patient (prefilled + editable when `patient_id` in query),
       note (textarea, required, 4000 char max),
       note_time (datetime-local, defaults to now)
-- [ ] CSRF-protected form handler `note_caregiver_handler.php`
-- [ ] Role gate: `require_role('caregiver')` (viewers cannot write)
-- [ ] Audit log entries: `note.created`, `note.updated`, `note.deleted`
+- [x] CSRF-protected form handler `note_caregiver_handler.php`
+- [x] Role gate: `require_role('caregiver')` (viewers cannot write)
+- [x] Audit log entries: `note.created`, `note.updated`, `note.deleted`
       with `details = {patient_id, note_time, note_len}`
-- [ ] Menu entry ("Notes") under the patient-context menu
-- [ ] `tests/Integration/Repository/CaregiverNoteRepositoryTest.php`
+- [x] Menu entry ("Notes") under the patient-context menu
+- [x] `tests/Integration/Repository/CaregiverNoteRepositoryTest.php`
       covers CRUD round-trip + getForPatient ordering (newest-first)
 
 ---
