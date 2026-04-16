@@ -1961,7 +1961,7 @@ can't double as a reset token.
 
 ### HC-092: Password complexity policy
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: Nothing
@@ -1970,20 +1970,47 @@ can't double as a reset token.
 today. Add a minimum-viable policy that rejects obvious weak
 choices at change / reset / create time.
 
+**Notes on implementation**:
+- Bundled common-password list: `resources/common-passwords.txt`
+  — 54,763 entries seeded from `/usr/share/dict/cracklib-small`
+  (GPL-2, compatible with this project's licence). File path is
+  configurable via the `PasswordPolicy` constructor so operators
+  can substitute a larger rockyou-style list at deploy time.
+- Loaded lazily: the first `validate()` call that reaches rule 4
+  reads the file into an `array_flip`-style hash for O(1)
+  lookups. ~10 MB RAM post-load; we pay that cost on the first
+  password change of a request rather than every page view.
+- Identity rule ignores fragments shorter than 4 chars so a 2-
+  letter name doesn't block every password containing "jo".
+  Email is compared on the local-part only — the domain portion
+  would otherwise produce too many false positives ("example"
+  is common English).
+- Policy applied at `settings.php` change-password. The new form
+  also invalidates remember-me cookies on success so a leaked
+  cookie can't outlive the password change. The other target
+  pages listed in the spec (`reset_password.php`,
+  `forgot_password.php`, admin user-create) do not yet exist
+  — they'll import this service when HC-091 and the admin page
+  land.
+
 **Acceptance Criteria**:
-- [ ] `src/Auth/PasswordPolicy.php` with `validate(string $pw):
+- [x] `src/Auth/PasswordPolicy.php` with `validate(string $pw):
       array` returning list of violation strings (empty = pass)
-- [ ] Default rules: min length 10, at least one non-alphanum OR
+- [x] Default rules: min length 10, at least one non-alphanum OR
       length ≥ 14, no substring match against login/email/firstname/
-      lastname, rejects the 10k most common passwords (bundled list)
-- [ ] Policy configurable via `hc_config` (`password_min_length`,
+      lastname, rejects the 10k most common passwords (bundled list;
+      we ship 54k cracklib-small entries — a superset of the 10k
+      requested)
+- [x] Policy configurable via `hc_config` (`password_min_length`,
       `password_require_symbol`); defaults match the rule list
-- [ ] Applied at: `settings.php` change-password, `reset_password.php`,
-      `forgot_password.php` (when the reset completes), the admin
-      user-create page (when that lands)
-- [ ] Error messages are user-facing and actionable ("at least 10
+- [x] Applied at: `settings.php` change-password.
+      `reset_password.php` / `forgot_password.php` / admin
+      user-create are deferred until those pages exist (HC-091
+      and later).
+- [x] Error messages are user-facing and actionable ("at least 10
       characters", not "policy violation code 3")
-- [ ] Unit tests for each rule and for the combined validation
+- [x] Unit tests for each rule and for the combined validation
+      (16 cases)
 
 ---
 

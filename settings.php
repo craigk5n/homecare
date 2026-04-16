@@ -22,6 +22,8 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use HomeCare\Auth\ApiKeyAuth;
 use HomeCare\Auth\Authorization;
+use HomeCare\Auth\PasswordHasher;
+use HomeCare\Auth\PasswordPolicy;
 use HomeCare\Auth\TotpService;
 use HomeCare\Config\NtfyConfig;
 use HomeCare\Database\DbiAdapter;
@@ -31,6 +33,8 @@ $db = new DbiAdapter();
 $users = new UserRepository($db);
 $ntfyConfig = new NtfyConfig($db);
 $totpService = new TotpService();
+$passwordHasher = new PasswordHasher();
+$passwordPolicy = new PasswordPolicy($db);
 /** @var string $login */
 $login = $GLOBALS['login'];
 $currentRole = getCurrentUserRole();
@@ -93,6 +97,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $users->disableTotp($login);
             audit_log('totp.disabled', 'user');
             $flash = ['type' => 'warning', 'text' => '2FA disabled for your account.'];
+        }
+    } elseif ($action === 'change_password') {
+        $currentUser = $users->findByLogin($login);
+        $currentPw = (string) getPostValue('current_password');
+        $newPw = (string) getPostValue('new_password');
+        $confirmPw = (string) getPostValue('confirm_password');
+
+        if ($currentUser === null
+            || !$passwordHasher->verify($currentPw, $currentUser['passwd'])
+        ) {
+            $flash = ['type' => 'danger', 'text' => 'Current password did not verify.'];
+        } elseif ($newPw !== $confirmPw) {
+            $flash = ['type' => 'danger', 'text' => 'New password and confirmation do not match.'];
+        } else {
+            $violations = $passwordPolicy->validate($newPw, [
+                'login' => $currentUser['login'],
+                // Future: email, firstname, lastname when we read them.
+            ]);
+            if ($violations !== []) {
+                $flash = [
+                    'type' => 'danger',
+                    'text' => 'Password does not meet policy: ' . implode(' ', $violations),
+                ];
+            } else {
+                $users->updatePasswordHash($login, $passwordHasher->hash($newPw));
+                // Invalidate any remember-me cookies so a leaked cookie
+                // can't outlive the password change.
+                $users->updateRememberToken($login, null, null);
+                audit_log('password.changed', 'user');
+                $flash = [
+                    'type' => 'success',
+                    'text' => 'Password updated. Existing "remember me" sessions have been signed out.',
+                ];
+            }
         }
 } elseif ($action === 'save_ntfy' && $isAdmin) {
     $ntfyConfig->setUrl(trim((string) getPostValue('ntfy_url')));
@@ -237,6 +275,35 @@ print_header();
     </button>
   </form>
 <?php endif; ?>
+
+<hr class="my-4">
+<h4 id="password">Change password</h4>
+<p class="text-muted">
+  Enter your current password, then a new one. The new password must be
+  at least <?= (int) PasswordPolicy::DEFAULT_MIN_LENGTH ?> characters
+  and contain a non-alphanumeric character (or be 14+ characters long).
+  It can't contain your login name, and can't be a common password.
+</p>
+<form method="post" class="form" style="max-width: 420px;">
+  <?php print_form_key(); ?>
+  <input type="hidden" name="action" value="change_password">
+  <div class="form-group mb-3">
+    <label for="current_password" class="form-label">Current password</label>
+    <input type="password" class="form-control" id="current_password"
+           name="current_password" autocomplete="current-password" required>
+  </div>
+  <div class="form-group mb-3">
+    <label for="new_password" class="form-label">New password</label>
+    <input type="password" class="form-control" id="new_password"
+           name="new_password" autocomplete="new-password" required>
+  </div>
+  <div class="form-group mb-3">
+    <label for="confirm_password" class="form-label">Confirm new password</label>
+    <input type="password" class="form-control" id="confirm_password"
+           name="confirm_password" autocomplete="new-password" required>
+  </div>
+  <button type="submit" class="btn btn-primary">Change password</button>
+</form>
 
 <hr class="my-4">
 <h4 id="totp">Two-factor authentication (TOTP)</h4>
