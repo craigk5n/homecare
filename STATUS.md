@@ -2213,6 +2213,185 @@ preference.
 
 ---
 
+### HC-104: Email addressing plumbing (unlock story)
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 2
+**Depends on**: HC-101
+
+**Description**: Email is registered as a notification channel
+(HC-101) but `send_reminders.php` never supplies a recipient, so
+no mail has ever fired from the reminder / supply-alert paths.
+The missing piece is *addressing*: a self-service way for each
+caregiver to set their own email, an opt-in toggle for reminder
+email, and per-user iteration in the reminder loop so each
+recipient gets their own `NotificationMessage`. One story unlocks
+HC-091, HC-105, HC-106, HC-107, HC-108.
+
+**Acceptance Criteria**:
+- [ ] `settings.php` adds a "Contact" section: email field
+      (prefilled from `hc_user.email`) and an "Email me reminders"
+      checkbox bound to `hc_user.email_notifications`.
+- [ ] `UserRepository::updateEmail(string $login, ?string $email): bool`
+      and `updateEmailNotifications(string $login, bool $on): bool`
+      with appropriate audit rows.
+- [ ] Server-side validation: email is either empty or passes
+      `filter_var(FILTER_VALIDATE_EMAIL)`; toggle cannot be turned
+      on without a valid address.
+- [ ] `send_reminders.php` iterates `hc_user` rows where
+      `email_notifications='Y'` AND `email IS NOT NULL` and
+      dispatches one `NotificationMessage` per recipient with the
+      email set. Ntfy still fires topic-based alongside — two
+      channels, different addressing models.
+- [ ] Audit: `user.email_updated` and `user.email_prefs_updated`
+- [ ] Integration test: opted-in user with valid email receives
+      a `NotificationMessage` with `recipient` set; opted-out user
+      is skipped.
+
+---
+
+### HC-105: Late-dose email alert
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-104
+
+**Description**: Today's reminder only fires *before* a dose is
+due. If the caregiver misses the window there's no louder ping —
+the dose just silently ages into the "overdue" column. Add an
+escalation: when a dose is more than `late_dose_alert_minutes`
+past due (default **60**, configurable via `hc_config`), send an
+email to every opted-in caregiver. Once-per-lateness so a
+permanently-overdue schedule doesn't fire hourly forever.
+
+**Acceptance Criteria**:
+- [ ] New `hc_config.late_dose_alert_minutes` (default 60). 0 or
+      unset → feature off.
+- [ ] Migration: `hc_late_dose_alert_log (schedule_id INT PRIMARY
+      KEY, last_due_at DATETIME NOT NULL, sent_at DATETIME NOT
+      NULL)` — one row per schedule, upserted on each new lateness
+      window. Same throttle shape as `hc_supply_alert_log`.
+- [ ] `src/Service/LateDoseAlertService.php` with pure
+      `shouldAlert(lastTaken, frequency, threshold, lastSent, now)`
+      that returns true only when:
+        1. the dose is more than `threshold` minutes past due, AND
+        2. no alert has been sent for this exact due instant yet.
+- [ ] `send_reminders.php` new pass after the per-dose reminder
+      loop: walks every active schedule, calls
+      `LateDoseAlertService::findPendingAlerts()`, dispatches via
+      `ChannelRegistry` with `NotificationMessage::PRIORITY_HIGH`
+      and tag `late`.
+- [ ] Message body: "Medication X for patient Y was due at
+      HH:MM — N minutes late." Subject carries `[URGENT]` via
+      the existing EmailChannel priority mapping.
+- [ ] `--dry-run` prints what would be sent.
+- [ ] Unit tests: threshold boundary, replay suppression within
+      the same due window, new alert when the next due instant
+      rolls over, feature-off when config is 0.
+- [ ] Integration test: two schedules, one late one on-time →
+      exactly one alert row written and one dispatch per
+      recipient (no per-channel multiplication).
+
+---
+
+### HC-106: Security-event email notifications
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-104
+
+**Description**: High-trust events happening on an account
+should reach the account owner out-of-band so a compromised
+session can't silently degrade security. Pipe existing audit
+write-points through the email channel with a tight template.
+
+**Acceptance Criteria**:
+- [ ] Emails fire for each of: `totp.disabled`,
+      `password.changed`, `apikey.generated`, `apikey.revoked`,
+      `user.login_failed` (only when a lockout just tripped, not
+      every failed attempt), `user.login` from a new IP (first
+      seen vs `hc_user.last_login_ip`).
+- [ ] New column `hc_user.last_login_ip VARCHAR(45) NULL` (IPv6-
+      wide) for the new-IP check.
+- [ ] Messages are short, actionable, and link back to
+      `settings.php` so the user can verify or react.
+- [ ] Fire-and-forget — a transient SMTP failure logs but does
+      NOT block the underlying action (the audit row is the
+      authoritative record).
+- [ ] `hc_config.security_email_enabled` master toggle (default
+      `'Y'`) so an operator can mute these globally during a
+      known-noisy migration.
+- [ ] Integration test: each trigger produces exactly one
+      dispatch with the expected subject / body.
+
+---
+
+### HC-107: Weekly adherence email digest
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-104, HC-022
+
+**Description**: Push a summary of last week's per-medication
+adherence (see HC-022 for the math) to every opted-in caregiver
+every Monday morning. Useful for family caregivers who aren't
+logging in daily and want a calm Monday-morning snapshot rather
+than real-time pings.
+
+**Acceptance Criteria**:
+- [ ] New CLI script `bin/send_adherence_digest.php` (intended
+      for a Monday-morning cron entry).
+- [ ] Per-patient section in the body: per-medication
+      `7-day %, 30-day %` table, colour-keyed via text markers
+      (✓ ≥90%, ⚠ 70-89%, ✗ <70%).
+- [ ] Per-user opt-in: `hc_user.digest_enabled CHAR(1) DEFAULT
+      'N'` + settings.php toggle (reuses the HC-104 contact
+      section).
+- [ ] Subject: `[HomeCare] Weekly adherence digest — {date}`
+- [ ] Dry-run flag prints per-recipient message without sending.
+- [ ] Unit test for the body builder against a fixture set:
+      correct colour markers for boundary percentages, correct
+      section ordering, empty-week shows "no intakes this period"
+      rather than a blank table.
+
+---
+
+### HC-108: Email delivery of exports
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 2
+**Depends on**: HC-104
+
+**Description**: CSV / FHIR / PDF exports currently stream to
+the browser. A 90-day intake pull can time out on flaky
+connections and is awkward to share with a vet. Add an
+"Email this to me" button alongside the download button on
+`report_intake.php`, `export_intake_csv.php`,
+`export_intake_fhir.php`, and `medication_summary.php`.
+
+**Acceptance Criteria**:
+- [ ] Each export page gets a second form that POSTs with
+      `delivery=email`; the handler renders the export in memory
+      and attaches it to a short `NotificationMessage` with
+      `recipient` set to the requester's email.
+- [ ] Requires the user to have a verified email via HC-104
+      (toggle on + filter_var passes); button disabled with a
+      helpful tooltip otherwise.
+- [ ] Rate-limit: max 3 export emails per user per hour (stored
+      in session or `hc_audit_log`) so a scripted consumer can't
+      spam the SMTP relay.
+- [ ] Audit: `export.emailed` with `{type, patient_id,
+      start_date, end_date, size_bytes}`.
+- [ ] Integration test: successful send attaches the expected
+      bytes; rate limit kicks in on the 4th request.
+
+---
+
 ## EPIC-11: Medication Data Breadth
 
 **Goal**: Stop treating medications as free-text strings. Adds a
