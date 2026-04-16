@@ -253,6 +253,40 @@ $sectionConfig = [
 // Count completed for collapse label
 $completedCount = count($groups['done']);
 
+// ── Action renderers ──
+// Record is the primary 1-click action (used ~90% of the time).
+// Adjust dosage / Edit schedule live behind a kebab (⋮) dropdown so
+// the row stays compact and a future "View history" / "End schedule"
+// action can land there without another redesign.
+function renderOverflowMenu($entry) {
+    $items = '';
+    if (!$entry['isCompleted']) {
+        $items .= '<a class="dropdown-item" href="' . htmlspecialchars($entry['adjustUrl']) . '">Adjust dosage</a>';
+    }
+    $items .= '<a class="dropdown-item" href="' . htmlspecialchars($entry['editUrl']) . '">Edit schedule</a>';
+
+    $html  = '<div class="dropdown d-inline-block">';
+    $html .= '<button type="button" class="btn btn-sm btn-outline-secondary" '
+           . 'data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" '
+           . 'aria-label="More actions" title="More actions">';
+    $html .= '<img src="images/bootstrap-icons/three-dots-vertical.svg" alt="">';
+    $html .= '</button>';
+    $html .= '<div class="dropdown-menu dropdown-menu-right">' . $items . '</div>';
+    $html .= '</div>';
+    return $html;
+}
+
+function renderActionGroup($entry) {
+    $html = '<div class="action-btn-group">';
+    if (!$entry['isCompleted']) {
+        $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success" title="Record Intake">';
+        $html .= '<img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a>';
+    }
+    $html .= renderOverflowMenu($entry);
+    $html .= '</div>';
+    return $html;
+}
+
 // ── Helper to render a table row ──
 function renderTableRow($entry, $statusClass) {
     $warningIcon = '';
@@ -280,15 +314,7 @@ function renderTableRow($entry, $statusClass) {
         $html .= '<br><small class="text-muted">' . htmlspecialchars($entry['remainDetail']) . '</small>';
     }
     $html .= '</td>';
-    $html .= '<td class="actions-cell"><div class="action-btn-group">';
-    if (!$entry['isCompleted']) {
-        $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success" title="Record Intake">';
-        $html .= '<img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a>';
-        $html .= '<a href="' . htmlspecialchars($entry['adjustUrl']) . '" class="btn btn-sm btn-outline-warning" title="Adjust Dosage">Adjust</a>';
-    }
-    $html .= '<a href="' . htmlspecialchars($entry['editUrl']) . '" class="btn btn-sm btn-outline-secondary" title="Edit">';
-    $html .= '<img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a>';
-    $html .= '</div></td>';
+    $html .= '<td class="actions-cell">' . renderActionGroup($entry) . '</td>';
     $html .= '</tr>';
     return $html;
 }
@@ -306,10 +332,13 @@ function renderCard($entry, $statusClass) {
     $html  = '<div class="schedule-card ' . $statusClass . '">';
     $html .= '<div class="d-flex justify-content-between align-items-start">';
     $html .= '<span class="card-med-name">' . htmlspecialchars($entry['medName']) . '</span>';
+    $html .= '<div class="action-btn-group">';
     if (!$entry['isCompleted']) {
         $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success" title="Record Intake">';
         $html .= '<img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a>';
     }
+    $html .= renderOverflowMenu($entry);
+    $html .= '</div>';
     $html .= '</div>';
     $html .= '<div class="card-meta">Every ' . htmlspecialchars($entry['frequency']);
     if ($entry['lastTakenNicely']) {
@@ -333,13 +362,6 @@ function renderCard($entry, $statusClass) {
         }
         $html .= '</div>';
     }
-    $html .= '<div class="card-actions">';
-    if (!$entry['isCompleted']) {
-        $html .= '<a href="' . htmlspecialchars($entry['adjustUrl']) . '" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a>';
-    }
-    $html .= '<a href="' . htmlspecialchars($entry['editUrl']) . '" class="btn btn-sm btn-outline-secondary" title="Edit">';
-    $html .= '<img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a>';
-    $html .= '</div>';
     $html .= '</div>';
     return $html;
 }
