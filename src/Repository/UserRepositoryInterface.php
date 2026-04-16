@@ -22,7 +22,8 @@ namespace HomeCare\Repository;
  *     totp_secret:?string,
  *     totp_enabled:string,
  *     totp_recovery_codes:?string,
- *     email_notifications:string
+ *     email_notifications:string,
+ *     notification_channels:string
  * }
  */
 interface UserRepositoryInterface
@@ -120,4 +121,12 @@ interface UserRepositoryInterface
      * @param list<string> $recoveryCodeHashes
      */
     public function setRecoveryCodes(string $login, array $recoveryCodeHashes): bool;
+
+    /**
+     * Replace the user's notification-channel preference. Pass an
+     * empty list to clear and fall back to the system default.
+     *
+     * @param list<string> $channelNames
+     */
+    public function updateNotificationChannels(string $login, array $channelNames): bool;
 }

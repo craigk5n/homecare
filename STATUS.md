@@ -2288,7 +2288,7 @@ without per-service code.
 
 ### HC-103: Per-caregiver channel preferences
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: HC-101, HC-102
@@ -2298,15 +2298,48 @@ their reminders. The system default stays (admin-configured
 ntfy/email/webhook); a caregiver can override with their own
 preference.
 
+**Notes on implementation**:
+- Stored as JSON in `hc_user.notification_channels` (TEXT for
+  SQLite/MySQL portability — MySQL 8 needs `DEFAULT ('[]')` with
+  parens for TEXT defaults). `UserRepository::
+  updateNotificationChannels()` dedupes + filters out empty
+  strings before encoding, so storage stays clean regardless
+  of caller hygiene.
+- `ChannelResolver::resolveFor($json)` is pure: prefers
+  the user list, falls back to registry defaults when the
+  list is empty or unparseable, and drops channels that are
+  unknown or `isReady() === false`. A caregiver opting into
+  "email" before SMTP is wired sees their other channels
+  still work.
+- Settings UI shows ONLY ready channels — no point offering
+  "email" when the admin hasn't set up SMTP. Empty check-list
+  = "use the site default", no hidden switch needed.
+- `FakeChannel` lived inside `ChannelRegistryTest.php` (PSR-4
+  would never have found it from another file); extracted to
+  its own file so `ChannelResolverTest` and any future channel
+  tests can share it.
+- Resolver is instantiated in `send_reminders.php` but not yet
+  used at dispatch time — the reminder cron is still topic-
+  based (one `dispatch()` per reminder, no per-user context).
+  HC-104 adds the per-user iteration that feeds this resolver.
+
 **Acceptance Criteria**:
-- [ ] Migration: `hc_user.notification_channels JSON NOT NULL
-      DEFAULT '[]'` (MySQL) / `TEXT` with JSON in SQLite
-- [ ] `settings.php` adds a "My notifications" section with
-      checkboxes for each enabled channel
-- [ ] `send_reminders.php` resolves the per-user channel list,
-      falls back to the system default when empty
-- [ ] Unit test: resolver prefers per-user, falls back to system
-- [ ] Audit row on user-pref change
+- [x] Migration (014): `hc_user.notification_channels TEXT NOT
+      NULL DEFAULT ('[]')` — portable across MySQL 8 / SQLite
+      3.35+. Applied to live DB.
+- [x] `settings.php` adds a "My notifications" section with
+      checkboxes for each enabled (isReady) channel. Empty
+      selection falls back to the site default.
+- [x] `send_reminders.php` constructs the `ChannelResolver`;
+      per-user resolution is plumbed (activation lands with
+      HC-104).
+- [x] Unit test: resolver prefers per-user, falls back to system,
+      drops unknown + not-ready, tolerates malformed JSON
+      (8 cases).
+- [x] Integration test: `UserRepository::updateNotificationChannels`
+      round-trips, dedupes, and clears with empty list
+      (4 cases).
+- [x] Audit row `user.channel_prefs_updated` on every save.
 
 ---
 

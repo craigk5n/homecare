@@ -5,48 +5,9 @@ declare(strict_types=1);
 namespace HomeCare\Tests\Unit\Notification;
 
 use HomeCare\Notification\ChannelRegistry;
-use HomeCare\Notification\NotificationChannel;
 use HomeCare\Notification\NotificationMessage;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
-
-final class FakeChannel implements NotificationChannel
-{
-    public int $sendCalls = 0;
-
-    /** @var list<NotificationMessage> */
-    public array $messages = [];
-
-    public function __construct(
-        private readonly string $name,
-        private bool $ready = true,
-        private readonly bool $succeeds = true,
-    ) {
-    }
-
-    public function name(): string
-    {
-        return $this->name;
-    }
-
-    public function isReady(): bool
-    {
-        return $this->ready;
-    }
-
-    public function setReady(bool $ready): void
-    {
-        $this->ready = $ready;
-    }
-
-    public function send(NotificationMessage $message): bool
-    {
-        $this->sendCalls++;
-        $this->messages[] = $message;
-
-        return $this->succeeds;
-    }
-}
 
 final class ChannelRegistryTest extends TestCase
 {

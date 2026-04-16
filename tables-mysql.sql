@@ -43,6 +43,9 @@ CREATE TABLE hc_user (
   totp_recovery_codes TEXT NULL,
   /* Per-user opt-in for reminder emails (HC-101); 'N' default */
   email_notifications CHAR(1) NOT NULL DEFAULT 'N',
+  /* Per-user channel preference: JSON array of channel names, e.g.
+   * ["ntfy","email"]. Empty array ⇒ fall back to system default (HC-103). */
+  notification_channels TEXT NOT NULL DEFAULT ('[]'),
   PRIMARY KEY (login)
 );
 

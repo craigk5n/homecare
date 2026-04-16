@@ -29,6 +29,10 @@ use HomeCare\Config\EmailConfig;
 use HomeCare\Config\NtfyConfig;
 use HomeCare\Config\WebhookConfig;
 use HomeCare\Database\DbiAdapter;
+use HomeCare\Notification\ChannelRegistry;
+use HomeCare\Notification\EmailChannel;
+use HomeCare\Notification\NtfyChannel;
+use HomeCare\Notification\WebhookChannel;
 use HomeCare\Repository\UserRepository;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Mailer;
@@ -49,6 +53,19 @@ $ntfyConfig = new NtfyConfig($db);
 $emailConfig = new EmailConfig($db);
 $webhookConfig = new WebhookConfig($db);
 $totpService = new TotpService();
+
+// Mirror the channel registration in send_reminders.php so the
+// "My notifications" UI only offers channels the admin has
+// actually configured. Using isReady() as the gate means a
+// caregiver can't opt into email before SMTP is wired.
+$myChannels = new ChannelRegistry();
+$myChannels->register(new NtfyChannel($ntfyConfig));
+$myChannels->register(new EmailChannel($emailConfig));
+$myChannels->register(new WebhookChannel(
+    config: $webhookConfig,
+    secret: \HomeCare\Auth\SignedUrl::getSecret(),
+    http: new \HomeCare\Notification\CurlHttpClient($webhookConfig->getTimeoutSeconds()),
+));
 $passwordHasher = new PasswordHasher();
 $passwordPolicy = new PasswordPolicy($db);
 /** @var string $login */
@@ -100,6 +117,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit_log('totp.enabled', 'user');
             $flash = ['type' => 'success', 'text' => '2FA enabled. Copy your recovery codes now — they are shown only once.'];
         }
+    } elseif ($action === 'save_my_channels') {
+        $selected = getPostValue('my_channels');
+        $names = [];
+        if (is_array($selected)) {
+            foreach ($selected as $name) {
+                if (is_string($name) && $name !== '') {
+                    $names[] = $name;
+                }
+            }
+        }
+        $users->updateNotificationChannels($login, $names);
+        audit_log('user.channel_prefs_updated', 'user', null, [
+            'channels' => $names,
+        ]);
+        $flash = [
+            'type' => 'success',
+            'text' => $names === []
+                ? 'Cleared — you will use the system-default channels.'
+                : 'Channel preference saved.',
+        ];
     } elseif ($action === 'disable_totp') {
         $currentUser = $users->findByLogin($login);
         $code = (string) getPostValue('totp_code');
@@ -376,6 +413,63 @@ print_header();
             data-confirm="Revoke the current API key? Clients will start returning 401 immediately.">
       Revoke
     </button>
+  </form>
+<?php endif; ?>
+
+<hr class="my-4">
+<?php
+// Current per-user preference as a quick-lookup set.
+$userChannelsRaw = $user['notification_channels'] ?? '[]';
+$userChannelsList = json_decode((string) $userChannelsRaw, true);
+if (!is_array($userChannelsList)) {
+    $userChannelsList = [];
+}
+$userChannelsSet = [];
+foreach ($userChannelsList as $n) {
+    if (is_string($n)) {
+        $userChannelsSet[$n] = true;
+    }
+}
+
+// Channels that can be chosen — only those the admin has
+// configured (isReady).
+$availableChannels = [];
+foreach ($myChannels->defaultChannelNames() as $name) {
+    $ch = $myChannels->get($name);
+    if ($ch->isReady()) {
+        $availableChannels[] = $name;
+    }
+}
+?>
+<h4 id="notifications">My notifications</h4>
+<p class="text-muted">
+  Pick which channels should deliver <em>your</em> reminders.
+  Leave everything unchecked to use the site default (whatever
+  the admin has set up). Only channels that an admin has
+  configured appear here.
+</p>
+<?php if ($availableChannels === []): ?>
+  <p class="text-muted">
+    <em>No channels are configured yet — ask your admin to
+    enable ntfy, email, or a webhook first.</em>
+  </p>
+<?php else: ?>
+  <form method="post" class="form" style="max-width: 420px;">
+    <?php print_form_key(); ?>
+    <input type="hidden" name="action" value="save_my_channels">
+    <?php foreach ($availableChannels as $name):
+        $id = 'my_channel_' . $name;
+        $checked = isset($userChannelsSet[$name]) ? ' checked' : '';
+    ?>
+      <div class="form-check mb-2">
+        <input type="checkbox" class="form-check-input" id="<?= htmlspecialchars($id) ?>"
+               name="my_channels[]" value="<?= htmlspecialchars($name) ?>"<?= $checked ?>>
+        <label class="form-check-label" for="<?= htmlspecialchars($id) ?>">
+          <?= htmlspecialchars(ucfirst($name)) ?>
+        </label>
+      </div>
+    <?php endforeach; ?>
+    <button type="submit" class="btn btn-primary mt-2">Save my channels</button>
   </form>
 <?php endif; ?>
 

@@ -171,6 +171,26 @@ final class UserRepository implements UserRepositoryInterface
         );
     }
 
+    public function updateNotificationChannels(string $login, array $channelNames): bool
+    {
+        // Defensive: filter to strings, drop duplicates, reindex so the
+        // stored JSON is always a clean `["ntfy","email"]`-shaped list
+        // regardless of caller hygiene.
+        $clean = array_values(array_unique(array_filter(
+            $channelNames,
+            static fn (string $name): bool => $name !== ''
+        )));
+        $json = json_encode($clean);
+        if ($json === false) {
+            $json = '[]';
+        }
+
+        return $this->db->execute(
+            'UPDATE hc_user SET notification_channels = ? WHERE login = ?',
+            [$json, $login]
+        );
+    }
+
     /**
      * @param list<string> $hashes
      */
@@ -190,7 +210,7 @@ final class UserRepository implements UserRepositoryInterface
             . 'remember_token, remember_token_expires, '
             . 'failed_attempts, locked_until, api_key_hash, '
             . 'totp_secret, totp_enabled, totp_recovery_codes, '
-            . 'email_notifications FROM hc_user';
+            . 'email_notifications, notification_channels FROM hc_user';
     }
 
     /**
@@ -218,6 +238,7 @@ final class UserRepository implements UserRepositoryInterface
             'totp_recovery_codes' => $row['totp_recovery_codes'] === null
                 ? null : (string) $row['totp_recovery_codes'],
             'email_notifications' => (string) ($row['email_notifications'] ?? 'N'),
+            'notification_channels' => (string) ($row['notification_channels'] ?? '[]'),
         ];
     }
 }

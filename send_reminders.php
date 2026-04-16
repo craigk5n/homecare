@@ -7,6 +7,7 @@ use HomeCare\Config\NtfyConfig;
 use HomeCare\Config\WebhookConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Notification\ChannelRegistry;
+use HomeCare\Notification\ChannelResolver;
 use HomeCare\Notification\CurlHttpClient;
 use HomeCare\Notification\EmailChannel;
 use HomeCare\Notification\NotificationMessage;
@@ -38,6 +39,10 @@ $channels->register(new WebhookChannel(
     secret: SignedUrl::getSecret(),
     http: new CurlHttpClient($webhookConfig->getTimeoutSeconds()),
 ));
+// HC-103: resolver wires per-user preference → registry default when
+// we have user context. The current topic-based cron doesn't iterate
+// per user (HC-104 lands that), so this is plumbing for now.
+$resolver = new ChannelResolver($channels);
 
 $dryRun = in_array('--dry-run', $argv, true);
 
