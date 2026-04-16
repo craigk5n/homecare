@@ -29,6 +29,18 @@ use HomeCare\Config\EmailConfig;
 use HomeCare\Config\NtfyConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\UserRepository;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
+use Symfony\Component\Mailer\Mailer;
+use Symfony\Component\Mailer\Transport;
+use Symfony\Component\Mime\Address;
+use Symfony\Component\Mime\Email;
+
+/**
+ * Minimum seconds between two email-test attempts per admin. Prevents
+ * a mistyped SMTP host from piling up 30-second timeouts (and burning
+ * audit rows) while the operator iterates on a DSN.
+ */
+const EMAIL_TEST_COOLDOWN_SECONDS = 60;
 
 $db = new DbiAdapter();
 $users = new UserRepository($db);
@@ -150,6 +162,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     unset($meta['dsn']);
     audit_log('email.config_updated', 'config', null, $meta);
     $flash = ['type' => 'success', 'text' => 'Email settings saved.'];
+} elseif ($action === 'test_email' && $isAdmin) {
+    // Tests the VALUES CURRENTLY IN THE FORM, not the saved config.
+    // Operator can probe an in-progress DSN before committing it.
+    $now = time();
+    $lastTs = (int) ($_SESSION['email_test_last_ts'] ?? 0);
+    $dsn = trim((string) getPostValue('smtp_dsn'));
+    $fromAddr = trim((string) getPostValue('smtp_from_address'));
+    $fromName = trim((string) getPostValue('smtp_from_name'));
+    $to = trim((string) getPostValue('test_to'));
+
+    if ($now - $lastTs < EMAIL_TEST_COOLDOWN_SECONDS) {
+        $wait = EMAIL_TEST_COOLDOWN_SECONDS - ($now - $lastTs);
+        $flash = [
+            'type' => 'warning',
+            'text' => "Please wait {$wait}s between tests.",
+        ];
+    } elseif ($to === '' || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+        $flash = ['type' => 'danger', 'text' => 'Enter a valid recipient address first.'];
+    } elseif ($dsn === '' || $fromAddr === '') {
+        $flash = ['type' => 'danger', 'text' => 'DSN and From address must both be set to run a test.'];
+    } else {
+        $_SESSION['email_test_last_ts'] = $now;
+        try {
+            $transport = Transport::fromDsn($dsn);
+            $mailer = new Mailer($transport);
+            $email = (new Email())
+                ->from(new Address($fromAddr, $fromName !== '' ? $fromName : 'HomeCare'))
+                ->to($to)
+                ->subject('[HomeCare] Test email')
+                ->text(
+                    "This is a test message from HomeCare's settings page.\n\n"
+                    . "If you're reading it, outbound email is working.\n"
+                    . 'Sent at ' . date('c') . ' by ' . $login . '.'
+                );
+            $mailer->send($email);
+            audit_log('email.test_sent', 'config', null, [
+                'to' => $to,
+                'ok' => true,
+            ]);
+            $flash = [
+                'type' => 'success',
+                'text' => 'Test email sent to ' . htmlspecialchars($to) . '.',
+            ];
+        } catch (TransportExceptionInterface $e) {
+            audit_log('email.test_sent', 'config', null, [
+                'to' => $to,
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ]);
+            $flash = [
+                'type' => 'danger',
+                'text' => 'Transport error: ' . htmlspecialchars($e->getMessage()),
+            ];
+        } catch (\Throwable $e) {
+            audit_log('email.test_sent', 'config', null, [
+                'to' => $to,
+                'ok' => false,
+                'error' => $e->getMessage(),
+            ]);
+            $flash = [
+                'type' => 'danger',
+                'text' => 'Test failed: ' . htmlspecialchars($e->getMessage()),
+            ];
+        }
+    }
 } elseif ($action === 'generate_shareable' && $isAdmin) {
     $type = getPostValue('type');
     $ttl = (int) getPostValue('ttl');
@@ -453,13 +530,15 @@ print_header();
     <code>null://default</code> for a dry-run transport that accepts mail
     but delivers nothing.
   </p>
-  <form method="post" class="form">
+  <form method="post" class="form" id="emailForm">
     <?php print_form_key(); ?>
-    <input type="hidden" name="action" value="save_email">
+    <!-- action is written by whichever submit button fires (Save or Test) -->
+    <input type="hidden" name="action" id="emailFormAction" value="save_email">
     <div class="form-group mb-3" style="max-width: 620px;">
       <label for="smtp_dsn" class="form-label">DSN</label>
       <input type="text" class="form-control" id="smtp_dsn" name="smtp_dsn"
              value="<?= htmlspecialchars($em['dsn']) ?>"
+             data-original="<?= htmlspecialchars($em['dsn']) ?>"
              autocomplete="off"
              placeholder="smtp://user:pass@host:587">
       <small class="form-text text-muted">
@@ -472,6 +551,7 @@ print_header();
       <input type="email" class="form-control" id="smtp_from_address"
              name="smtp_from_address"
              value="<?= htmlspecialchars($em['from_address']) ?>"
+             data-original="<?= htmlspecialchars($em['from_address']) ?>"
              placeholder="no-reply@homecare.local">
     </div>
     <div class="form-group mb-3" style="max-width: 520px;">
@@ -479,17 +559,78 @@ print_header();
       <input type="text" class="form-control" id="smtp_from_name"
              name="smtp_from_name"
              value="<?= htmlspecialchars($em['from_name']) ?>"
+             data-original="<?= htmlspecialchars($em['from_name']) ?>"
              placeholder="HomeCare">
     </div>
     <div class="form-check mb-3">
       <input type="checkbox" class="form-check-input" id="smtp_enabled"
-             name="smtp_enabled" value="Y" <?= $em['enabled'] ? 'checked' : '' ?>>
+             name="smtp_enabled" value="Y" <?= $em['enabled'] ? 'checked' : '' ?>
+             data-original="<?= $em['enabled'] ? 'Y' : '' ?>">
       <label class="form-check-label" for="smtp_enabled">
         Enable email delivery
       </label>
     </div>
-    <button type="submit" class="btn btn-primary">Save email settings</button>
+
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="test_to" class="form-label">Send test email to</label>
+      <input type="email" class="form-control" id="test_to" name="test_to"
+             autocomplete="email"
+             placeholder="you@example.org">
+      <small class="form-text text-muted">
+        The test uses the values <em>currently in the form</em> —
+        no need to save first.
+      </small>
+    </div>
+
+    <div class="d-flex align-items-center" style="gap: .5rem;">
+      <button type="submit" class="btn btn-primary" data-email-action="save_email">
+        Save email settings
+      </button>
+      <span id="emailUnsavedChip" class="text-warning small" hidden>
+        • unsaved changes
+      </span>
+      <button type="submit" class="btn btn-outline-secondary ml-auto"
+              data-email-action="test_email">
+        Send test email
+      </button>
+    </div>
   </form>
+
+  <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+  (function () {
+    // Route whichever submit button fires to the right action without
+    // duplicating the form. Matches option 4 behaviour: tests run
+    // against form values; saves persist.
+    var form = document.getElementById('emailForm');
+    var actionField = document.getElementById('emailFormAction');
+    if (form && actionField) {
+      form.querySelectorAll('[data-email-action]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          actionField.value = btn.getAttribute('data-email-action');
+        });
+      });
+    }
+
+    // Unsaved-changes chip: compare each data-original to its live value.
+    var chip = document.getElementById('emailUnsavedChip');
+    if (!form || !chip) return;
+    var fields = form.querySelectorAll('[data-original]');
+    function refresh() {
+      var dirty = false;
+      fields.forEach(function (el) {
+        var original = el.getAttribute('data-original');
+        var live = el.type === 'checkbox' ? (el.checked ? 'Y' : '') : el.value;
+        if (live !== original) dirty = true;
+      });
+      chip.hidden = !dirty;
+    }
+    fields.forEach(function (el) {
+      el.addEventListener('input', refresh);
+      el.addEventListener('change', refresh);
+    });
+    refresh();
+  })();
+  </script>
 
   <hr class="my-4">
   <h4>Shareable Exports <small class="text-muted">— admin only</small></h4>
