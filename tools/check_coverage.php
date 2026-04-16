@@ -27,16 +27,27 @@ $allCovered = 0;
 $srcLines = 0;
 $srcCovered = 0;
 
+// Clover stores absolute paths; match by path segment.
+$cwd = getcwd() ?: '';
+$srcPrefix = rtrim($cwd, '/') . '/src/';
+
 foreach ($xml->project->file as $file) {
     $filename = (string) $file['name'];
-    $metrics = $file->metrics['@attributes'];
+    $metrics = $file->metrics; // file-level <metrics> element
+    if (!$metrics instanceof SimpleXMLElement) {
+        continue;
+    }
     $lines = (int) $metrics['statements'];
     $covered = (int) $metrics['coveredstatements'];
 
     $allLines += $lines;
     $allCovered += $covered;
 
-    if (str_starts_with($filename, 'src/')) {
+    if (
+        str_starts_with($filename, 'src/')
+        || ($srcPrefix !== '/src/' && str_starts_with($filename, $srcPrefix))
+        || str_contains($filename, '/src/')
+    ) {
         $srcLines += $lines;
         $srcCovered += $covered;
     }
