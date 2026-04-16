@@ -83,12 +83,11 @@ $hasPatient = $activePatientId > 0 && $activePatient !== null;
           <div class="dropdown-menu" aria-labelledby="schedDropdown">
             <a class="dropdown-item" href="list_schedule.php<?php echo $activeIdQs; ?>"><?php etranslate('List of Medication'); ?></a>
             <a class="dropdown-item" href="schedule_daily.php<?php echo $activeIdQs; ?>"><?php etranslate("Today's Schedule"); ?></a>
+            <div class="dropdown-divider"></div>
+            <?php if ($can_add) { ?>
+              <a class="dropdown-item" href="bulk_intake.php<?php echo $activeIdQs; ?>"><?php etranslate('Bulk Intake (catch up)'); ?></a>
+            <?php } ?>
           </div>
-        </li>
-
-        <!-- Intake (active patient) -->
-        <li class="nav-item">
-          <a class="nav-link" href="bulk_intake.php<?php echo $activeIdQs; ?>"><?php etranslate('Bulk Intake'); ?></a>
         </li>
 
         <!-- Notes (active patient) -->
