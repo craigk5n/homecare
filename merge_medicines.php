@@ -93,7 +93,7 @@ echo "</div>\n";
      Previous versions depended on a code.jquery.com CDN load + a delicate
      enable/disable chain on radio + checkbox change events, and a single
      script-loading hiccup left the Preview button permanently disabled. -->
-<script>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
 (function () {
     'use strict';
 

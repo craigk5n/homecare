@@ -87,7 +87,7 @@ if (empty($taken_time)) {
 print_header();
 
 ?>
-<script> 
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
 function copyDueDateToInput(timeSupposedToTake, event) {
   const intakeTimeInput = document.getElementById('taken_time');
   intakeTimeInput.value = timeSupposedToTake;

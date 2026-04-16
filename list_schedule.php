@@ -451,7 +451,7 @@ echo '<a href="add_to_schedule.php?patient_id=' . htmlspecialchars($patient_id) 
 echo '</div>';
 
 ?>
-<script>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
 // Toggle URL parameter and reload
 function toggleParam(el, param) {
     var url = new URL(window.location.href);

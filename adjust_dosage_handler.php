@@ -51,7 +51,7 @@ if ($effective_date < $today && empty($confirmed)) {
         echo '<input type="hidden" name="effective_date" value="' . htmlspecialchars($effective_date) . '">';
         echo '<input type="hidden" name="overlap_count" value="' . $overlapCount . '">';
         echo '</form>';
-        echo '<script>document.getElementById("confirmForm").submit();</script>';
+        echo '<script nonce="' . htmlspecialchars($GLOBALS['NONCE'] ?? '') . '">document.getElementById("confirmForm").submit();</script>';
         echo print_trailer();
         exit();
     }

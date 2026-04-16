@@ -215,8 +215,8 @@ print_header();
   </table>
 </div>
 
-<script src="pub/chart.umd.min.js"></script>
-<script>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>" src="pub/chart.umd.min.js"></script>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
 (function () {
   'use strict';
   var labels = <?= json_encode($chartLabels) ?>;

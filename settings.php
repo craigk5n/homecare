@@ -249,7 +249,7 @@ print_header();
     </div>
   </form>
   
-  <script>
+  <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
   const typeSelect = document.getElementById('share_type');
   const patientGroup = document.getElementById('share_patient_id').parentElement;
   const scheduleGroup = document.getElementById('schedule_id_group');

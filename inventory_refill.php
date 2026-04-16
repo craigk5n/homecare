@@ -71,7 +71,7 @@ echo "</div>\n";
 echo "</form>\n";
 echo "</div>\n";
 ?>
-<script>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
 document.getElementById('refill_quantity').addEventListener('input', function() {
     var refill = parseFloat(this.value) || 0;
     var current = <?php echo json_encode($currentStock); ?>;
