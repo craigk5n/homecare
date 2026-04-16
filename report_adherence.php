@@ -121,7 +121,7 @@ print_header();
   <input type="hidden" name="patient_id" value="<?= (int) $patient_id ?>">
   <div class="col-auto">
     <label class="form-label mb-0" for="range">Chart range</label>
-    <select class="form-control" id="range" name="range" onchange="this.form.submit()">
+    <select class="form-control" id="range" name="range" data-autosubmit>
       <?php foreach (['7d' => 'Last 7 days', '30d' => 'Last 30 days', '90d' => 'Last 90 days', 'custom' => 'Custom'] as $v => $lbl): ?>
         <option value="<?= $v ?>"<?= $range === $v ? ' selected' : '' ?>><?= htmlspecialchars($lbl) ?></option>
       <?php endforeach; ?>
@@ -215,6 +215,11 @@ print_header();
   </table>
 </div>
 
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.querySelectorAll('[data-autosubmit]').forEach(function(el) {
+  el.addEventListener('change', function() { this.form.submit(); });
+});
+</script>
 <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>" src="pub/chart.umd.min.js"></script>
 <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
 (function () {

@@ -148,7 +148,7 @@ print_header();
   <?php print_form_key(); ?>
   <input type="hidden" name="action" value="generate">
   <button type="submit" class="btn btn-primary"
-          onclick="return confirm('<?= $hasKey ? 'Replacing the current key will invalidate any clients using it. Continue?' : 'Generate a new API key?' ?>');">
+          data-confirm="<?= $hasKey ? 'Replacing the current key will invalidate any clients using it. Continue?' : 'Generate a new API key?' ?>">
     <?= $hasKey ? 'Regenerate API Key' : 'Generate API Key' ?>
   </button>
 </form>
@@ -158,7 +158,7 @@ print_header();
     <?php print_form_key(); ?>
     <input type="hidden" name="action" value="revoke">
     <button type="submit" class="btn btn-outline-danger"
-            onclick="return confirm('Revoke the current API key? Clients will start returning 401 immediately.');">
+            data-confirm="Revoke the current API key? Clients will start returning 401 immediately.">
       Revoke
     </button>
   </form>
@@ -284,4 +284,12 @@ print_header();
   </script>
 <?php endif; ?>
 
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-confirm]');
+  if (btn && !confirm(btn.getAttribute('data-confirm'))) {
+    e.preventDefault();
+  }
+});
+</script>
 <?php echo print_trailer(); ?>

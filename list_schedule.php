@@ -231,16 +231,16 @@ echo '<div class="schedule-controls noprint mt-3">';
 $assumeChecked = $assumePastIntake ? ' checked' : '';
 echo '<div class="custom-control custom-switch">';
 echo '<input type="checkbox" class="custom-control-input" id="assumePastIntake"' . $assumeChecked;
-echo ' onchange="toggleParam(this, \'assume_past_intake\')">';
+echo ' data-toggle-param="assume_past_intake">';
 echo '<label class="custom-control-label" for="assumePastIntake">Assume past doses taken</label>';
 echo '</div>';
 $completedChecked = $showCompleted ? ' checked' : '';
 echo '<div class="custom-control custom-switch">';
 echo '<input type="checkbox" class="custom-control-input" id="showCompleted"' . $completedChecked;
-echo ' onchange="toggleParam(this, \'show_completed\')">';
+echo ' data-toggle-param="show_completed">';
 echo '<label class="custom-control-label" for="showCompleted">Show completed</label>';
 echo '</div>';
-echo '<button class="btn btn-outline-secondary btn-sm ml-auto" onclick="window.print()">Print</button>';
+echo '<button class="btn btn-outline-secondary btn-sm ml-auto" data-print>Print</button>';
 echo '</div>';
 
 // ── Section config ──
@@ -452,7 +452,14 @@ echo '</div>';
 
 ?>
 <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
-// Toggle URL parameter and reload
+// Print button
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-print]')) window.print();
+});
+// Toggle URL parameter and reload (wired via data-toggle-param)
+document.querySelectorAll('[data-toggle-param]').forEach(function(el) {
+  el.addEventListener('change', function() { toggleParam(this, this.getAttribute('data-toggle-param')); });
+});
 function toggleParam(el, param) {
     var url = new URL(window.location.href);
     if (el.checked) {

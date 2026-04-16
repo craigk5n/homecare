@@ -62,7 +62,7 @@ if (empty($invRows)) {
         echo "<td>$note</td>";
         echo "<td>";
         echo "<form action='inventory_history_handler.php' method='POST' style='display:inline' ";
-        echo "onsubmit=\"return confirm('Delete this inventory entry?')\">\n";
+        echo "data-confirm=\"Delete this inventory entry?\">\n";
         print_form_key();
         echo "<input type='hidden' name='inventory_id' value='$invId'>";
         echo "<input type='hidden' name='medicine_id' value='" . intval($medicine_id) . "'>";
@@ -83,5 +83,15 @@ echo "</div>\n";
 
 echo "</div>\n";
 
+?>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('submit', function(e) {
+  var form = e.target.closest('[data-confirm]');
+  if (form && !confirm(form.getAttribute('data-confirm'))) {
+    e.preventDefault();
+  }
+});
+</script>
+<?php
 echo print_trailer();
 ?>

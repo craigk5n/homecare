@@ -153,8 +153,8 @@ $patients = getPatients();
           <?php etranslate('Help'); ?>
         </a>
         <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-          <a class="dropdown-item" href="#" onclick="javascript:openHelp()"><?php etranslate('Help Contents'); ?></a>
-          <a class="dropdown-item" href="#" onclick="javascript:openAbout()"><?php etranslate('About HomeCare'); ?></a>
+          <a class="dropdown-item" href="#" data-action="openHelp"><?php etranslate('Help Contents'); ?></a>
+          <a class="dropdown-item" href="#" data-action="openAbout"><?php etranslate('About HomeCare'); ?></a>
         </div>
       </li>
     </ul>
@@ -172,6 +172,16 @@ $patients = getPatients();
 
   </div>
 </nav>
+<script nonce="<?php echo htmlspecialchars($GLOBALS['NONCE'] ?? ''); ?>">
+document.addEventListener('click', function(e) {
+  var el = e.target.closest('[data-action]');
+  if (!el) return;
+  e.preventDefault();
+  var action = el.getAttribute('data-action');
+  if (action === 'openHelp' && typeof openHelp === 'function') openHelp();
+  if (action === 'openAbout' && typeof openAbout === 'function') openAbout();
+});
+</script>
 
 <?php
 function print_menu_item($name, $url, $testCondition = true, $target = '')

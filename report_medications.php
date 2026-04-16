@@ -93,7 +93,7 @@ echo '      <a href="' . htmlspecialchars($toggleAssumeUrl) . '" class="btn btn-
     . ($assumePastIntake ? '✓ Assume past taken' : 'Assume past taken') . '</a>';
 echo '      <a href="' . htmlspecialchars($toggleShowUrl) . '" class="btn btn-sm btn-outline-secondary">'
     . ($showCompleted ? 'Hide completed' : 'Show completed') . '</a>';
-echo '      <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">Print</button>';
+echo '      <button class="btn btn-sm btn-outline-secondary" data-print>Print</button>';
 echo '    </div>';
 echo '  </div>';
 echo '</div>';
@@ -139,5 +139,11 @@ foreach ($rows as $r) {
     echo '</div>';
 }
 echo '</div>';
-
+?>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-print]')) window.print();
+});
+</script>
+<?php
 echo print_trailer();

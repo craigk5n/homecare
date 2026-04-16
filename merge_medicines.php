@@ -80,7 +80,7 @@ echo "<form action='merge_medicines_handler.php' method='POST' id='confirmForm'>
 print_form_key();
 echo "<input type='hidden' name='primary_id' id='confirmPrimary'>\n";
 echo "<div id='confirmDuplicates'></div>\n";
-echo "<button type='button' class='btn btn-secondary mr-2' onclick=\"document.getElementById('previewArea').style.display='none'\">Cancel</button>\n";
+echo "<button type='button' class='btn btn-secondary mr-2' data-hide='previewArea'>Cancel</button>\n";
 echo "<button type='submit' class='btn btn-danger'>Confirm Merge</button>\n";
 echo "</form>\n";
 echo "</div>\n";
@@ -205,6 +205,13 @@ echo "</div>\n";
         }
         var btn = document.getElementById('previewBtn');
         if (btn) btn.addEventListener('click', onPreviewClick);
+        document.addEventListener('click', function(e) {
+            var el = e.target.closest('[data-hide]');
+            if (el) {
+                var target = document.getElementById(el.getAttribute('data-hide'));
+                if (target) target.style.display = 'none';
+            }
+        });
     }
 
     if (document.readyState === 'loading') {

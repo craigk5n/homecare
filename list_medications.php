@@ -29,7 +29,7 @@ echo '<div class="page-sticky-header noprint">';
 echo '  <div class="container-fluid d-flex justify-content-between align-items-center">';
 echo '    <h5 class="page-title mb-0">Medications</h5>';
 echo '    <div class="page-actions">';
-echo '      <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">Print</button>';
+echo '      <button class="btn btn-outline-secondary btn-sm" data-print>Print</button>';
 echo '      <a href="edit_medication.php" class="btn btn-primary btn-sm">+ Add Medication</a>';
 echo '    </div>';
 echo '  </div>';
@@ -79,5 +79,11 @@ foreach ($rows as $r) {
     echo '</div>';
 }
 echo '</div>';
-
+?>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-print]')) window.print();
+});
+</script>
+<?php
 echo print_trailer();

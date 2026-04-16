@@ -81,7 +81,7 @@ echo '<div class="page-sticky-header noprint">';
 echo '  <div class="container-fluid d-flex justify-content-between align-items-center">';
 echo '    <h5 class="page-title mb-0">Timing report: ' . htmlentities($patient['name']) . '</h5>';
 echo '    <div class="page-actions">';
-echo '      <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">Print</button>';
+echo '      <button class="btn btn-sm btn-outline-secondary" data-print>Print</button>';
 echo '      <a href="list_schedule.php?patient_id=' . $patient_id
     . '" class="btn btn-sm btn-outline-secondary">Back to Schedule</a>';
 echo '    </div>';
@@ -156,5 +156,11 @@ foreach ($rows as $r) {
     echo '</div>';
 }
 echo '</div>';
-
+?>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-print]')) window.print();
+});
+</script>
+<?php
 echo print_trailer();

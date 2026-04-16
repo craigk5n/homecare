@@ -98,7 +98,7 @@ $sortLabel = $orderParam === 'f' ? 'Newest first' : 'Oldest first';
 echo '      <a class="btn btn-sm btn-outline-secondary" href="report_intake.php?patient_id='
     . $patient_id . '&date=' . urlencode($current_date) . '&sort=' . $sortSwap
     . '" title="Toggle sort order">' . $sortLabel . '</a>';
-echo '      <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">Print</button>';
+echo '      <button class="btn btn-sm btn-outline-secondary" data-print>Print</button>';
 echo '      <a class="btn btn-sm btn-outline-secondary" href="export_intake_pdf.php' . $exportQs
     . '" title="Print-ready PDF of the current month">PDF</a>';
 echo '      <a class="btn btn-sm btn-outline-secondary" href="export_intake_csv.php' . $exportQs . '">CSV</a>';
@@ -168,5 +168,11 @@ foreach ($groups as $g) {
     echo '</div>';
 }
 echo '</div>';
-
+?>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-print]')) window.print();
+});
+</script>
+<?php
 echo print_trailer();

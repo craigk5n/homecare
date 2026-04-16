@@ -120,7 +120,7 @@ function medsum_format_float($value): string
   <div class="generated">Generated <?= htmlspecialchars($summary['generated_at']) ?></div>
 
   <div class="print-actions no-print">
-    <button onclick="window.print()" class="btn btn-primary btn-sm">Print</button>
+    <button data-print class="btn btn-primary btn-sm">Print</button>
     <a href="list_schedule.php?patient_id=<?= (int) $summary['patient']['id'] ?>"
        class="btn btn-outline-secondary btn-sm">Back to Schedule</a>
   </div>
@@ -193,4 +193,9 @@ function medsum_format_float($value): string
   <?php endif; ?>
 </div>
 
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-print]')) window.print();
+});
+</script>
 <?php echo print_trailer(); ?>

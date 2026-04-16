@@ -57,7 +57,7 @@ print_header();
   <div class="container-fluid d-flex justify-content-between align-items-center flex-wrap">
     <h5 class="page-title mb-0">Audit Log</h5>
     <div class="page-actions">
-      <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">Print</button>
+      <button class="btn btn-sm btn-outline-secondary" data-print>Print</button>
     </div>
   </div>
 </div>
@@ -283,4 +283,9 @@ $last = $first + $showing - 1;
 
 <?php endif; ?>
 
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-print]')) window.print();
+});
+</script>
 <?= print_trailer() ?>

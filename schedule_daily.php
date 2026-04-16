@@ -146,7 +146,7 @@ echo '    <h5 class="page-title mb-0">Daily schedule: ' . htmlentities($patientN
 echo '    <div class="page-actions">';
 echo '      <a href="list_schedule.php?patient_id=' . $patient_id
     . '" class="btn btn-sm btn-outline-secondary">Full schedule</a>';
-echo '      <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">Print</button>';
+echo '      <button class="btn btn-sm btn-outline-secondary" data-print>Print</button>';
 echo '    </div>';
 echo '  </div>';
 echo '</div>';
@@ -233,4 +233,11 @@ render_daily_section('Today', 'section-due-soon', $scheduleToday, $now);
 render_daily_section('Tomorrow', 'section-ok', $scheduleTomorrow, $now);
 echo '</div>';
 
+?>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+document.addEventListener('click', function(e) {
+  if (e.target.closest('[data-print]')) window.print();
+});
+</script>
+<?php
 echo print_trailer();
