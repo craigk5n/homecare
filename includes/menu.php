@@ -75,13 +75,13 @@ $hasPatient = $activePatientId > 0 && $activePatient !== null;
       </li>
 
       <?php if ($hasPatient) { ?>
-        <!-- Schedule (active patient) -->
+        <!-- Doses (active patient) -->
         <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="schedDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-            <?php etranslate('Schedule'); ?>
+          <a class="nav-link dropdown-toggle" href="#" id="dosesDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            <?php etranslate('Doses'); ?>
           </a>
-          <div class="dropdown-menu" aria-labelledby="schedDropdown">
-            <a class="dropdown-item" href="list_schedule.php<?php echo $activeIdQs; ?>"><?php etranslate('List of Medication'); ?></a>
+          <div class="dropdown-menu" aria-labelledby="dosesDropdown">
+            <a class="dropdown-item" href="list_schedule.php<?php echo $activeIdQs; ?>"><?php etranslate('Dose Tracker'); ?></a>
             <a class="dropdown-item" href="schedule_daily.php<?php echo $activeIdQs; ?>"><?php etranslate("Today's Schedule"); ?></a>
             <div class="dropdown-divider"></div>
             <?php if ($can_add) { ?>
