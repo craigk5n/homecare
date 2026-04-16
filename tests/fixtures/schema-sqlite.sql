@@ -31,6 +31,7 @@ CREATE TABLE hc_user (
   totp_secret VARCHAR(64) NULL,
   totp_enabled CHAR(1) NOT NULL DEFAULT 'N',
   totp_recovery_codes TEXT NULL,
+  email_notifications CHAR(1) NOT NULL DEFAULT 'N',
   PRIMARY KEY (login)
 );
 

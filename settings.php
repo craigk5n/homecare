@@ -25,6 +25,7 @@ use HomeCare\Auth\Authorization;
 use HomeCare\Auth\PasswordHasher;
 use HomeCare\Auth\PasswordPolicy;
 use HomeCare\Auth\TotpService;
+use HomeCare\Config\EmailConfig;
 use HomeCare\Config\NtfyConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\UserRepository;
@@ -32,6 +33,7 @@ use HomeCare\Repository\UserRepository;
 $db = new DbiAdapter();
 $users = new UserRepository($db);
 $ntfyConfig = new NtfyConfig($db);
+$emailConfig = new EmailConfig($db);
 $totpService = new TotpService();
 $passwordHasher = new PasswordHasher();
 $passwordPolicy = new PasswordPolicy($db);
@@ -138,6 +140,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ntfyConfig->setEnabled(getPostValue('ntfy_enabled') === 'Y');
     audit_log('ntfy.config_updated', 'config', null, $ntfyConfig->getAll());
     $flash = ['type' => 'success', 'text' => 'Notification settings saved.'];
+} elseif ($action === 'save_email' && $isAdmin) {
+    $emailConfig->setDsn(trim((string) getPostValue('smtp_dsn')));
+    $emailConfig->setFromAddress(trim((string) getPostValue('smtp_from_address')));
+    $emailConfig->setFromName(trim((string) getPostValue('smtp_from_name')));
+    $emailConfig->setEnabled(getPostValue('smtp_enabled') === 'Y');
+    // Audit without the DSN so any embedded password isn't logged.
+    $meta = $emailConfig->getAll();
+    unset($meta['dsn']);
+    audit_log('email.config_updated', 'config', null, $meta);
+    $flash = ['type' => 'success', 'text' => 'Email settings saved.'];
 } elseif ($action === 'generate_shareable' && $isAdmin) {
     $type = getPostValue('type');
     $ttl = (int) getPostValue('ttl');
@@ -429,7 +441,56 @@ print_header();
     </div>
     <button type="submit" class="btn btn-primary">Save notification settings</button>
   </form>
-  
+
+  <hr class="my-4">
+  <?php $em = $emailConfig->getAll(); ?>
+  <h4 id="email">Email (SMTP) <small class="text-muted">— admin only</small></h4>
+  <p class="text-muted">
+    Outbound email for reminders (per-user opt-in) and password-reset links
+    (HC-091). Uses Symfony Mailer; any valid DSN works — e.g.
+    <code>smtp://user:pass@mail.example.com:587</code>,
+    <code>sendmail://default</code>, or
+    <code>null://default</code> for a dry-run transport that accepts mail
+    but delivers nothing.
+  </p>
+  <form method="post" class="form">
+    <?php print_form_key(); ?>
+    <input type="hidden" name="action" value="save_email">
+    <div class="form-group mb-3" style="max-width: 620px;">
+      <label for="smtp_dsn" class="form-label">DSN</label>
+      <input type="text" class="form-control" id="smtp_dsn" name="smtp_dsn"
+             value="<?= htmlspecialchars($em['dsn']) ?>"
+             autocomplete="off"
+             placeholder="smtp://user:pass@host:587">
+      <small class="form-text text-muted">
+        Stored in plain text in <code>hc_config</code>; keep the DB
+        file readable only by the app user.
+      </small>
+    </div>
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="smtp_from_address" class="form-label">From address</label>
+      <input type="email" class="form-control" id="smtp_from_address"
+             name="smtp_from_address"
+             value="<?= htmlspecialchars($em['from_address']) ?>"
+             placeholder="no-reply@homecare.local">
+    </div>
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="smtp_from_name" class="form-label">From name</label>
+      <input type="text" class="form-control" id="smtp_from_name"
+             name="smtp_from_name"
+             value="<?= htmlspecialchars($em['from_name']) ?>"
+             placeholder="HomeCare">
+    </div>
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" id="smtp_enabled"
+             name="smtp_enabled" value="Y" <?= $em['enabled'] ? 'checked' : '' ?>>
+      <label class="form-check-label" for="smtp_enabled">
+        Enable email delivery
+      </label>
+    </div>
+    <button type="submit" class="btn btn-primary">Save email settings</button>
+  </form>
+
   <hr class="my-4">
   <h4>Shareable Exports <small class="text-muted">— admin only</small></h4>
   <p class="text-muted">

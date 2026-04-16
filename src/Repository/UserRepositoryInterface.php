@@ -20,7 +20,8 @@ namespace HomeCare\Repository;
  *     api_key_hash:?string,
  *     totp_secret:?string,
  *     totp_enabled:string,
- *     totp_recovery_codes:?string
+ *     totp_recovery_codes:?string,
+ *     email_notifications:string
  * }
  */
 interface UserRepositoryInterface

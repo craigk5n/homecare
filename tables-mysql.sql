@@ -41,6 +41,8 @@ CREATE TABLE hc_user (
   totp_enabled CHAR(1) NOT NULL DEFAULT 'N',
   /* JSON array of SHA-256 hashes of single-use recovery codes (HC-090) */
   totp_recovery_codes TEXT NULL,
+  /* Per-user opt-in for reminder emails (HC-101); 'N' default */
+  email_notifications CHAR(1) NOT NULL DEFAULT 'N',
   PRIMARY KEY (login)
 );
 

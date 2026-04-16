@@ -1,9 +1,11 @@
 <?php
 require_once 'includes/init.php';
 
+use HomeCare\Config\EmailConfig;
 use HomeCare\Config\NtfyConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Notification\ChannelRegistry;
+use HomeCare\Notification\EmailChannel;
 use HomeCare\Notification\NotificationMessage;
 use HomeCare\Notification\NtfyChannel;
 use HomeCare\Repository\InventoryRepository;
@@ -20,6 +22,10 @@ $db = new DbiAdapter();
 $ntfy = new NtfyConfig($db);
 $channels = new ChannelRegistry();
 $channels->register(new NtfyChannel($ntfy));
+// HC-101: email channel participates when admin has configured SMTP.
+// The channel's `isReady()` short-circuits when the DSN/from-address
+// isn't set, so registering unconditionally is safe.
+$channels->register(new EmailChannel(new EmailConfig($db)));
 
 $dryRun = in_array('--dry-run', $argv, true);
 

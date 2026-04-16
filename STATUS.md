@@ -2101,7 +2101,7 @@ the refactor that unblocks HC-101 and HC-102.
 
 ### HC-101: Email notification channel
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-100
@@ -2110,26 +2110,51 @@ the refactor that unblocks HC-101 and HC-102.
 Required by HC-091 (password reset) and wanted on its own by
 caregivers who do not use ntfy.
 
+**Notes on implementation**:
+- Transport is built lazily from `EmailConfig::getDsn()` on the
+  first `send()` call, so pages that never email don't pay the
+  DSN-parse cost. Tests inject a `MailerInterface` directly
+  (a small `RecordingMailer` that captures the Email object)
+  rather than extending Symfony's final `NullTransport`.
+- DSN is stored in `hc_config` and the audit row for
+  `email.config_updated` deliberately omits it — the DSN can
+  embed a password, and an audit log shouldn't be a second
+  place those leak.
+- Priority ≥ `PRIORITY_HIGH` prepends `[URGENT]` to the
+  subject; tags render as a bracketed csv prefix. Mail clients
+  can filter on these without reading the body.
+- `EmailChannel::send()` returns false (no throw) on transport
+  errors; reminder cron keeps running when mail is sick.
+- Channel is registered in `send_reminders.php` unconditionally;
+  `isReady()` short-circuits when the admin hasn't configured
+  SMTP, so an uninstalled email stack costs nothing.
+- Per-user `email_notifications` opt-in column added now so
+  HC-091 and HC-103 can read it without another migration.
+  No call site consults it yet (reminder cron is
+  topic-based, not per-user).
+
 **Acceptance Criteria**:
-- [ ] `symfony/mailer` added as a Composer dep (works with
+- [x] `symfony/mailer` added as a Composer dep (works with
       SMTP / Sendmail / LMTP transports; no framework lock-in)
-- [ ] `src/Notification/EmailChannel.php` implements
+- [x] `src/Notification/EmailChannel.php` implements
       `NotificationChannel`; renders title as Subject, body as
       text/plain, supports HTML via a `?html` body variant later
-- [ ] `hc_config` settings: `smtp_dsn` (Symfony Mailer DSN),
+- [x] `hc_config` settings: `smtp_dsn` (Symfony Mailer DSN),
       `smtp_from_address`, `smtp_from_name`, `smtp_enabled` (Y/N)
-- [ ] Admin settings UI section ("Email") beside the ntfy block in
-      `settings.php`, admin-only, audit-logged on change
-- [ ] Graceful degrade: if the channel fires when `smtp_enabled='N'`
+- [x] Admin settings UI section ("Email") beside the ntfy block in
+      `settings.php`, admin-only, audit-logged on change (DSN
+      redacted from audit details)
+- [x] Graceful degrade: if the channel fires when `smtp_enabled='N'`
       it logs a warning and returns false; caller (e.g. password
       reset) maps that to a user-visible "email delivery disabled"
       message
-- [ ] Migration: `hc_user.email_notifications CHAR(1) NOT NULL
+- [x] Migration (012): `hc_user.email_notifications CHAR(1) NOT NULL
       DEFAULT 'N'` (per-user opt-in for reminders; password-reset
       bypasses the flag because the user needs it to log back in)
-- [ ] Unit test: renders message, uses configured DSN, respects
+- [x] Unit test: renders message, uses configured DSN, respects
       the enabled toggle; integration test with a null transport
-      round-trips a sample message
+      round-trips a sample message (5 cases for EmailConfig + 8
+      for EmailChannel, including transport-error capture)
 
 ---
 

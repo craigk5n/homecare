@@ -175,7 +175,8 @@ final class UserRepository implements UserRepositoryInterface
         return 'SELECT login, passwd, is_admin, role, enabled, '
             . 'remember_token, remember_token_expires, '
             . 'failed_attempts, locked_until, api_key_hash, '
-            . 'totp_secret, totp_enabled, totp_recovery_codes FROM hc_user';
+            . 'totp_secret, totp_enabled, totp_recovery_codes, '
+            . 'email_notifications FROM hc_user';
     }
 
     /**
@@ -201,6 +202,7 @@ final class UserRepository implements UserRepositoryInterface
             'totp_enabled' => (string) ($row['totp_enabled'] ?? 'N'),
             'totp_recovery_codes' => $row['totp_recovery_codes'] === null
                 ? null : (string) $row['totp_recovery_codes'],
+            'email_notifications' => (string) ($row['email_notifications'] ?? 'N'),
         ];
     }
 }

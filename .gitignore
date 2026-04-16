@@ -12,10 +12,13 @@
 !/vendor/composer
 !/vendor/dasprid
 !/vendor/dompdf
+!/vendor/egulias
 !/vendor/masterminds
 !/vendor/paragonie
 !/vendor/pragmarx
+!/vendor/psr
 !/vendor/sabberworm
+!/vendor/symfony
 !/vendor/thecodingmachine
 
 .phpunit.cache/
