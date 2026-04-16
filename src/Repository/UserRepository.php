@@ -171,6 +171,42 @@ final class UserRepository implements UserRepositoryInterface
         );
     }
 
+    public function updateEmail(string $login, ?string $email): bool
+    {
+        // Null / empty-after-trim both clear the column. Trusting the
+        // caller to pre-validate — the repo is intentionally
+        // write-what-you-give-me so tests can poke edge cases.
+        $stored = $email === null || trim($email) === '' ? null : trim($email);
+
+        return $this->db->execute(
+            'UPDATE hc_user SET email = ? WHERE login = ?',
+            [$stored, $login]
+        );
+    }
+
+    public function updateEmailNotifications(string $login, bool $on): bool
+    {
+        return $this->db->execute(
+            'UPDATE hc_user SET email_notifications = ? WHERE login = ?',
+            [$on ? 'Y' : 'N', $login]
+        );
+    }
+
+    public function getEmailSubscribers(): array
+    {
+        $rows = $this->db->query(
+            "SELECT email FROM hc_user
+             WHERE email_notifications = 'Y'
+               AND email IS NOT NULL AND email <> ''
+               AND enabled = 'Y'"
+        );
+
+        return array_values(array_filter(array_map(
+            static fn (array $r): string => (string) ($r['email'] ?? ''),
+            $rows
+        ), static fn (string $v): bool => $v !== ''));
+    }
+
     public function updateNotificationChannels(string $login, array $channelNames): bool
     {
         // Defensive: filter to strings, drop duplicates, reindex so the

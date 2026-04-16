@@ -2345,7 +2345,7 @@ preference.
 
 ### HC-104: Email addressing plumbing (unlock story)
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: HC-101
@@ -2359,25 +2359,52 @@ email, and per-user iteration in the reminder loop so each
 recipient gets their own `NotificationMessage`. One story unlocks
 HC-091, HC-105, HC-106, HC-107, HC-108.
 
+**Notes on implementation**:
+- Two addressing models coexist in `dispatchReminder()`:
+  topic-based channels (ntfy, webhook) get one dispatch each
+  with no recipient; email iterates the opted-in subscriber
+  list and fires one message per address. The reminder cron
+  output line now carries `[topic:N email:M]` so it's obvious
+  at a glance which channels delivered.
+- `UserRepository::getEmailSubscribers()` is a single query
+  filtered on `email_notifications='Y' AND email IS NOT NULL
+  AND enabled='Y'`. Pre-loaded once per cron run so the
+  per-dose dispatch doesn't re-query.
+- Server-side validation in the Contact handler: empty email
+  is fine (clears the column), non-empty must pass
+  `filter_var(FILTER_VALIDATE_EMAIL)`, and the "Email me
+  reminders" toggle can't flip on without an email on file —
+  two separate flash messages for the two failure modes so
+  operators see the actionable hint.
+- `updateEmail()` trims whitespace before storing / clearing,
+  so a leading space on a paste doesn't sneak into the DB.
+- Per-user email firing is the hard dependency that HC-091's
+  password reset quietly relied on (HC-091 looked up
+  `hc_user.email` directly); this story fills in the
+  settings-UI side so caregivers can actually set their
+  address.
+
 **Acceptance Criteria**:
-- [ ] `settings.php` adds a "Contact" section: email field
+- [x] `settings.php` adds a "Contact" section: email field
       (prefilled from `hc_user.email`) and an "Email me reminders"
       checkbox bound to `hc_user.email_notifications`.
-- [ ] `UserRepository::updateEmail(string $login, ?string $email): bool`
+- [x] `UserRepository::updateEmail(string $login, ?string $email): bool`
       and `updateEmailNotifications(string $login, bool $on): bool`
       with appropriate audit rows.
-- [ ] Server-side validation: email is either empty or passes
+      Plus `getEmailSubscribers(): list<string>` for the cron.
+- [x] Server-side validation: email is either empty or passes
       `filter_var(FILTER_VALIDATE_EMAIL)`; toggle cannot be turned
       on without a valid address.
-- [ ] `send_reminders.php` iterates `hc_user` rows where
-      `email_notifications='Y'` AND `email IS NOT NULL` and
-      dispatches one `NotificationMessage` per recipient with the
-      email set. Ntfy still fires topic-based alongside — two
-      channels, different addressing models.
-- [ ] Audit: `user.email_updated` and `user.email_prefs_updated`
-- [ ] Integration test: opted-in user with valid email receives
+- [x] `send_reminders.php` iterates `hc_user` rows where
+      `email_notifications='Y'` AND `email IS NOT NULL` (AND
+      `enabled='Y'`) and dispatches one `NotificationMessage`
+      per recipient with the email set. Ntfy and webhook still
+      fire topic-based alongside.
+- [x] Audit: `user.email_updated` and `user.email_prefs_updated`
+- [x] Integration test: opted-in user with valid email receives
       a `NotificationMessage` with `recipient` set; opted-out user
-      is skipped.
+      is skipped. (9 cases cover round-trip, trim, clear modes,
+      opt-in filtering, disabled-account exclusion.)
 
 ---
 

@@ -117,6 +117,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             audit_log('totp.enabled', 'user');
             $flash = ['type' => 'success', 'text' => '2FA enabled. Copy your recovery codes now — they are shown only once.'];
         }
+    } elseif ($action === 'save_contact') {
+        $newEmail = trim((string) getPostValue('email'));
+        $wantsEmailReminders = getPostValue('email_notifications') === 'Y';
+
+        if ($newEmail !== '' && filter_var($newEmail, FILTER_VALIDATE_EMAIL) === false) {
+            $flash = ['type' => 'danger', 'text' => 'That does not look like a valid email address.'];
+        } elseif ($wantsEmailReminders && $newEmail === '') {
+            // Can't opt-in without an address to send to.
+            $flash = [
+                'type' => 'danger',
+                'text' => 'Set a valid email address before turning on reminder email.',
+            ];
+        } else {
+            $storedEmail = $newEmail === '' ? null : $newEmail;
+            $users->updateEmail($login, $storedEmail);
+            $users->updateEmailNotifications($login, $wantsEmailReminders);
+            audit_log('user.email_updated', 'user', null, [
+                'has_email' => $storedEmail !== null,
+            ]);
+            audit_log('user.email_prefs_updated', 'user', null, [
+                'email_notifications' => $wantsEmailReminders,
+            ]);
+            $flash = ['type' => 'success', 'text' => 'Contact preferences saved.'];
+        }
     } elseif ($action === 'save_my_channels') {
         $selected = getPostValue('my_channels');
         $names = [];
@@ -415,6 +439,41 @@ print_header();
     </button>
   </form>
 <?php endif; ?>
+
+<hr class="my-4">
+<?php
+$currentEmail = $user['email'] ?? '';
+$currentEmailNotifications = ($user['email_notifications'] ?? 'N') === 'Y';
+?>
+<h4 id="contact">Contact</h4>
+<p class="text-muted">
+  Your email address is used for password resets and reminder email
+  (if you opt in below).
+</p>
+<form method="post" class="form" style="max-width: 420px;">
+  <?php print_form_key(); ?>
+  <input type="hidden" name="action" value="save_contact">
+  <div class="form-group mb-3">
+    <label for="contact_email" class="form-label">Email address</label>
+    <input type="email" class="form-control" id="contact_email"
+           name="email" autocomplete="email"
+           value="<?= htmlspecialchars($currentEmail) ?>"
+           placeholder="you@example.org">
+  </div>
+  <div class="form-check mb-3">
+    <input type="checkbox" class="form-check-input" id="email_notifications"
+           name="email_notifications" value="Y"
+           <?= $currentEmailNotifications ? 'checked' : '' ?>>
+    <label class="form-check-label" for="email_notifications">
+      Email me reminders
+    </label>
+    <small class="form-text text-muted">
+      The reminder cron will send to this address when a dose is due.
+      Requires a valid email above and an admin-configured SMTP server.
+    </small>
+  </div>
+  <button type="submit" class="btn btn-primary">Save contact preferences</button>
+</form>
 
 <hr class="my-4">
 <?php

@@ -40,9 +40,13 @@ $channels->register(new WebhookChannel(
     http: new CurlHttpClient($webhookConfig->getTimeoutSeconds()),
 ));
 // HC-103: resolver wires per-user preference → registry default when
-// we have user context. The current topic-based cron doesn't iterate
-// per user (HC-104 lands that), so this is plumbing for now.
+// we have user context.
 $resolver = new ChannelResolver($channels);
+
+// HC-104: addressing plumbing. Pre-load the opted-in email addresses
+// once per run so the per-reminder dispatch doesn't re-query.
+$users = new \HomeCare\Repository\UserRepository($db);
+$emailSubscribers = $users->getEmailSubscribers();
 
 $dryRun = in_array('--dry-run', $argv, true);
 
@@ -85,7 +89,7 @@ foreach ($patients as $patient) {
                 echo "Dry run: Would send notification for patient {$patient_id}: {$body}\n";
                 continue;
             }
-            dispatchReminder($channels, $patient_id, $patient_name, $body);
+            dispatchReminder($channels, $emailSubscribers, $patient_id, $patient_name, $body);
         }
     }
 }
@@ -130,24 +134,52 @@ foreach ($supplyService->findPendingAlerts($supplyThreshold) as $alert) {
 }
 
 /**
- * Fan a per-dose reminder out to every ready channel in the registry.
- * Mirrors the stdout shape the legacy `sendNotification()` used so
- * cron log consumers keep parsing what they expect.
+ * Fan a per-dose reminder out across the channel registry.
+ *
+ * Two addressing models coexist:
+ *   - Topic channels (ntfy, webhook) get a recipient-less message.
+ *     One dispatch reaches every subscriber on the topic.
+ *   - Email is per-user: we iterate the opted-in subscriber list
+ *     and dispatch one message per address.
+ *
+ * @param list<string> $emailSubscribers raw email addresses
  */
 function dispatchReminder(
     ChannelRegistry $channels,
+    array $emailSubscribers,
     int $patientId,
     string $patientName,
     string $body,
 ): void {
-    $delivered = $channels->dispatch(new NotificationMessage(
+    // Topic-based delivery. Email is excluded from the default fan-out
+    // so it doesn't fire with no recipient.
+    $topicMsg = new NotificationMessage(
         title: 'Medication Reminder',
-        body: $body,
-        tags: ['pill'],
-    ));
-    if ($delivered === 0) {
+        body:  $body,
+        tags:  ['pill'],
+    );
+    $topicAccepted = $channels->dispatch($topicMsg, ['ntfy', 'webhook']);
+
+    // Per-user email. EmailChannel rejects messages without a
+    // recipient, so we build a fresh one per address.
+    $emailAccepted = 0;
+    foreach ($emailSubscribers as $address) {
+        $perUser = new NotificationMessage(
+            title:     'Medication Reminder',
+            body:      $body,
+            tags:      ['pill'],
+            recipient: $address,
+        );
+        if ($channels->dispatch($perUser, ['email']) > 0) {
+            $emailAccepted++;
+        }
+    }
+
+    $total = $topicAccepted + $emailAccepted;
+    if ($total === 0) {
         echo "Skipped (no channel ready): {$body}\n";
         return;
     }
-    echo "Notification sent for patient {$patientName} ({$patientId}): {$body}\n";
+    echo "Notification sent for patient {$patientName} ({$patientId}): {$body}"
+       . " [topic:{$topicAccepted} email:{$emailAccepted}]\n";
 }

@@ -129,4 +129,25 @@ interface UserRepositoryInterface
      * @param list<string> $channelNames
      */
     public function updateNotificationChannels(string $login, array $channelNames): bool;
+
+    /**
+     * Replace the user's stored email address. Pass null (or empty
+     * trimmed string) to clear. Caller is responsible for validating
+     * the address before calling; the repo writes what it's given.
+     */
+    public function updateEmail(string $login, ?string $email): bool;
+
+    /**
+     * Toggle the reminder-email opt-in flag.
+     */
+    public function updateEmailNotifications(string $login, bool $on): bool;
+
+    /**
+     * Return the email addresses of every user opted in to reminder
+     * email AND currently enabled. Used by the reminder cron to
+     * dispatch one NotificationMessage per recipient.
+     *
+     * @return list<string>
+     */
+    public function getEmailSubscribers(): array;
 }
