@@ -836,3 +836,31 @@ nav.navbar .dropdown-menu {
   .d-none.d-md-block { display: none !important; }
   .d-md-none { display: block !important; }
 }
+
+/* Patient context switcher in the top nav.
+ * Pill-shaped chip on the right of the navbar; clicking opens a
+ * dropdown of all patients so the caregiver can flip context
+ * without hunting through per-patient submenus. */
+.hc-patient-chip > .nav-link {
+  background: #eefaf8;
+  color: #1a4c4c !important;
+  border: 1px solid #c8e6e3;
+  border-radius: 999px;
+  padding: .25rem .9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: background .15s ease, border-color .15s ease;
+}
+.hc-patient-chip > .nav-link:hover,
+.hc-patient-chip > .nav-link:focus {
+  background: #d6f0ec;
+  border-color: #9ed4cc;
+  text-decoration: none;
+}
+.hc-patient-chip .dropdown-item.active {
+  background-color: #2c7a7b;
+  color: #fff;
+}
+.hc-patient-chip .hc-chip-label {
+  margin-right: .25rem;
+}

@@ -182,6 +182,59 @@ function getPatient($patientId)
     }
 }
 
+/**
+ * Pick the "active" patient whose schedule/notes/reports the menu
+ * should point at.
+ *
+ * Resolution order:
+ *   1. `?patient_id=N` in the current request — treated as a context
+ *      switch. Persisted to the session so navigation downstream
+ *      keeps the same patient.
+ *   2. `$_SESSION['active_patient_id']` — remembered from an earlier
+ *      context switch.
+ *   3. First active patient from `hc_patients`.
+ *   4. `0` when no patients exist (fresh install).
+ *
+ * Only verifies that the patient row exists; `is_active=0` is still
+ * a valid target so historical views keep working.
+ */
+function getActivePatientId(): int
+{
+    $fromUrl = getIntValue('patient_id');
+    if (!empty($fromUrl) && patientExistsById((int) $fromUrl)) {
+        $_SESSION['active_patient_id'] = (int) $fromUrl;
+        return (int) $fromUrl;
+    }
+
+    $fromSession = $_SESSION['active_patient_id'] ?? null;
+    if (is_int($fromSession) && $fromSession > 0 && patientExistsById($fromSession)) {
+        return $fromSession;
+    }
+
+    $rows = dbi_get_cached_rows(
+        'SELECT id FROM hc_patients WHERE is_active = 1 ORDER BY name ASC LIMIT 1'
+    );
+    if (!empty($rows) && isset($rows[0][0])) {
+        $id = (int) $rows[0][0];
+        $_SESSION['active_patient_id'] = $id;
+        return $id;
+    }
+
+    return 0;
+}
+
+/**
+ * True when a patient row with this id exists (active or disabled).
+ */
+function patientExistsById(int $id): bool
+{
+    $rows = dbi_get_cached_rows(
+        'SELECT id FROM hc_patients WHERE id = ?',
+        [$id]
+    );
+    return !empty($rows);
+}
+
 function getPatients($includeDisabled = false)
 {
     $sql = $includeDisabled
