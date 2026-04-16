@@ -2053,7 +2053,7 @@ choices at change / reset / create time.
 
 ### HC-093: Session cookie hardening audit
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 1
 **Depends on**: Nothing
@@ -2061,17 +2061,46 @@ choices at change / reset / create time.
 **Description**: Audit session + remember-me cookies against the
 OWASP session-management cheatsheet and fix anything missing.
 
+**Notes on implementation**:
+- Audit findings: remember-me cookie was already fully hardened
+  (HttpOnly, Secure, SameSite=Lax, Path=/, 365-day expiry) from
+  HC-014. Session-regen on 2FA was already correct: the
+  `$completeLogin` closure in `login.php` runs after both
+  password-only AND TOTP-verified paths. The gap was the
+  session cookie itself -- `session_start()` ran with default
+  params, so PHPSESSID emitted without HttpOnly/SameSite/etc.
+- Fix placed `session_set_cookie_params()` + two `ini_set`
+  calls (`use_strict_mode=1`, `use_only_cookies=1`) directly
+  before `session_start()` in `do_config()`. OWASP cheatsheet:
+  cookie params are only honoured when set BEFORE start.
+- `SessionCookieParams::forRequest($server)` factored out so
+  the HTTPS/HTTP branch is testable. Detects HTTPS via both
+  `$_SERVER['HTTPS']` and `X-Forwarded-Proto: https` (TLS
+  terminators are common; a local-dev HTTP flag shouldn't
+  nullify Secure in prod).
+- Config-time class check guards against entry points that
+  don't load the Composer autoloader first (`install/*`);
+  falls back to plain `session_start()` rather than crashing.
+- Live integration test uses curl against the local Apache —
+  parses raw `Set-Cookie:` headers and asserts each attribute.
+  Skipped cleanly when the base URL isn't reachable so the
+  unit-test suite still passes in containers without Apache.
+
 **Acceptance Criteria**:
-- [ ] Session cookie: `HttpOnly`, `Secure` (on HTTPS),
-      `SameSite=Lax` — verify via `session_set_cookie_params()`
-      in `init.php` boot
-- [ ] Remember-me cookie (`hc_remember`): same three flags, plus
+- [x] Session cookie: `HttpOnly`, `Secure` (on HTTPS),
+      `SameSite=Lax` — verified via `session_set_cookie_params()`
+      call in `do_config()` (runs before `session_start()`).
+      Integration test asserts each attribute on the live
+      `PHPSESSID` Set-Cookie header.
+- [x] Remember-me cookie (`hc_remember`): same three flags, plus
       a dedicated path scope of `/` and a 365-day max-age
-- [ ] `session_regenerate_id(true)` called after successful login
-      AND after 2FA verification (HC-090 dependency noted)
-- [ ] Integration test verifies Set-Cookie header flags on the
+      (already hardened in HC-014; integration test confirms).
+- [x] `session_regenerate_id(true)` called after successful login
+      AND after 2FA verification (already wired in HC-090 via
+      the shared `$completeLogin` closure; no change needed).
+- [x] Integration test verifies Set-Cookie header flags on the
       login response (parses `Set-Cookie:` and asserts each
-      attribute is present)
+      attribute is present, for both PHPSESSID and hc_remember).
 
 ---
 

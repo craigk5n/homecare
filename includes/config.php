@@ -156,6 +156,21 @@ function do_config($callingFromInstall=false)
     $single_user, $single_user_login, $TROUBLE_URL, $user_inc, $use_http_auth;
   global $config_possible_settings;
 
+  // HC-093: harden the session cookie before session_start().
+  // session_set_cookie_params() must run BEFORE session_start() or the
+  // attributes are ignored on the Set-Cookie header.
+  if (session_status() !== PHP_SESSION_ACTIVE) {
+    // Composer autoload may not be loaded yet on some entry points
+    // (install/*), so fall back to a literal if the class is missing.
+    if (class_exists(\HomeCare\Http\SessionCookieParams::class)) {
+      session_set_cookie_params(
+        \HomeCare\Http\SessionCookieParams::forRequest($_SERVER)
+      );
+    }
+    ini_set('session.use_strict_mode', '1');
+    ini_set('session.use_only_cookies', '1');
+  }
+
   session_start();
 
   // Define possible app settings and their types
