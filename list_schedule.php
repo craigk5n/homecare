@@ -240,7 +240,6 @@ echo '<input type="checkbox" class="custom-control-input" id="showCompleted"' . 
 echo ' data-toggle-param="show_completed">';
 echo '<label class="custom-control-label" for="showCompleted">Show completed</label>';
 echo '</div>';
-echo '<button class="btn btn-outline-secondary btn-sm ml-auto" data-print>Print</button>';
 echo '</div>';
 
 // ── Section config ──
@@ -452,10 +451,6 @@ echo '</div>';
 
 ?>
 <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
-// Print button
-document.addEventListener('click', function(e) {
-  if (e.target.closest('[data-print]')) window.print();
-});
 // Toggle URL parameter and reload (wired via data-toggle-param)
 document.querySelectorAll('[data-toggle-param]').forEach(function(el) {
   el.addEventListener('change', function() { toggleParam(this, this.getAttribute('data-toggle-param')); });
