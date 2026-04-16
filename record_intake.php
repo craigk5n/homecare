@@ -88,15 +88,22 @@ print_header();
 
 ?>
 <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
-function copyDueDateToInput(timeSupposedToTake, event) {
-  const intakeTimeInput = document.getElementById('taken_time');
-  intakeTimeInput.value = timeSupposedToTake;
-}
-
-function confirmDelete() {
-    return confirm("Are you sure you want to delete this intake record? This action cannot be undone.");
-}
-
+document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-copy-time]');
+    if (btn) {
+      document.getElementById('taken_time').value = btn.getAttribute('data-copy-time');
+    }
+  });
+  var delBtn = document.querySelector('[data-confirm-delete]');
+  if (delBtn) {
+    delBtn.addEventListener('click', function (e) {
+      if (!confirm('Are you sure you want to delete this intake record? This action cannot be undone.')) {
+        e.preventDefault();
+      }
+    });
+  }
+});
 </script>
 
 <?php
@@ -151,7 +158,7 @@ if (!empty($timeSupposedToTake)) {
       } else {
         $buttonStyle = 'btn-secondary';
       }
-      echo "<button type='button' class='btn $buttonStyle' onclick='copyDueDateToInput(\"$timeFormatted\",event)'>$time</button> ";
+      echo "<button type='button' class='btn $buttonStyle' data-copy-time='$timeFormatted'>$time</button> ";
     }
     echo "</div>\n";
   }
@@ -162,7 +169,7 @@ $min = date('i');
 $min = $min - ($min % 5);
 $lessThan5 = date('Y-m-d H:') . sprintf("%02d", $min);
 $nice = formatDateNicely($lessThan5);
-echo "<button type='button' class='btn btn-secondary' onclick='copyDueDateToInput(\"$lessThan5\",event)'>" . $nice . "</button>\n";
+echo "<button type='button' class='btn btn-secondary' data-copy-time='$lessThan5'>" . $nice . "</button>\n";
 
 echo "</div>\n";
 
@@ -174,7 +181,7 @@ echo "</div>\n";
 echo "<button type='submit' class='btn btn-success'>$title</button>\n";
 if ($editing && !empty($id)) {
   // Add a delete button with a confirmation dialog
-  echo "<button type='submit' name='delete' value='yes' class='btn btn-danger' onclick='return confirmDelete();'>Delete Entry</button>\n";
+  echo "<button type='submit' name='delete' value='yes' class='btn btn-danger' data-confirm-delete>Delete Entry</button>\n";
 }
 echo "</form>\n";
 echo "</div>\n";
