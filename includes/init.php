@@ -351,10 +351,9 @@ function print_trailer( $include_nav_links = true, $closeDb = true,
   }
   return $ret .
     '<!-- ' . $GLOBALS['PROGRAM_NAME'] . '     ' . $GLOBALS['PROGRAM_URL'] . ' -->' .
-    ( $includeCkeditor ?
-    /* Load local copy of ckeditor */ '
-
-
+    // CKEditor block removed in HC-079; keep the conditional reachable
+    // in case $includeCkeditor is ever wired back up.
+    ( $includeCkeditor ? '' : '' ) .
     // Adds an easy link to validate the pages.
     ( $DEMO_MODE == 'Y' ? '
     <p><a href="http://validator.w3.org/check?uri=referer">'
