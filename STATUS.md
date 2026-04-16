@@ -2410,7 +2410,7 @@ HC-091, HC-105, HC-106, HC-107, HC-108.
 
 ### HC-105: Late-dose email alert
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-104
@@ -2423,33 +2423,57 @@ past due (default **60**, configurable via `hc_config`), send an
 email to every opted-in caregiver. Once-per-lateness so a
 permanently-overdue schedule doesn't fire hourly forever.
 
+**Notes on implementation**:
+- Feature ships off-by-default (`late_dose_alert_minutes=0`
+  unless the admin sets it). Under-alerting is cheap; an
+  install flipping on a new loud alert without the operator
+  asking for it is not. Admin sets it in `hc_config` and gets
+  the 60-min behaviour the spec recommends.
+- `shouldAlert()` compares the CURRENT due instant (computed
+  as `lastTaken + frequency`) against
+  `hc_late_dose_alert_log.last_due_at`. Equal → suppress.
+  Different → fire. When the caregiver logs the dose, the
+  next due instant shifts and the next miss re-arms the alert
+  automatically.
+- `recordSent()` fires AFTER the channel dispatch succeeds so
+  a transport failure doesn't silence a retry on the next
+  cron tick.
+- Dispatch follows the HC-104 two-model pattern: topic
+  channels (ntfy, webhook) get one dispatch each with no
+  recipient; email iterates the pre-loaded `$emailSubscribers`
+  list with `recipient` set per message. `[URGENT]` subject
+  prefix comes for free via EmailChannel's priority mapping.
+- Minute-scale frequencies (`30m`) are respected out of the
+  box via `ScheduleCalculator::frequencyToSeconds()`; no
+  special-case needed.
+
 **Acceptance Criteria**:
-- [ ] New `hc_config.late_dose_alert_minutes` (default 60). 0 or
-      unset → feature off.
-- [ ] Migration: `hc_late_dose_alert_log (schedule_id INT PRIMARY
-      KEY, last_due_at DATETIME NOT NULL, sent_at DATETIME NOT
-      NULL)` — one row per schedule, upserted on each new lateness
-      window. Same throttle shape as `hc_supply_alert_log`.
-- [ ] `src/Service/LateDoseAlertService.php` with pure
-      `shouldAlert(lastTaken, frequency, threshold, lastSent, now)`
-      that returns true only when:
-        1. the dose is more than `threshold` minutes past due, AND
-        2. no alert has been sent for this exact due instant yet.
-- [ ] `send_reminders.php` new pass after the per-dose reminder
-      loop: walks every active schedule, calls
-      `LateDoseAlertService::findPendingAlerts()`, dispatches via
-      `ChannelRegistry` with `NotificationMessage::PRIORITY_HIGH`
-      and tag `late`.
-- [ ] Message body: "Medication X for patient Y was due at
-      HH:MM — N minutes late." Subject carries `[URGENT]` via
-      the existing EmailChannel priority mapping.
-- [ ] `--dry-run` prints what would be sent.
-- [ ] Unit tests: threshold boundary, replay suppression within
-      the same due window, new alert when the next due instant
-      rolls over, feature-off when config is 0.
-- [ ] Integration test: two schedules, one late one on-time →
-      exactly one alert row written and one dispatch per
-      recipient (no per-channel multiplication).
+- [x] New `hc_config.late_dose_alert_minutes` — 0 / unset
+      turns the feature off. Ships disabled.
+- [x] Migration (015): `hc_late_dose_alert_log (schedule_id
+      INT PRIMARY KEY, last_due_at DATETIME NOT NULL, sent_at
+      DATETIME NOT NULL)`. Applied live.
+- [x] `src/Service/LateDoseAlertService.php` with pure
+      `shouldAlert(lastTaken, frequency, thresholdMinutes,
+      lastAlertDueAt, now)`.
+- [x] `send_reminders.php` new pass after the supply-alert
+      loop: walks active schedules, calls
+      `findPendingAlerts()`, dispatches with `PRIORITY_HIGH`
+      and tags `['late', 'pill']`.
+- [x] Body: `"{medicine} for {patient} was due at HH:MM —
+      N minutes late."` Subject gets `[URGENT]` via the
+      EmailChannel priority mapping.
+- [x] `--dry-run` prints per-schedule preview lines.
+- [x] Unit tests (10): feature off at threshold ≤ 0,
+      not-late-enough, exact boundary, past threshold,
+      replay suppression same instant, re-arm on new due
+      instant, unparseable inputs fail quiet, minute-scale
+      threshold.
+- [x] Integration tests (7): two-schedules-one-late yields
+      one alert, recordSent suppresses replay within same
+      window, re-arms after caregiver logs dose,
+      feature-off, missing-intakes skipped,
+      inactive-schedules skipped, log upsert persists.
 
 ---
 

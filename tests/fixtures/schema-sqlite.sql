@@ -114,6 +114,12 @@ CREATE TABLE hc_supply_alert_log (
   last_sent_at DATETIME NOT NULL
 );
 
+CREATE TABLE hc_late_dose_alert_log (
+  schedule_id INTEGER NOT NULL PRIMARY KEY,
+  last_due_at DATETIME NOT NULL,
+  sent_at DATETIME NOT NULL
+);
+
 CREATE TABLE hc_audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_login VARCHAR(25) NULL,

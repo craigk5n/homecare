@@ -16,6 +16,8 @@ use HomeCare\Notification\WebhookChannel;
 use HomeCare\Repository\InventoryRepository;
 use HomeCare\Repository\ScheduleRepository;
 use HomeCare\Service\InventoryService;
+use HomeCare\Service\LateDoseAlertLog;
+use HomeCare\Service\LateDoseAlertService;
 use HomeCare\Service\SupplyAlertLog;
 use HomeCare\Service\SupplyAlertService;
 
@@ -130,6 +132,67 @@ foreach ($supplyService->findPendingAlerts($supplyThreshold) as $alert) {
     } else {
         echo "Low-supply alert sent: {$message}\n";
         $supplyService->recordSent($alert->medicineId);
+    }
+}
+
+// ── HC-105: Late-dose alerts ─────────────────────────────────────────
+// Threshold in minutes comes from hc_config.late_dose_alert_minutes;
+// 0 or unset ⇒ feature off. Throttled per-schedule on the exact due
+// instant so a permanently-overdue schedule fires exactly once until
+// the caregiver records the dose.
+
+$lateThreshold = 0;
+$cfg = dbi_get_cached_rows(
+    "SELECT value FROM hc_config WHERE setting = 'late_dose_alert_minutes'"
+);
+if (!empty($cfg) && !empty($cfg[0][0])) {
+    $parsed = (int) $cfg[0][0];
+    if ($parsed > 0) {
+        $lateThreshold = $parsed;
+    }
+}
+
+if ($lateThreshold > 0) {
+    $lateService = new LateDoseAlertService($db, new LateDoseAlertLog($db));
+    foreach ($lateService->findPendingAlerts($lateThreshold) as $lateAlert) {
+        $body = $lateAlert->message();
+        $title = 'Late dose: ' . $lateAlert->medicineName;
+        if ($dryRun) {
+            echo "Dry run: Would send late-dose alert for schedule "
+               . "{$lateAlert->scheduleId}: {$body}\n";
+            continue;
+        }
+
+        // Topic fan-out (ntfy, webhook).
+        $topicMsg = new NotificationMessage(
+            title:    $title,
+            body:     $body,
+            priority: NotificationMessage::PRIORITY_HIGH,
+            tags:     ['late', 'pill'],
+        );
+        $accepted = $channels->dispatch($topicMsg, ['ntfy', 'webhook']);
+
+        // Per-user email. The [URGENT] subject prefix is added
+        // automatically by EmailChannel for PRIORITY_HIGH.
+        foreach ($emailSubscribers as $address) {
+            $perUser = new NotificationMessage(
+                title:     $title,
+                body:      $body,
+                priority:  NotificationMessage::PRIORITY_HIGH,
+                tags:      ['late', 'pill'],
+                recipient: $address,
+            );
+            if ($channels->dispatch($perUser, ['email']) > 0) {
+                $accepted++;
+            }
+        }
+
+        if ($accepted === 0) {
+            echo "Skipped (no channel ready): {$body}\n";
+            continue;
+        }
+        echo "Late-dose alert sent for schedule {$lateAlert->scheduleId}: {$body}\n";
+        $lateService->recordSent($lateAlert->scheduleId, $lateAlert->dueAt);
     }
 }
 

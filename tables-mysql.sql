@@ -135,6 +135,15 @@ CREATE TABLE hc_supply_alert_log (
   last_sent_at DATETIME NOT NULL
 );
 
+/* Late-dose alert throttle (HC-105). One row per schedule; `last_due_at`
+ * is the due instant we last alerted about so we don't re-fire for the
+ * same miss while still re-arming on the next dose. */
+CREATE TABLE hc_late_dose_alert_log (
+  schedule_id INT NOT NULL PRIMARY KEY,
+  last_due_at DATETIME NOT NULL,
+  sent_at     DATETIME NOT NULL
+);
+
 /* Audit log of write operations (HC-013). `details` is a JSON blob. */
 CREATE TABLE hc_audit_log (
   id INT AUTO_INCREMENT PRIMARY KEY,
