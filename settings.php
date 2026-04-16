@@ -183,6 +183,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($dsn === '' || $fromAddr === '') {
         $flash = ['type' => 'danger', 'text' => 'DSN and From address must both be set to run a test.'];
     } else {
+        // Flashes: do NOT pre-escape $flash['text']; the alert block
+        // already calls htmlspecialchars() on render, and double-escaping
+        // turns quotes into &amp;quot; in operator-facing messages.
         $_SESSION['email_test_last_ts'] = $now;
         try {
             $transport = Transport::fromDsn($dsn);
@@ -203,7 +206,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $flash = [
                 'type' => 'success',
-                'text' => 'Test email sent to ' . htmlspecialchars($to) . '.',
+                'text' => 'Test email sent to ' . $to . '.',
             ];
         } catch (TransportExceptionInterface $e) {
             audit_log('email.test_sent', 'config', null, [
@@ -213,7 +216,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $flash = [
                 'type' => 'danger',
-                'text' => 'Transport error: ' . htmlspecialchars($e->getMessage()),
+                'text' => 'Transport error: ' . $e->getMessage(),
             ];
         } catch (\Throwable $e) {
             audit_log('email.test_sent', 'config', null, [
@@ -223,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ]);
             $flash = [
                 'type' => 'danger',
-                'text' => 'Test failed: ' . htmlspecialchars($e->getMessage()),
+                'text' => 'Test failed: ' . $e->getMessage(),
             ];
         }
     }
