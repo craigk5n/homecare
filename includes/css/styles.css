@@ -665,17 +665,24 @@ nav.navbar .dropdown-menu {
 /* Desktop table tweaks */
 .schedule-table th { vertical-align: middle; }
 .schedule-table td { vertical-align: middle; padding: .55rem .75rem; }
-/* Actions cell: let the Record/Adjust/Edit group wrap onto a second
-   line on narrower viewports rather than forcing the whole table
-   wider than the screen (which pushed Edit off to the right). Each
-   button still stays nowrap internally so labels don't break. */
+/* Actions cell: Record/Adjust/Edit buttons live in a flex container
+   that wraps onto multiple rows when the table is cramped. Without
+   this, the three buttons were rendered as adjacent <a> elements
+   with no whitespace between them, so no browser break opportunity
+   existed and the cell forced the table past the viewport's right
+   edge — with Edit clipped off-screen. */
 .schedule-table .actions-cell {
   white-space: normal;
   min-width: 0;
 }
-.schedule-table .actions-cell .btn {
+.action-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .25rem;
+  justify-content: flex-start;
+}
+.action-btn-group .btn {
   white-space: nowrap;
-  margin-bottom: .2rem;
 }
 
 /* Card view (mobile) */

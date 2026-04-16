@@ -281,15 +281,15 @@ function renderTableRow($entry, $statusClass) {
         $html .= '<br><small class="text-muted">' . htmlspecialchars($entry['remainDetail']) . '</small>';
     }
     $html .= '</td>';
-    $html .= '<td class="actions-cell">';
+    $html .= '<td class="actions-cell"><div class="action-btn-group">';
     if (!$entry['isCompleted']) {
-        $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success mr-1" title="Record Intake">';
+        $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success" title="Record Intake">';
         $html .= '<img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a>';
-        $html .= '<a href="' . htmlspecialchars($entry['adjustUrl']) . '" class="btn btn-sm btn-outline-warning mr-1" title="Adjust Dosage">Adjust</a>';
+        $html .= '<a href="' . htmlspecialchars($entry['adjustUrl']) . '" class="btn btn-sm btn-outline-warning" title="Adjust Dosage">Adjust</a>';
     }
     $html .= '<a href="' . htmlspecialchars($entry['editUrl']) . '" class="btn btn-sm btn-outline-secondary" title="Edit">';
     $html .= '<img src="images/bootstrap-icons/pencil.svg" alt="" class="button-icon-inverse"> Edit</a>';
-    $html .= '</td>';
+    $html .= '</div></td>';
     $html .= '</tr>';
     return $html;
 }
