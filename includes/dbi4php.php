@@ -737,9 +737,19 @@ function dbi_execute ( $sql, $params = [], $fatalOnError = true,
   $offset  =
   $phindex = 0;
   while( ( $pos = strpos( $sql, '?', $offset ) ) !== false ) {
-    $prepared .= substr( $sql, $offset, $pos - $offset )
-     . ( ( is_null( $params[ $phindex ] ) )
-      ? "NULL" : ( "'" . dbi_escape_string( $params[ $phindex ] ) . "'" ) );
+    $v = $params[ $phindex ];
+    if ( is_null( $v ) ) {
+      $fragment = "NULL";
+    } elseif ( is_int( $v ) || is_float( $v ) || is_bool( $v ) ) {
+      // Numeric/bool params go in as unquoted literals. Matters for
+      // clauses where MySQL rejects quoted strings -- LIMIT, OFFSET,
+      // arithmetic, IN (...) on INT columns -- and is semantically
+      // identical to a quoted form for everything else.
+      $fragment = (string)( is_bool( $v ) ? (int)$v : $v );
+    } else {
+      $fragment = "'" . dbi_escape_string( $v ) . "'";
+    }
+    $prepared .= substr( $sql, $offset, $pos - $offset ) . $fragment;
     $offset = $pos + 1;
     $phindex++;
   }
