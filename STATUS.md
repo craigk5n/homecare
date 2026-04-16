@@ -1536,7 +1536,7 @@ occurred, user-editable), and `created_at` (immutable).
 
 ### HC-083: Caregiver notes list / browse view
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: HC-082
@@ -1547,18 +1547,46 @@ observed the event) shown prominently and `created_at` (when the
 record was written) as a secondary subtitle. Viewers can read; only
 caregivers/admins see Edit / Delete affordances.
 
+**Notes on implementation**:
+- Repository grew a pair of filter-aware methods: `search()` and
+  `countSearch()` share a private `buildFilter()` so the list and
+  the pagination counter can never disagree on "what matches."
+- LIKE wildcards in the search term (`%`, `_`, `\`) are escaped
+  and re-applied with an explicit `ESCAPE '\'` clause, so a
+  caregiver searching for "3%" finds the literal string instead
+  of every note. Works identically on MySQL and SQLite.
+- The page renders with the shared HC-061 shell
+  (`.page-sticky-header`, `.page-table`, `.page-card`) so the
+  existing print stylesheet strips controls and forces card view
+  automatically -- no new CSS needed.
+- Edit/Delete visibility is gated via `Authorization::canWrite()`
+  read from `getCurrentUserRole()`, so viewers see the list but
+  not the affordances. Delete itself still flows through the
+  confirm dialog on `note_caregiver.php` (shared with HC-082).
+- Date filter widens its bounds to `00:00:00` / `23:59:59` before
+  hitting the DB -- the HTML `<input type="date">` only emits the
+  date half, and we want an inclusive filter on both ends.
+- 50-per-page pagination is the constant `NOTES_PAGE_SIZE`;
+  preserves every filter in the generated Prev/Next links via
+  `http_build_query`.
+
 **Acceptance Criteria**:
-- [ ] `list_caregiver_notes.php?patient_id=N` with:
+- [x] `list_caregiver_notes.php?patient_id=N` with:
       - Patient name in sticky header
       - Card (mobile) + table (desktop) dual layout per the HC-061
         pattern
       - Date-range filter (start/end `note_time`)
       - Free-text search across `note` (LIKE %q%)
       - 50-per-page pagination
-- [ ] Edit / Delete buttons per row, hidden for `viewer` role
-- [ ] Link from `list_schedule.php` sticky header: "Notes"
-- [ ] Print-optimized stylesheet (hide controls, keep body text)
-- [ ] Integration test: filter + pagination narrow correctly
+- [x] Edit / Delete buttons per row, hidden for `viewer` role
+      (Edit is a per-row affordance; Delete lives inside the edit
+      form from HC-082 to reuse the confirm dialog)
+- [x] Link from `list_schedule.php` sticky header: "Notes"
+- [x] Print-optimized stylesheet (hide controls, keep body text)
+      -- inherited from the shared `.page-*` classes in styles.css
+- [x] Integration test: filter + pagination narrow correctly
+      (6 new tests: date range, query string, LIKE-wildcard escape,
+      patient scoping, limit/offset, countSearch)
 
 ---
 

@@ -89,6 +89,90 @@ final class CaregiverNoteRepository
     }
 
     /**
+     * Filtered, paginated notes for a patient, newest-first.
+     *
+     * `$startDate` / `$endDate` are inclusive bounds on `note_time`; pass
+     * null to leave that side open. `$query` is a LIKE %needle% search
+     * across the `note` column, with `%` and `_` treated as literals so
+     * caregivers can search for "3%" etc. without the wildcards eating
+     * the match.
+     *
+     * @return list<CaregiverNote>
+     */
+    public function search(
+        int $patientId,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?string $query = null,
+        int $limit = 50,
+        int $offset = 0,
+    ): array {
+        [$sql, $params] = $this->buildFilter($patientId, $startDate, $endDate, $query);
+
+        $rows = $this->db->query(
+            'SELECT id, patient_id, note, note_time, created_at
+             FROM hc_caregiver_notes' . $sql
+            . ' ORDER BY note_time DESC, id DESC LIMIT ? OFFSET ?',
+            [...$params, $limit, $offset]
+        );
+
+        return array_map(self::hydrate(...), $rows);
+    }
+
+    /**
+     * Count matches under the same filters as {@see search()}.
+     */
+    public function countSearch(
+        int $patientId,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?string $query = null,
+    ): int {
+        [$sql, $params] = $this->buildFilter($patientId, $startDate, $endDate, $query);
+
+        $rows = $this->db->query(
+            'SELECT COUNT(*) AS n FROM hc_caregiver_notes' . $sql,
+            $params
+        );
+
+        return $rows === [] ? 0 : (int) $rows[0]['n'];
+    }
+
+    /**
+     * Shared WHERE-clause builder for {@see search()} / {@see countSearch()}.
+     *
+     * @return array{0:string,1:list<scalar>}
+     */
+    private function buildFilter(
+        int $patientId,
+        ?string $startDate,
+        ?string $endDate,
+        ?string $query,
+    ): array {
+        $sql = ' WHERE patient_id = ?';
+        /** @var list<scalar> $params */
+        $params = [$patientId];
+
+        if ($startDate !== null && $startDate !== '') {
+            $sql .= ' AND note_time >= ?';
+            $params[] = $startDate;
+        }
+        if ($endDate !== null && $endDate !== '') {
+            $sql .= ' AND note_time <= ?';
+            $params[] = $endDate;
+        }
+        if ($query !== null && $query !== '') {
+            // Escape LIKE-special chars so they match literally. Both MySQL
+            // and SQLite accept an explicit ESCAPE clause.
+            $escaped = strtr($query, ['\\' => '\\\\', '%' => '\\%', '_' => '\\_']);
+            $sql .= " AND note LIKE ? ESCAPE '\\'";
+            $params[] = '%' . $escaped . '%';
+        }
+
+        return [$sql, $params];
+    }
+
+    /**
      * @param array<string,scalar|null> $row
      *
      * @return CaregiverNote

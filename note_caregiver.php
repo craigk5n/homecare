@@ -58,7 +58,7 @@ echo "<small class='form-text text-muted'>Up to 4,000 characters.</small>\n";
 echo "</div>\n";
 
 echo "<div class='mt-4 d-flex gap-2'>\n";
-echo "<a href='list_schedule.php?patient_id=" . htmlspecialchars((string) $patient_id)
+echo "<a href='list_caregiver_notes.php?patient_id=" . htmlspecialchars((string) $patient_id)
     . "' class='btn btn-secondary mr-2'>Cancel</a>\n";
 echo "<button type='submit' name='action' value='save' class='btn btn-primary'>Save Note</button>\n";
 if ($isEdit) {

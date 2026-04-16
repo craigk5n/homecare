@@ -99,29 +99,30 @@ $patients = getPatients();
         </div>
       </li>
 
-      <?php if ($can_add) { ?>
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-            <?php etranslate('Notes'); ?>
-          </a>
-          <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+      <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+          <?php etranslate('Notes'); ?>
+        </a>
+        <div id="nav-project-menu" class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+        <?php
+        $first = true;
+        foreach ($patients as $patient) {
+          if ($first) {
+            $first = false;
+          } else {
+            echo '<div class="dropdown-divider"></div>';
+          }
+        ?>
+          <h6 class="dropdown-header"><?php echo htmlspecialchars($patient['name']); ?></h6>
           <?php
-          $first = true;
-          foreach ($patients as $patient) {
-            if ($first) {
-              $first = false;
-            } else {
-              echo '<div class="dropdown-divider"></div>';
-            }
-          ?>
-            <h6 class="dropdown-header"><?php echo htmlspecialchars($patient['name']); ?></h6>
-            <?php
+            print_menu_item(translate('View Notes'), 'list_caregiver_notes.php?patient_id=' . $patient['id']);
+            if ($can_add) {
               print_menu_item(translate('Add Note'), 'note_caregiver.php?patient_id=' . $patient['id']);
             }
-            ?>
-          </div>
-        </li>
-      <?php } ?>
+          }
+          ?>
+        </div>
+      </li>
 
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

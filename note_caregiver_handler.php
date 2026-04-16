@@ -38,7 +38,7 @@ if ($action === 'delete') {
         'note_len' => strlen($existing['note']),
     ]);
 
-    do_redirect('list_schedule.php?patient_id=' . urlencode((string) $patient_id));
+    do_redirect('list_caregiver_notes.php?patient_id=' . urlencode((string) $patient_id));
     exit();
 }
 
@@ -85,4 +85,4 @@ if ($note_id !== null) {
     ]);
 }
 
-do_redirect('list_schedule.php?patient_id=' . urlencode((string) $patient_id));
+do_redirect('list_caregiver_notes.php?patient_id=' . urlencode((string) $patient_id));

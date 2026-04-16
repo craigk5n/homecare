@@ -214,6 +214,12 @@ echo '<a href="medication_summary.php?patient_id=' . $patientIdEsc
    . '<span class="hc-label-compact" aria-hidden="true">Print</span>'
    . '<span class="sr-only hc-label-compact">Print Summary</span>'
    . '</a>';
+echo '<a href="list_caregiver_notes.php?patient_id=' . $patientIdEsc
+   . '" class="btn btn-outline-secondary btn-sm" title="Caregiver notes">'
+   . '<span class="hc-label-full">Notes</span>'
+   . '<span class="hc-label-compact" aria-hidden="true">Notes</span>'
+   . '<span class="sr-only hc-label-compact">Caregiver Notes</span>'
+   . '</a>';
 echo '<a href="add_to_schedule.php?patient_id=' . $patientIdEsc
    . '" class="btn btn-primary btn-sm" title="Add medication to this schedule">'
    . '<span class="hc-label-full">+ Add Medication</span>'
