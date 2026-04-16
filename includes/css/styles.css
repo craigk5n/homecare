@@ -663,14 +663,25 @@ nav.navbar .dropdown-menu {
 .section-done     { background: #e2e3e5; color: #383d41; }
 
 /* Desktop table tweaks */
+.schedule-table { table-layout: auto; width: 100%; }
 .schedule-table th { vertical-align: middle; }
-.schedule-table td { vertical-align: middle; padding: .55rem .75rem; }
+.schedule-table td {
+  vertical-align: middle;
+  padding: .55rem .75rem;
+  /* Force long text (long medication names, the cadence-mismatch
+     warning banner, etc.) to break within the cell instead of
+     expanding the table wider than the viewport. */
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+/* The cadence-mismatch alert inside the Next Due cell is the main
+   offender — without this it measures by its single-line width
+   (~460px) and pushes the table past the screen's right edge. */
+.schedule-table .alert {
+  max-width: 100%;
+}
 /* Actions cell: Record/Adjust/Edit buttons live in a flex container
-   that wraps onto multiple rows when the table is cramped. Without
-   this, the three buttons were rendered as adjacent <a> elements
-   with no whitespace between them, so no browser break opportunity
-   existed and the cell forced the table past the viewport's right
-   edge — with Edit clipped off-screen. */
+   that wraps onto multiple rows when the table is cramped. */
 .schedule-table .actions-cell {
   white-space: normal;
   min-width: 0;

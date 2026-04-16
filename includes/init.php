@@ -238,8 +238,12 @@ function print_header( $includes = '', $HeadX = '', $BodyX = '',
      . '&amp;css_cache=' . $webcalendar_csscache . '" rel="stylesheet">';
     foreach( $cs_ar as $c ) {
       $i = 'includes/' . $c;
+      // Cache-bust on file mtime so CSS edits reach the browser
+      // without the user having to hard-refresh.
+      $vQuery = @filemtime( $i );
+      $vQuery = $vQuery ? '?v=' . $vQuery : '';
       $ret .= '
-    <link href="' . $i . '" rel="stylesheet"'
+    <link href="' . $i . $vQuery . '" rel="stylesheet"'
        . ( $c == 'css/print_styles.css' && empty( $friendly )
          ? ' media="print"' : '' ) . '>' . "\n";
     }
