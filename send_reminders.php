@@ -50,6 +50,10 @@ $resolver = new ChannelResolver($channels);
 $users = new \HomeCare\Repository\UserRepository($db);
 $emailSubscribers = $users->getEmailSubscribers();
 
+// HC-124: pause repository for skipping paused schedules.
+$pauseRepo = new \HomeCare\Repository\PauseRepository($db);
+$todayDate = date('Y-m-d');
+
 $dryRun = in_array('--dry-run', $argv, true);
 
 // Minutes-before-due override: optional positional arg.
@@ -81,10 +85,16 @@ foreach ($patients as $patient) {
     $schedules = dbi_get_cached_rows($sql, [$patient_id]);
 
     foreach ($schedules as $schedule) {
+        $scheduleId = (int) $schedule[0];
         $lastTaken = $schedule[3];
         $frequency = $schedule[2];
 
         if (!$lastTaken || $frequency === null || $frequency === '') {
+            continue;
+        }
+
+        // HC-124: skip paused schedules — no reminders while on hold.
+        if ($pauseRepo->isPausedOn($scheduleId, $todayDate)) {
             continue;
         }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace HomeCare\Tests\Integration\Service;
 
 use HomeCare\Repository\IntakeRepository;
+use HomeCare\Repository\PauseRepository;
 use HomeCare\Repository\ScheduleRepository;
 use HomeCare\Service\AdherenceService;
 use HomeCare\Tests\Factory\IntakeFactory;
@@ -247,5 +248,56 @@ final class AdherenceServiceTest extends DatabaseTestCase
         $this->assertSame(0.0, $result['percentage']);
         $this->assertSame(0, $result['coverage_days']);
         $this->assertSame(7, $result['window_days']);
+    }
+
+    public function testPausedDaysSubtractedFromExpectedCount(): void
+    {
+        // HC-124: 7-day window at 8h (3 doses/day). Pause covers Apr 3-5
+        // (3 days). Effective active days = 7 - 3 = 4. Expected = 4 * 3 = 12.
+        $db = $this->getDb();
+        $pauseRepo = new PauseRepository($db);
+        $pauseRepo->create($this->scheduleId, '2026-04-03', '2026-04-05', 'Vacation');
+
+        // Build a pause-aware service.
+        $svc = new AdherenceService(
+            new ScheduleRepository($db),
+            new IntakeRepository($db),
+            $pauseRepo,
+        );
+
+        // Record 12 intakes on the 4 active days (3/day).
+        foreach (['01', '02', '06', '07'] as $day) {
+            foreach (['08:00:00', '16:00:00', '23:59:00'] as $t) {
+                $this->intakes->create([
+                    'schedule_id' => $this->scheduleId,
+                    'taken_time' => "2026-04-{$day} {$t}",
+                ]);
+            }
+        }
+
+        $result = $svc->calculateAdherence($this->scheduleId, '2026-04-01', '2026-04-07');
+
+        $this->assertSame(12, $result['expected']);
+        $this->assertSame(12, $result['actual']);
+        $this->assertSame(100.0, $result['percentage']);
+    }
+
+    public function testOpenEndedPauseSubtractsFromExpected(): void
+    {
+        // HC-124: open-ended pause starting Apr 5 within a 7-day window.
+        // Active days = Apr 1-4 = 4. Expected = 4 * 3 = 12.
+        $db = $this->getDb();
+        $pauseRepo = new PauseRepository($db);
+        $pauseRepo->create($this->scheduleId, '2026-04-05', null, null);
+
+        $svc = new AdherenceService(
+            new ScheduleRepository($db),
+            new IntakeRepository($db),
+            $pauseRepo,
+        );
+
+        $result = $svc->calculateAdherence($this->scheduleId, '2026-04-01', '2026-04-07');
+
+        $this->assertSame(12, $result['expected']);
     }
 }

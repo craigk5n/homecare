@@ -37,7 +37,7 @@ $db = new DbiAdapter();
 $users = new UserRepository($db);
 $schedules = new ScheduleRepository($db);
 $intakes = new IntakeRepository($db);
-$adherence = new AdherenceService($schedules, $intakes);
+$adherence = new AdherenceService($schedules, $intakes, new \HomeCare\Repository\PauseRepository($db));
 $builder = new AdherenceDigestBuilder();
 $emailChannel = new EmailChannel(new EmailConfig($db));
 

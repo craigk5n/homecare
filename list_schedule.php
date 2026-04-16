@@ -42,6 +42,12 @@ $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medic
 
 $rows = dbi_get_cached_rows($sql, [$patient_id]);
 
+// HC-124: pause-aware schedule rendering. Load the repository once so
+// we can check each row for an active pause.
+$pauseDb = new \HomeCare\Database\DbiAdapter();
+$pauseRepo = new \HomeCare\Repository\PauseRepository($pauseDb);
+$todayDate = date('Y-m-d');
+
 // ── Build medication data and group by urgency ──
 // HC-120: PRN ("as-needed") schedules land in their own bucket — they
 // never compute a "next due" and never surface an Overdue badge. They
@@ -51,6 +57,7 @@ $groups = [
     'overdue'  => [],
     'due_soon' => [],
     'ok'       => [],
+    'paused'   => [],
     'prn'      => [],
     'done'     => [],
 ];
@@ -75,7 +82,23 @@ foreach ($rows as $row) {
 
     $remainingDoses = dosesRemaining($medicine_id, $schedule_id, $assumePastIntake, $start_date, $frequency);
 
-    if ($isPrn) {
+    // HC-124: check if schedule is currently paused. Paused rows land
+    // in their own bucket with a "Paused" badge and a "Resume" action
+    // instead of the usual due-time math.
+    $isPaused = !$isPrn && $pauseRepo->isPausedOn($schedule_id, $todayDate);
+
+    if ($isPaused) {
+        $nextDueLabel = 'Paused';
+        $nextDueDetail = '';
+        $sortKey = 'PAUSED-' . strtolower($medName) . '-' . sprintf('%06d', $schedule_id);
+        $statusGroup = 'paused';
+        if (!empty($end_date) && $end_date < $todayDate) {
+            $isCompleted = true;
+            $statusGroup = 'done';
+            $nextDueLabel = 'Completed';
+            $sortKey = sprintf("999999-%06d", $schedule_id);
+        }
+    } elseif ($isPrn) {
         // PRN rows have no next-due, sort alphabetically within the PRN
         // bucket so the list is stable regardless of last-intake time.
         $nextDueLabel = 'PRN — no schedule';
@@ -171,6 +194,9 @@ foreach ($rows as $row) {
     $editUrl   = 'add_to_schedule.php?patient_id=' . urlencode($patient_id) . '&schedule_id=' . urlencode($schedule_id) . '&medicine_id=' . urlencode($medicine_id);
     $adjustUrl = 'adjust_dosage.php?patient_id=' . urlencode($patient_id) . '&schedule_id=' . urlencode($schedule_id);
 
+    // Action URLs for pause/skip/resume (HC-124)
+    $pauseUrl = 'pause_schedule.php?patient_id=' . urlencode($patient_id) . '&schedule_id=' . urlencode($schedule_id);
+
     $entry = [
         'sortKey'         => $sortKey,
         'medName'         => $medName,
@@ -178,15 +204,19 @@ foreach ($rows as $row) {
         'lastTakenNicely' => $lastTakenNicely,
         'nextDueLabel'    => $nextDueLabel,
         'nextDueDetail'   => $nextDueDetail,
-        'secondsUntilDue' => $isPrn ? null : $secondsUntilDue,
+        'secondsUntilDue' => ($isPrn || $isPaused) ? null : $secondsUntilDue,
         'remainShort'     => $remainShort,
         'remainDetail'    => $remainDetail,
         'recordUrl'       => $recordUrl,
         'editUrl'         => $editUrl,
         'adjustUrl'       => $adjustUrl,
+        'pauseUrl'        => $pauseUrl,
         'statusGroup'     => $statusGroup,
         'isCompleted'     => $isCompleted,
         'isPrn'           => $isPrn,
+        'isPaused'        => $isPaused,
+        'scheduleId'      => $schedule_id,
+        'patientId'       => $patient_id,
     ];
 
     $groups[$statusGroup][] = $entry;
@@ -281,6 +311,7 @@ $sectionConfig = [
     'overdue'  => ['label' => 'Overdue',   'sectionClass' => 'section-overdue',  'statusClass' => 'status-overdue',  'icon' => 'exclamation-triangle-fill'],
     'due_soon' => ['label' => 'Due Soon',  'sectionClass' => 'section-due-soon', 'statusClass' => 'status-due-soon', 'icon' => 'clock'],
     'ok'       => ['label' => 'Upcoming',  'sectionClass' => 'section-ok',       'statusClass' => 'status-ok',       'icon' => ''],
+    'paused'   => ['label' => 'Paused',    'sectionClass' => 'section-done',     'statusClass' => 'status-done',     'icon' => 'pause-circle'],
     'prn'      => ['label' => 'As-Needed (PRN)', 'sectionClass' => 'section-ok', 'statusClass' => 'status-ok',       'icon' => ''],
     'done'     => ['label' => 'Completed', 'sectionClass' => 'section-done',     'statusClass' => 'status-done',     'icon' => 'check-circle'],
 ];
@@ -294,11 +325,33 @@ $completedCount = count($groups['done']);
 // the row stays compact and a future "View history" / "End schedule"
 // action can land there without another redesign.
 function renderOverflowMenu($entry) {
+    global $GLOBALS;
+    $nonce = htmlspecialchars($GLOBALS['NONCE'] ?? '', ENT_QUOTES, 'UTF-8');
     $items = '';
     if (!$entry['isCompleted']) {
         $items .= '<a class="dropdown-item" href="' . htmlspecialchars($entry['adjustUrl']) . '">Adjust dosage</a>';
     }
     $items .= '<a class="dropdown-item" href="' . htmlspecialchars($entry['editUrl']) . '">Edit schedule</a>';
+
+    // HC-124: Pause / Skip today / Resume actions
+    if (!$entry['isCompleted'] && empty($entry['isPrn'])) {
+        if (!empty($entry['isPaused'])) {
+            $items .= '<div class="dropdown-divider"></div>';
+            $items .= '<form method="POST" action="resume_schedule_handler.php" class="d-inline">'
+                     . '<input type="hidden" name="schedule_id" value="' . (int) $entry['scheduleId'] . '">'
+                     . '<input type="hidden" name="patient_id" value="' . htmlspecialchars((string) $entry['patientId']) . '">'
+                     . '<button type="submit" class="dropdown-item text-success">Resume schedule</button>'
+                     . '</form>';
+        } else {
+            $items .= '<div class="dropdown-divider"></div>';
+            $items .= '<form method="POST" action="skip_today_handler.php" class="d-inline">'
+                     . '<input type="hidden" name="schedule_id" value="' . (int) $entry['scheduleId'] . '">'
+                     . '<input type="hidden" name="patient_id" value="' . htmlspecialchars((string) $entry['patientId']) . '">'
+                     . '<button type="submit" class="dropdown-item">Skip today</button>'
+                     . '</form>';
+            $items .= '<a class="dropdown-item" href="' . htmlspecialchars($entry['pauseUrl']) . '">Pause schedule&hellip;</a>';
+        }
+    }
 
     $html  = '<div class="dropdown d-inline-block">';
     $html .= '<button type="button" class="btn btn-sm btn-outline-secondary" '
@@ -383,8 +436,9 @@ function renderCard($entry, $statusClass) {
     $html .= '<div class="card-due js-countdown"' . $dueAttr . '>' . $warningIcon;
     if ($entry['isCompleted']) {
         $html .= 'Completed';
+    } elseif (!empty($entry['isPaused'])) {
+        $html .= '<span class="text-muted">Paused</span>';
     } elseif (!empty($entry['isPrn'])) {
-        // PRN rows: no countdown, no "Due in ..." — just the static label.
         $html .= htmlspecialchars($entry['nextDueLabel']);
     } else {
         $html .= htmlspecialchars($entry['nextDueLabel'] === 'Overdue' ? 'Overdue' : 'Due in ' . $entry['nextDueLabel']);
@@ -409,7 +463,7 @@ function renderCard($entry, $statusClass) {
 // ══════════════════════════════════════════
 echo '<div class="d-none d-md-block">';
 
-foreach (['overdue', 'due_soon', 'ok', 'prn', 'done'] as $groupKey) {
+foreach (['overdue', 'due_soon', 'ok', 'paused', 'prn', 'done'] as $groupKey) {
     $entries = $groups[$groupKey];
     if (empty($entries)) {
         continue;
@@ -452,7 +506,7 @@ foreach (['overdue', 'due_soon', 'ok', 'prn', 'done'] as $groupKey) {
 }
 
 // If all groups empty
-$totalEntries = count($groups['overdue']) + count($groups['due_soon']) + count($groups['ok']) + count($groups['prn']) + count($groups['done']);
+$totalEntries = count($groups['overdue']) + count($groups['due_soon']) + count($groups['ok']) + count($groups['paused']) + count($groups['prn']) + count($groups['done']);
 if ($totalEntries === 0) {
     echo '<div class="alert alert-info mt-3">No medications scheduled for this patient.</div>';
 }
@@ -465,7 +519,7 @@ echo '</div>'; // close d-none d-md-block
 // ══════════════════════════════════════════
 echo '<div class="d-md-none">';
 
-foreach (['overdue', 'due_soon', 'ok', 'prn', 'done'] as $groupKey) {
+foreach (['overdue', 'due_soon', 'ok', 'paused', 'prn', 'done'] as $groupKey) {
     $entries = $groups[$groupKey];
     if (empty($entries)) {
         continue;

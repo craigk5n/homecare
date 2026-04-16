@@ -196,6 +196,25 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
         $this->assertSame([], $svc->findPendingAlerts(60));
     }
 
+    public function testPausedSchedulesAreSkipped(): void
+    {
+        // HC-124: a paused schedule should not trigger a late-dose alert
+        // even if the last intake is far in the past.
+        [$p, $m] = $this->seedPatientAndMedicine();
+        $id = $this->seedSchedule($p, $m, '8h', '2026-04-16 04:00:00');
+
+        $db = $this->getDb();
+        $db->execute(
+            "INSERT INTO hc_schedule_pauses (schedule_id, start_date, end_date, reason)
+             VALUES (?, '2026-04-16', NULL, 'Vet visit')",
+            [$id]
+        );
+
+        $svc = $this->service(now: '2026-04-16 18:00:00');
+
+        $this->assertSame([], $svc->findPendingAlerts(60));
+    }
+
     public function testLogMarksPersistAcrossCalls(): void
     {
         [$p, $m] = $this->seedPatientAndMedicine();

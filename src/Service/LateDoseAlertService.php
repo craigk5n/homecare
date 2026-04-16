@@ -113,8 +113,8 @@ final class LateDoseAlertService
             return [];
         }
 
-        // HC-120: skip PRN schedules -- they have no expected cadence,
-        // so "late" is not a meaningful concept for them.
+        // HC-120: skip PRN schedules — no cadence, "late" is meaningless.
+        // HC-124: skip paused schedules — no alerts while on hold.
         $rows = $this->db->query(
             "SELECT ms.id AS schedule_id, ms.frequency,
                     m.name AS medicine_name, p.name AS patient_name,
@@ -128,8 +128,14 @@ final class LateDoseAlertService
                AND ms.is_prn = 'N'
                AND ms.frequency IS NOT NULL
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
+               AND NOT EXISTS (
+                   SELECT 1 FROM hc_schedule_pauses sp
+                    WHERE sp.schedule_id = ms.id
+                      AND sp.start_date <= ?
+                      AND (sp.end_date IS NULL OR sp.end_date >= ?)
+               )
              ORDER BY ms.id ASC",
-            [$today, $today]
+            [$today, $today, $today, $today]
         );
 
         $alerts = [];

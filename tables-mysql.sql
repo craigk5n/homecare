@@ -151,6 +151,20 @@ CREATE TABLE hc_late_dose_alert_log (
   sent_at     DATETIME NOT NULL
 );
 
+/* Schedule pause / skip-today (HC-124). A pause suspends a schedule's
+   cadence for a date range: no doses expected, no reminders, adherence
+   counts the paused days as excused. end_date NULL = open-ended. */
+CREATE TABLE hc_schedule_pauses (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  schedule_id INT NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NULL,
+  reason VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (schedule_id) REFERENCES hc_medicine_schedules(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_schedule_pauses_sched ON hc_schedule_pauses (schedule_id, start_date);
+
 /* Audit log of write operations (HC-013). `details` is a JSON blob. */
 CREATE TABLE hc_audit_log (
   id INT AUTO_INCREMENT PRIMARY KEY,

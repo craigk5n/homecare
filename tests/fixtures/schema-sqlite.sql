@@ -123,6 +123,17 @@ CREATE TABLE hc_late_dose_alert_log (
   sent_at DATETIME NOT NULL
 );
 
+CREATE TABLE hc_schedule_pauses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  schedule_id INTEGER NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NULL,
+  reason VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (schedule_id) REFERENCES hc_medicine_schedules(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_schedule_pauses_sched ON hc_schedule_pauses (schedule_id, start_date);
+
 CREATE TABLE hc_audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_login VARCHAR(25) NULL,

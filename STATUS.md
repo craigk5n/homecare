@@ -2939,7 +2939,7 @@ vary; a wall-clock schedule keeps doses anchored.
 
 ### HC-124: Pause / skip-today for active schedules
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 2
 **Depends on**: Nothing
@@ -2949,17 +2949,36 @@ today's dose" or "Holding this med during vacation". Today the
 only option is ending the schedule and restarting it, which loses
 continuity.
 
+**Notes on implementation**:
+- `PauseRepository` handles all CRUD + the interval-union math
+  for `countPausedDaysInRange()` (used by adherence to subtract
+  paused days from the expected dose count).
+- `list_schedule.php` adds a "Paused" group between Upcoming and
+  PRN. The kebab menu gains "Skip today" (1-click POST), "Pause
+  schedule…" (opens date picker), and "Resume schedule" (closes
+  active pauses).
+- `send_reminders.php` checks `isPausedOn()` per schedule.
+  `LateDoseAlertService` uses a `NOT EXISTS` subquery so paused
+  rows never enter the alert walk.
+- `AdherenceService` accepts an optional `PauseRepository`; when
+  present, paused days are subtracted from `coverageDays` before
+  computing expected doses. Callers that don't inject it (old
+  tests, future contexts) behave identically to before.
+- DST note: `countPausedDaysInRange` works in calendar-day
+  granularity (date strings, not timestamps), so DST transitions
+  don't shift pause boundaries.
+
 **Acceptance Criteria**:
-- [ ] Migration: `hc_schedule_pauses (id, schedule_id, start_date,
+- [x] Migration: `hc_schedule_pauses (id, schedule_id, start_date,
       end_date NULL, reason VARCHAR(255))`
-- [ ] `list_schedule.php` row action: "Pause" / "Skip today"
+- [x] `list_schedule.php` row action: "Pause" / "Skip today"
       (behind the kebab overflow from the recent UI refactor)
-- [ ] "Skip today" inserts a 1-day pause ending end-of-day local
-- [ ] "Pause" opens a date-range picker
-- [ ] `dosesRemaining`, reminders, adherence, and cadence-check
+- [x] "Skip today" inserts a 1-day pause ending end-of-day local
+- [x] "Pause" opens a date-range picker
+- [x] `dosesRemaining`, reminders, adherence, and cadence-check
       all honour active pauses
-- [ ] Audit rows: `schedule.paused`, `schedule.resumed`
-- [ ] Tests: overlapping pauses, open-ended pauses, pause over
+- [x] Audit rows: `schedule.paused`, `schedule.resumed`
+- [x] Tests: overlapping pauses, open-ended pauses, pause over
       DST boundary
 
 ---

@@ -46,7 +46,7 @@ if (!is_string($customEnd) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $customEnd)) 
 $db = new DbiAdapter();
 $report = new PatientAdherenceReport(
     $db,
-    new AdherenceService(new ScheduleRepository($db), new IntakeRepository($db)),
+    new AdherenceService(new ScheduleRepository($db), new IntakeRepository($db), new \HomeCare\Repository\PauseRepository($db)),
 );
 
 // For the custom range, widen the schedule filter to the custom window so

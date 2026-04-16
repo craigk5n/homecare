@@ -6,6 +6,7 @@ namespace HomeCare\Service;
 
 use HomeCare\Domain\ScheduleCalculator;
 use HomeCare\Repository\IntakeRepositoryInterface;
+use HomeCare\Repository\PauseRepository;
 use HomeCare\Repository\ScheduleRepositoryInterface;
 
 /**
@@ -42,6 +43,7 @@ final class AdherenceService
     public function __construct(
         private readonly ScheduleRepositoryInterface $schedules,
         private readonly IntakeRepositoryInterface $intakes,
+        private readonly ?PauseRepository $pauses = null,
     ) {
     }
 
@@ -87,6 +89,18 @@ final class AdherenceService
         $coverageDays = 0;
         if ($effectiveStart <= $effectiveEnd) {
             $coverageDays = self::inclusiveDayCount($effectiveStart, $effectiveEnd);
+
+            // HC-124: subtract paused days so expected count doesn't
+            // penalise the caregiver for days the schedule was on hold.
+            if ($coverageDays > 0 && $this->pauses !== null) {
+                $pausedDays = $this->pauses->countPausedDaysInRange(
+                    $scheduleId,
+                    $effectiveStart,
+                    $effectiveEnd
+                );
+                $coverageDays = max(0, $coverageDays - $pausedDays);
+            }
+
             if ($coverageDays > 0) {
                 $secondsPerDose = ScheduleCalculator::frequencyToSeconds($frequency);
                 $dosesPerDay = 86400 / $secondsPerDose;
