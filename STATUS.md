@@ -1579,6 +1579,123 @@ errors before they land in the DB.
 
 ---
 
+### HC-085: Caregiver notes plain-text journal import
+
+**Status**: `BACKLOG`
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-082
+
+**Description**: The real-world caregiver journal is not CSV; it's
+free-form text kept in a notes app, pasted in large chunks covering
+months of entries. Entries are grouped under date headers and
+prefixed with a wall-clock time. Add a paste-friendly import path
+that parses this format, shows a preview, and commits on confirm.
+
+**Sample input (this is the exact shape the parser must handle)**:
+
+```
+Wednesday April 15, 2026
+
+7:45 AM After a slow start, ate everything: Ate 5 kibble, turkey, potatoes and sweet potatoes.
+
+1:00 PM Ate 5 kibble, turkey and some potatoes.
+
+7:45 PM Ate 5 kibble, green beans, turkey.
+
+Tuesday April 14, 2026
+
+7:45 AM Ate 5 kibble, turkey, softies and a few potatoes.
+
+9:30 PM Ate 4 bowls of Cheerios
+
+1:20 AM Ate everything: 3 kibble, turkey, potatoes and sweet potatoes.
+
+8:20 AM Vomit (Regurgitate food and medicine)
+
+1:15 PM Ate 5 kibble, turkey, zucchini. No potatoes.
+
+8:00 PM Ate 5 kibble, turkey, green beans and a few potatoes
+
+9:25 PM Vomit after cheese
+
+10:00 PM 3 bowls of Cheerios
+
+1:35 AM 3 kibble, ground turkey
+```
+
+Characteristics of the real format:
+- **Date headers**: `<weekday> <month> <day>, <year>` — weekday is
+  redundant but present and must be tolerated (or any permutation
+  that matches `strtotime`).
+- **Entries**: `<time> <note body>` where time is `H:MM AM/PM`
+  (case-insensitive). Note body is free text and may span a single
+  line; blank lines separate entries.
+- **Entries are NOT strictly time-sorted within a date block** —
+  e.g. "1:20 AM" may appear below "9:30 PM" because the caregiver
+  is logging overnight events under the previous calendar day.
+  The parser MUST NOT silently shift those entries to the next
+  day; the preview must surface the ambiguity so the caregiver
+  can confirm.
+- Multiple months of backlog in a single paste is expected;
+  hundreds to low thousands of entries per import.
+
+**Acceptance Criteria**:
+- [ ] `import_notes_journal.php` (caregiver+ role): large
+      `<textarea>` (no file upload required — paste is the primary
+      affordance) plus a patient selector (single-patient scope per
+      import).
+- [ ] Parser (`src/Import/JournalParser.php`) walks the text
+      line-by-line:
+      - Detects date headers via a permissive regex first
+        (`^[A-Za-z]+ [A-Za-z]+ \d{1,2},?\s*\d{4}$`), then confirms
+        via `DateTimeImmutable::createFromFormat` / `strtotime`
+        round-trip. Updates a "current date" cursor.
+      - Detects entries via `^(\d{1,2}):(\d{2})\s*(AM|PM|am|pm)\s+(.+)$`.
+      - Combines current date + entry time into `note_time` in
+        the configured timezone.
+      - Lines that match neither pattern are retained as
+        continuation of the previous entry's note body (multi-line
+        notes).
+- [ ] Ambiguity handling: for each entry, the parser emits a
+      confidence flag:
+      - `ok`: monotonic within its date block AND no date gap
+      - `non_monotonic`: time goes backward vs previous entry in
+        same block (surface in preview with a warning; caregiver
+        decides to keep-under-same-day or reassign to next day)
+      - `orphan`: entry appears before any date header — rejected
+        with a clear error pointing at the offending line
+- [ ] Preview step: table of parsed entries grouped by day with
+      `(date, time, note, confidence)` columns, row-level errors
+      at the top, total entry count, and a "nothing will be
+      inserted until you click Confirm" banner.
+- [ ] Commit in a single transaction; rollback on any DB error.
+- [ ] De-dup on (`patient_id`, `note_time`, `SHA256(note)`): if an
+      identical entry already exists it is SKIPPED with a preview
+      row marked "duplicate — will skip". This makes re-pasting
+      after a partial failure safe.
+- [ ] Audit row `note.journal_imported` with `details = {patient_id,
+      parsed_count, inserted_count, skipped_duplicates,
+      non_monotonic_count, source_bytes}`.
+- [ ] Performance: a 3000-entry paste parses and previews in
+      under 5 seconds on the reference dev box.
+- [ ] Unit tests (`tests/Unit/Import/JournalParserTest.php`):
+      - The sample above parses to 12 entries across 2 dates with
+        2 `non_monotonic` flags (Apr 14's "1:20 AM" and "1:35 AM"
+        after later PM entries).
+      - Date-header variants: with weekday, without weekday, with
+        and without comma, `M d yyyy` and `yyyy-mm-dd`.
+      - Multi-line note body preserves all non-header lines.
+      - Orphan entry (time line before any date header) errors out.
+      - Time parser: 12:00 AM → midnight, 12:30 PM → 12:30 (noon-
+        adjacent), 1:35 AM → 01:35, leading-zero and non-leading-
+        zero hours both accepted.
+- [ ] Integration test exercises paste → preview → commit → query
+      round-trip with the sample input and asserts the 12 resulting
+      `hc_caregiver_notes` rows.
+
+---
+
 ## EPIC-9: Auth Hardening (Defense in Depth)
 
 **Goal**: Close the remaining gaps between HomeCare's auth and the
@@ -2411,6 +2528,7 @@ EPIC-8 Caregiver Notes UX (BACKLOG):
 HC-082 (Notes entry & edit UI)    <- HC-004, HC-011, HC-013
 HC-083 (Notes list / browse)     <- HC-082
 HC-084 (Notes CSV import)        <- HC-082
+HC-085 (Notes plain-text journal import) <- HC-082
 
 EPIC-9 Auth Hardening (BACKLOG):
 HC-090 (TOTP 2FA)                 <- HC-010, HC-013
@@ -2501,9 +2619,13 @@ Small epic, user has data waiting to be imported. Pull in this order:
 1. **HC-082** (Entry & edit UI) — foundation; can't import without
    the repository layer and handler.
 2. **HC-083** (List / browse view) — makes the notes visible.
-3. **HC-084** (CSV import) — closes the immediate user need.
+3. **HC-085** (Plain-text journal import) — directly closes the
+   user's immediate need; their existing data is in free-form
+   journal format, not CSV. Prioritise over HC-084.
+4. **HC-084** (Structured CSV import) — nice-to-have for future
+   imports from other tools; pull after HC-085 if time allows.
 
-Total ~8 points; realistic as a single focused sprint.
+Total ~13 points if all four land, ~10 for the first three.
 
 ---
 
