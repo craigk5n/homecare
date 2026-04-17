@@ -27,6 +27,11 @@ interface DrugCatalogRepositoryInterface
     public function findByRxnormId(int $rxnormId): ?array;
 
     /**
+     * @return list<DrugCatalogEntry>
+     */
+    public function findByNdc(string $ndc): array;
+
+    /**
      * @param array{rxnorm_id:?int, name:string, strength:?string, dosage_form:?string, ingredient_names:?string, generic:bool} $data
      */
     public function upsertByRxnormId(array $data): int;

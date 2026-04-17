@@ -4,47 +4,88 @@ require_once 'includes/init.php';
 print_header();
 
 $medicine_id = getIntValue('medicine_id');
-if (empty($medicine_id)) {
+$scan_mode = !empty(getGetValue('scan'));
+
+if (empty($medicine_id) && !$scan_mode) {
     die_miserable_death('Missing medicine_id');
 }
 
-// Get medicine name
-$sql = "SELECT name, dosage FROM hc_medicines WHERE id = ?";
-$rows = dbi_get_cached_rows($sql, [$medicine_id]);
-if (empty($rows)) {
-    die_miserable_death('Medicine not found');
-}
-$medicineName = $rows[0][0];
-$dosage = $rows[0][1];
-
-// Get current stock from most recent inventory
-$sql = "SELECT current_stock, recorded_at FROM hc_medicine_inventory
-        WHERE medicine_id = ? ORDER BY recorded_at DESC LIMIT 1";
-$invRows = dbi_get_cached_rows($sql, [$medicine_id]);
+$medicineName = '';
+$dosage = '';
 $currentStock = 0;
 $lastRecorded = null;
-if (!empty($invRows) && !empty($invRows[0])) {
-    $currentStock = floatval($invRows[0][0]);
-    $lastRecorded = $invRows[0][1];
+
+if (!empty($medicine_id)) {
+    // Get medicine name
+    $sql = "SELECT name, dosage FROM hc_medicines WHERE id = ?";
+    $rows = dbi_get_cached_rows($sql, [$medicine_id]);
+    if (empty($rows)) {
+        die_miserable_death('Medicine not found');
+    }
+    $medicineName = $rows[0][0];
+    $dosage = $rows[0][1];
+
+    // Get current stock from most recent inventory
+    $sql = "SELECT current_stock, recorded_at FROM hc_medicine_inventory
+            WHERE medicine_id = ? ORDER BY recorded_at DESC LIMIT 1";
+    $invRows = dbi_get_cached_rows($sql, [$medicine_id]);
+    if (!empty($invRows) && !empty($invRows[0])) {
+        $currentStock = floatval($invRows[0][0]);
+        $lastRecorded = $invRows[0][1];
+    }
 }
 
 echo "<h2>Record Refill</h2>\n";
 echo "<div class='container mt-3'>\n";
 
-echo "<div class='card mb-4'>\n";
-echo "<div class='card-header'><strong>" . htmlspecialchars($medicineName) . "</strong></div>\n";
+// Barcode scanner section
+echo "<div class='card mb-4' id='scanner-card'>\n";
+echo "<div class='card-header d-flex justify-content-between align-items-center'>\n";
+echo "<strong>Scan Barcode</strong>\n";
+echo "<button type='button' class='btn btn-sm btn-outline-primary' id='scan-btn'>\n";
+echo "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16' class='mr-1'><path d='M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1h-3zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5zM.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5z'/><path d='M3 4.5a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7z'/></svg>";
+echo " Scan barcode</button>\n";
+echo "</div>\n";
 echo "<div class='card-body'>\n";
-echo "<p class='mb-1'><strong>Dosage:</strong> " . htmlspecialchars($dosage) . "</p>\n";
-echo "<p class='mb-1'><strong>Current stock:</strong> " . number_format($currentStock, 2) . "</p>\n";
-if ($lastRecorded) {
-    echo "<p class='mb-0'><strong>Last updated:</strong> " . htmlspecialchars(date('M j, Y g:i A', strtotime($lastRecorded))) . "</p>\n";
-}
+echo "<div id='scanner-region' style='display:none;width:100%;max-width:400px'></div>\n";
+echo "<div id='scan-result' style='display:none'>\n";
+echo "<div class='alert alert-info' id='scan-status'></div>\n";
+echo "</div>\n";
+echo "<div id='scan-preview' style='display:none' class='mt-2'>\n";
+echo "<div class='alert alert-success'>\n";
+echo "<strong>Match found:</strong>\n";
+echo "<div id='preview-name'></div>\n";
+echo "<div id='preview-strength'></div>\n";
+echo "<div id='preview-form'></div>\n";
+echo "</div>\n";
+echo "<button type='button' class='btn btn-primary btn-sm' id='use-scanned'>Use this medication</button>\n";
+echo "<button type='button' class='btn btn-secondary btn-sm ml-2' id='scan-again'>Scan again</button>\n";
+echo "</div>\n";
+echo "<div id='scan-not-found' style='display:none' class='mt-2'>\n";
+echo "<div class='alert alert-warning'>No matching drug found for this barcode. You can enter the refill manually below.</div>\n";
+echo "</div>\n";
+echo "<small class='form-text text-muted'>Scan the NDC barcode on a US prescription label, or a UPC/EAN on veterinary products.</small>\n";
 echo "</div>\n";
 echo "</div>\n";
 
-echo "<form action='inventory_refill_handler.php' method='POST'>\n";
+// Medicine info card (shown when medicine_id is set)
+if (!empty($medicine_id)) {
+    echo "<div class='card mb-4' id='medicine-info'>\n";
+    echo "<div class='card-header'><strong>" . htmlspecialchars($medicineName) . "</strong></div>\n";
+    echo "<div class='card-body'>\n";
+    echo "<p class='mb-1'><strong>Dosage:</strong> " . htmlspecialchars($dosage) . "</p>\n";
+    echo "<p class='mb-1'><strong>Current stock:</strong> " . number_format($currentStock, 2) . "</p>\n";
+    if ($lastRecorded) {
+        echo "<p class='mb-0'><strong>Last updated:</strong> " . htmlspecialchars(date('M j, Y g:i A', strtotime($lastRecorded))) . "</p>\n";
+    }
+    echo "</div>\n";
+    echo "</div>\n";
+}
+
+echo "<form action='inventory_refill_handler.php' method='POST' id='refill-form'>\n";
 print_form_key();
-echo "<input type='hidden' name='medicine_id' value='" . intval($medicine_id) . "'>\n";
+echo "<input type='hidden' name='medicine_id' id='form_medicine_id' value='" . intval($medicine_id) . "'>\n";
+echo "<input type='hidden' name='refill_source' id='refill_source' value='manual'>\n";
 
 echo "<div class='form-group'>\n";
 echo "<label for='refill_quantity'>Refill Quantity:</label>\n";
@@ -65,20 +106,171 @@ echo "</div>\n";
 
 echo "<div class='mt-4'>\n";
 echo "<a href='inventory_dashboard.php' class='btn btn-secondary mr-2'>Cancel</a>\n";
-echo "<button type='submit' class='btn btn-success'>Record Refill</button>\n";
+echo "<button type='submit' class='btn btn-success' id='submit-btn'" . (empty($medicine_id) ? " disabled" : "") . ">Record Refill</button>\n";
 echo "</div>\n";
 
 echo "</form>\n";
 echo "</div>\n";
 ?>
+<script src="pub/html5-qrcode.min.js"></script>
 <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
-document.getElementById('refill_quantity').addEventListener('input', function() {
-    var refill = parseFloat(this.value) || 0;
-    var current = <?php echo json_encode($currentStock); ?>;
-    var newStock = document.getElementById('new_stock');
-    newStock.value = (current + refill).toFixed(2);
-    newStock.removeAttribute('readonly');
-});
+(function() {
+    var refillInput = document.getElementById('refill_quantity');
+    var currentStock = <?php echo json_encode($currentStock); ?>;
+    var newStockInput = document.getElementById('new_stock');
+
+    refillInput.addEventListener('input', function() {
+        var refill = parseFloat(this.value) || 0;
+        newStockInput.value = (currentStock + refill).toFixed(2);
+        newStockInput.removeAttribute('readonly');
+    });
+
+    // Barcode scanner
+    var scanBtn = document.getElementById('scan-btn');
+    var scannerRegion = document.getElementById('scanner-region');
+    var scanResult = document.getElementById('scan-result');
+    var scanStatus = document.getElementById('scan-status');
+    var scanPreview = document.getElementById('scan-preview');
+    var scanNotFound = document.getElementById('scan-not-found');
+    var scanAgainBtn = document.getElementById('scan-again');
+    var useScannedBtn = document.getElementById('use-scanned');
+    var refillSource = document.getElementById('refill_source');
+    var formMedicineId = document.getElementById('form_medicine_id');
+    var submitBtn = document.getElementById('submit-btn');
+    var scanner = null;
+    var scannedDrug = null;
+
+    function stopScanner() {
+        if (scanner) {
+            scanner.stop().catch(function() {});
+            scanner.clear();
+            scanner = null;
+        }
+        scannerRegion.style.display = 'none';
+    }
+
+    function resetScanUI() {
+        scanResult.style.display = 'none';
+        scanPreview.style.display = 'none';
+        scanNotFound.style.display = 'none';
+        scannedDrug = null;
+    }
+
+    function lookupNdc(code) {
+        scanStatus.textContent = 'Looking up ' + code + '...';
+        scanResult.style.display = 'block';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/v1/drug_lookup.php?ndc=' + encodeURIComponent(code));
+        xhr.setRequestHeader('Authorization', 'Bearer ' + (window.HC_API_KEY || ''));
+        xhr.onload = function() {
+            try {
+                var resp = JSON.parse(xhr.responseText);
+                if (resp.status === 'ok' && resp.data && resp.data.length > 0) {
+                    scannedDrug = resp.data[0];
+                    scanStatus.textContent = 'Barcode matched!';
+                    document.getElementById('preview-name').textContent = scannedDrug.name;
+                    document.getElementById('preview-strength').textContent = scannedDrug.strength ? 'Strength: ' + scannedDrug.strength : '';
+                    document.getElementById('preview-form').textContent = scannedDrug.dosage_form ? 'Form: ' + scannedDrug.dosage_form : '';
+                    scanPreview.style.display = 'block';
+                    scanNotFound.style.display = 'none';
+                } else {
+                    scanStatus.textContent = 'No match for NDC: ' + code;
+                    scanPreview.style.display = 'none';
+                    scanNotFound.style.display = 'block';
+                }
+            } catch(e) {
+                scanStatus.textContent = 'Error looking up barcode.';
+                scanNotFound.style.display = 'block';
+            }
+        };
+        xhr.onerror = function() {
+            scanStatus.textContent = 'Network error during lookup.';
+            scanNotFound.style.display = 'block';
+        };
+        xhr.send();
+    }
+
+    if (scanBtn && typeof Html5Qrcode !== 'undefined') {
+        scanBtn.addEventListener('click', function() {
+            resetScanUI();
+
+            if (scanner) {
+                stopScanner();
+                return;
+            }
+
+            scannerRegion.style.display = 'block';
+            scanner = new Html5Qrcode('scanner-region');
+
+            scanner.start(
+                { facingMode: 'environment' },
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 100 },
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.UPC_A,
+                        Html5QrcodeSupportedFormats.UPC_E,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                        Html5QrcodeSupportedFormats.EAN_8,
+                        Html5QrcodeSupportedFormats.CODE_128
+                    ]
+                },
+                function onScanSuccess(decodedText) {
+                    stopScanner();
+                    lookupNdc(decodedText);
+                },
+                function onScanFailure() {
+                    // ignore scan failures (continuous scanning)
+                }
+            ).catch(function(err) {
+                scannerRegion.style.display = 'none';
+                scanStatus.textContent = 'Camera access denied or unavailable: ' + err;
+                scanResult.style.display = 'block';
+            });
+        });
+    } else if (scanBtn) {
+        scanBtn.title = 'Barcode scanning library not loaded';
+    }
+
+    if (useScannedBtn) {
+        useScannedBtn.addEventListener('click', function() {
+            if (!scannedDrug) return;
+
+            // Look up if this drug catalog entry maps to an existing medicine
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'api/v1/drugs.php?q=' + encodeURIComponent(scannedDrug.name) + '&limit=1');
+            xhr.setRequestHeader('Authorization', 'Bearer ' + (window.HC_API_KEY || ''));
+            xhr.onload = function() {
+                // Reload page with medicine_id if we can find the matching medicine
+                // For now, check if we're already on a medicine page
+                if (formMedicineId.value && formMedicineId.value !== '0') {
+                    refillSource.value = 'barcode';
+                    submitBtn.disabled = false;
+                    scanPreview.querySelector('.alert').className = 'alert alert-success';
+                    scanPreview.querySelector('.alert').innerHTML += '<br><em>Refill source set to barcode scan.</em>';
+                    useScannedBtn.disabled = true;
+                } else {
+                    // No medicine_id — redirect to inventory dashboard to pick the right medicine
+                    alert('Scanned: ' + scannedDrug.name + '\n\nPlease select this medication from the inventory dashboard to record the refill.');
+                    window.location.href = 'inventory_dashboard.php';
+                }
+            };
+            xhr.onerror = function() {
+                refillSource.value = 'barcode';
+                submitBtn.disabled = false;
+            };
+            xhr.send();
+        });
+    }
+
+    if (scanAgainBtn) {
+        scanAgainBtn.addEventListener('click', function() {
+            resetScanUI();
+            scanBtn.click();
+        });
+    }
+})();
 </script>
 <?php
 echo print_trailer();

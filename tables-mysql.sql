@@ -82,6 +82,7 @@ CREATE TABLE `hc_patients` (
 CREATE TABLE hc_drug_catalog (
   id INT AUTO_INCREMENT PRIMARY KEY,
   rxnorm_id INT NULL,
+  ndc VARCHAR(13) NULL,
   name VARCHAR(255) NOT NULL,
   strength VARCHAR(128) NULL,
   dosage_form VARCHAR(128) NULL,
@@ -89,7 +90,8 @@ CREATE TABLE hc_drug_catalog (
   generic CHAR(1) NOT NULL DEFAULT 'N',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY idx_drug_catalog_rxnorm (rxnorm_id),
-  KEY idx_drug_catalog_name (name)
+  KEY idx_drug_catalog_name (name),
+  KEY idx_drug_catalog_ndc (ndc)
 );
 
 /* Product catalog: the physical item you buy (name + strength/form).

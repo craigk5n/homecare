@@ -12,6 +12,7 @@ use HomeCare\Database\DatabaseInterface;
  * @phpstan-type DrugCatalogEntry array{
  *     id:int,
  *     rxnorm_id:?int,
+ *     ndc:?string,
  *     name:string,
  *     strength:?string,
  *     dosage_form:?string,
@@ -36,7 +37,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
         }
 
         $rows = $this->db->query(
-            'SELECT id, rxnorm_id, name, strength, dosage_form, ingredient_names, generic
+            'SELECT id, rxnorm_id, ndc, name, strength, dosage_form, ingredient_names, generic
              FROM hc_drug_catalog
              WHERE name LIKE ?
              ORDER BY name ASC
@@ -53,7 +54,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
     public function findById(int $id): ?array
     {
         $rows = $this->db->query(
-            'SELECT id, rxnorm_id, name, strength, dosage_form, ingredient_names, generic
+            'SELECT id, rxnorm_id, ndc, name, strength, dosage_form, ingredient_names, generic
              FROM hc_drug_catalog WHERE id = ?',
             [$id]
         );
@@ -67,12 +68,31 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
     public function findByRxnormId(int $rxnormId): ?array
     {
         $rows = $this->db->query(
-            'SELECT id, rxnorm_id, name, strength, dosage_form, ingredient_names, generic
+            'SELECT id, rxnorm_id, ndc, name, strength, dosage_form, ingredient_names, generic
              FROM hc_drug_catalog WHERE rxnorm_id = ?',
             [$rxnormId]
         );
 
         return $rows === [] ? null : $this->hydrate($rows[0]);
+    }
+
+    /**
+     * @return list<DrugCatalogEntry>
+     */
+    public function findByNdc(string $ndc): array
+    {
+        $ndc = preg_replace('/[^0-9]/', '', $ndc) ?? '';
+        if ($ndc === '') {
+            return [];
+        }
+
+        $rows = $this->db->query(
+            'SELECT id, rxnorm_id, ndc, name, strength, dosage_form, ingredient_names, generic
+             FROM hc_drug_catalog WHERE ndc = ?',
+            [$ndc]
+        );
+
+        return array_map([$this, 'hydrate'], $rows);
     }
 
     /**
@@ -129,6 +149,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
         return [
             'id' => (int) $row['id'],
             'rxnorm_id' => $row['rxnorm_id'] !== null ? (int) $row['rxnorm_id'] : null,
+            'ndc' => $row['ndc'] !== null ? (string) $row['ndc'] : null,
             'name' => (string) $row['name'],
             'strength' => $row['strength'] !== null ? (string) $row['strength'] : null,
             'dosage_form' => $row['dosage_form'] !== null ? (string) $row['dosage_form'] : null,

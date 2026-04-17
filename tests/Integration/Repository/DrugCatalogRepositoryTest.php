@@ -164,6 +164,62 @@ final class DrugCatalogRepositoryTest extends DatabaseTestCase
         $this->assertNotSame($id1, $id2);
     }
 
+    // HC-111: NDC barcode lookup ----------------------------------------
+
+    public function testFindByNdcReturnsMatchingEntries(): void
+    {
+        $this->seedCatalogEntryWithNdc('Amoxicillin 500 MG Oral Capsule', 12345, '00071015523');
+
+        $results = $this->repo->findByNdc('00071015523');
+
+        $this->assertCount(1, $results);
+        $this->assertSame('Amoxicillin 500 MG Oral Capsule', $results[0]['name']);
+        $this->assertSame('00071015523', $results[0]['ndc']);
+    }
+
+    public function testFindByNdcStripsNonDigits(): void
+    {
+        $this->seedCatalogEntryWithNdc('Lisinopril 10 MG Oral Tablet', 54321, '00781218201');
+
+        $results = $this->repo->findByNdc('0078-1218-201');
+
+        $this->assertCount(1, $results);
+    }
+
+    public function testFindByNdcReturnsEmptyForNoMatch(): void
+    {
+        $this->seedCatalogEntryWithNdc('Some Drug', 11111, '99999999999');
+
+        $results = $this->repo->findByNdc('00000000000');
+
+        $this->assertSame([], $results);
+    }
+
+    public function testFindByNdcReturnsEmptyForEmptyString(): void
+    {
+        $results = $this->repo->findByNdc('');
+
+        $this->assertSame([], $results);
+    }
+
+    public function testHydrateIncludesNdcField(): void
+    {
+        $this->seedCatalogEntryWithNdc('Test Drug', 88888, '12345678901');
+
+        $entry = $this->repo->findByRxnormId(88888);
+        $this->assertNotNull($entry);
+        $this->assertSame('12345678901', $entry['ndc']);
+    }
+
+    public function testHydrateReturnsNullNdcWhenNotSet(): void
+    {
+        $this->seedCatalogEntry('No NDC Drug', 77777);
+
+        $entry = $this->repo->findByRxnormId(77777);
+        $this->assertNotNull($entry);
+        $this->assertNull($entry['ndc']);
+    }
+
     public function testHydrateSetsBooleanForGeneric(): void
     {
         $this->seedCatalogEntryFull('Generic Drug', 11111, generic: true);
@@ -196,6 +252,16 @@ final class DrugCatalogRepositoryTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_drug_catalog (rxnorm_id, name, generic) VALUES (?, ?, ?)',
             [$rxnormId, $name, $generic ? 'Y' : 'N']
+        );
+
+        return $this->getDb()->lastInsertId();
+    }
+
+    private function seedCatalogEntryWithNdc(string $name, int $rxnormId, string $ndc): int
+    {
+        $this->getDb()->execute(
+            'INSERT INTO hc_drug_catalog (rxnorm_id, ndc, name) VALUES (?, ?, ?)',
+            [$rxnormId, $ndc, $name]
         );
 
         return $this->getDb()->lastInsertId();

@@ -2706,7 +2706,7 @@ interaction-checking and barcode lookup.
 
 ### HC-111: Barcode / NDC scanning for inventory
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-110
@@ -2716,19 +2716,19 @@ refill. NDC (11-digit) is the standard on US prescription labels;
 UPC/EAN on veterinary products.
 
 **Acceptance Criteria**:
-- [ ] `inventory_refill.php` gets a "Scan barcode" button (visible
+- [x] `inventory_refill.php` gets a "Scan barcode" button (visible
       on mobile + cameras-attached desktops)
-- [ ] Uses `html5-qrcode` or `zxing-js` (bundled, no CDN) to decode
+- [x] Uses `html5-qrcode` or `zxing-js` (bundled, no CDN) to decode
       the barcode client-side; hands the NDC/UPC to a server
       endpoint
-- [ ] `api/v1/drug_lookup.php?ndc=...` returns matching
+- [x] `api/v1/drug_lookup.php?ndc=...` returns matching
       `hc_drug_catalog` entries (via RxNorm `RXNSAT NDC` attribute)
       or a 404 with a free-text fallback
-- [ ] Preview shows the matched medication name + strength + dose
+- [x] Preview shows the matched medication name + strength + dose
       form before the caregiver commits the refill quantity
-- [ ] Audit row: `inventory.refilled` with `details.source='barcode'`
-- [ ] Manual-entry remains the default path — scanner is additive
-- [ ] E2E test verifies a seeded NDC maps to the expected catalogue
+- [x] Audit row: `inventory.refilled` with `details.source='barcode'`
+- [x] Manual-entry remains the default path — scanner is additive
+- [x] E2E test verifies a seeded NDC maps to the expected catalogue
       entry
 
 ---
