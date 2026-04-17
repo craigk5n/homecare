@@ -3167,7 +3167,7 @@ since the connection's `last_event_id`.
 
 ### HC-141: Additional translations
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: Nothing
@@ -3177,16 +3177,16 @@ though `translate()` is wired everywhere. Add Spanish and
 Portuguese-BR as the next two most-requested languages.
 
 **Acceptance Criteria**:
-- [ ] `translations/Spanish.txt` with all keys from
+- [x] `translations/Spanish.txt` with all keys from
       `English-US.txt` translated
-- [ ] `translations/Portuguese-BR.txt` with all keys translated
-- [ ] Language picker in `settings.php` (per-user preference,
+- [x] `translations/Portuguese-BR.txt` with all keys translated
+- [x] Language picker in `settings.php` (per-user preference,
       stored in `hc_user.language`)
-- [ ] `init.php` picks the user's language, falls back to
+- [x] `init.php` picks the user's language, falls back to
       `$LANGUAGE` config, then English-US
-- [ ] Missing-key coverage check in CI (new test: every key in
+- [x] Missing-key coverage check in CI (new test: every key in
       English-US appears in each other language file)
-- [ ] Date/number formatting follows locale (PHP `IntlDateFormatter`)
+- [x] Date/number formatting follows locale (PHP `IntlDateFormatter`)
 
 ---
 

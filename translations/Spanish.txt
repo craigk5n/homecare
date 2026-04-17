@@ -1,0 +1,120 @@
+# Spanish translation for HomeCare (HC-141)
+# Format: English Key: Spanish Translation
+# Use "=" when the translation is the same as English
+
+Title: HomeCare
+
+# Direction (ltr or rtl)
+direction: ltr
+charset: UTF-8
+
+# Navigation
+Medications: Medicamentos
+Available Medications: Medicamentos Disponibles
+Add New Medication: Agregar Nuevo Medicamento
+Inventory Dashboard: Panel de Inventario
+Merge Medicines: Combinar Medicamentos
+Doses: Dosis
+Dose Tracker: Seguimiento de Dosis
+Today's Schedule: Horario de Hoy
+Bulk Intake (catch up): Registro Masivo (ponerse al día)
+Notes: Notas
+View Notes: Ver Notas
+Add Note: Agregar Nota
+Paste Journal: Pegar Diario
+Import Notes from File: Importar Notas desde Archivo
+Reports: Reportes
+Intake History: Historial de Tomas
+Missed Medications: Medicamentos Omitidos
+Medication Supply: Suministro de Medicamentos
+Adherence: Adherencia
+Settings: Configuración
+Your Settings: Tu Configuración
+Account & API key: Cuenta y Clave API
+Admin Settings: Configuración de Administrador
+Notifications (ntfy): Notificaciones (ntfy)
+Email (SMTP): Correo Electrónico (SMTP)
+Audit Log: Registro de Auditoría
+Help: Ayuda
+Help Contents: Contenido de Ayuda
+About HomeCare: Acerca de HomeCare
+Switch patient: Cambiar paciente
+Viewing patient: Viendo paciente
+Today: Hoy
+None: Ninguno
+
+# Common actions
+Add Medicine Intake: Agregar Toma de Medicamento
+Update Medicine Intake: Actualizar Toma de Medicamento
+delete: eliminar
+
+# Auth / errors
+Access denied: Acceso denegado
+Unauthorized: No autorizado
+You are not authorized.: No estás autorizado.
+Error: Error
+Fatal Error: Error Fatal
+Invalid form request: Solicitud de formulario inválida
+Unknown error.: Error desconocido.
+The following error occurred: Ocurrió el siguiente error
+Database error XXX.: Error de base de datos XXX.
+Could not find XXX defined in...: No se pudo encontrar XXX definido en...
+You must define XXX in: Debe definir XXX en
+Incomplete settings.php file...: Archivo settings.php incompleto...
+
+# Language names
+English: Inglés
+Spanish: Español
+Portuguese/Brazil: Portugués/Brasil
+
+# Roles
+role: rol
+
+# Misc
+Public Access: Acceso Público
+(not supported): (no soportado)
+
+# Month names
+January: Enero
+February: Febrero
+March: Marzo
+April: Abril
+May: Mayo
+June: Junio
+July: Julio
+August: Agosto
+September: Septiembre
+October: Octubre
+November: Noviembre
+December: Diciembre
+
+# Month abbreviations
+Jan: Ene
+Feb: Feb
+Mar: Mar
+Apr: Abr
+Jun: Jun
+Jul: Jul
+Aug: Ago
+Sep: Sep
+Oct: Oct
+Nov: Nov
+Dec: Dic
+
+# Day names
+Sunday: Domingo
+Monday: Lunes
+Tuesday: Martes
+Wednesday: Miércoles
+Thursday: Jueves
+Friday: Viernes
+Saturday: Sábado
+
+# Day abbreviations
+Sun: Dom
+Mon: Lun
+Tue: Mar
+Wed: Mié
+Thu: Jue
+Fri: Vie
+Sat: Sáb

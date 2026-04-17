@@ -90,7 +90,15 @@ $flash = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = getPostValue('action');
-    if ($action === 'generate') {
+    if ($action === 'set_language') {
+        $newLang = getPostValue('language') ?? '';
+        $allowed = ['', 'Spanish', 'Portuguese-BR'];
+        if (in_array($newLang, $allowed, true)) {
+            dbi_execute('UPDATE hc_user SET language = ? WHERE login = ?', [$newLang !== '' ? $newLang : null, $login]);
+            audit_log('user.language_changed', 'user', null, ['language' => $newLang ?: 'English-US']);
+            $flash = ['type' => 'success', 'text' => 'Language updated. Reload to see the change.'];
+        }
+    } elseif ($action === 'generate') {
         $freshKey = ApiKeyAuth::generateRawKey();
         $users->updateApiKeyHash($login, ApiKeyAuth::hashKey($freshKey));
         audit_log('apikey.generated', 'user');
@@ -407,6 +415,33 @@ print_header();
 <?php if ($flash !== null): ?>
   <div class="alert alert-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['text']) ?></div>
 <?php endif; ?>
+
+<h4 class="mt-4">Language</h4>
+<form method="POST">
+  <?php print_form_key(); ?>
+  <input type="hidden" name="action" value="set_language">
+  <div class="form-group" style="max-width: 300px;">
+    <select name="language" class="form-control">
+<?php
+$availableLanguages = [
+    '' => 'English (default)',
+    'Spanish' => 'Español',
+    'Portuguese-BR' => 'Português (Brasil)',
+];
+$currentLang = '';
+$langRows = dbi_get_cached_rows('SELECT language FROM hc_user WHERE login = ?', [$GLOBALS['login']]);
+if (!empty($langRows[0][0])) {
+    $currentLang = (string) $langRows[0][0];
+}
+foreach ($availableLanguages as $val => $label) {
+    $sel = $val === $currentLang ? ' selected' : '';
+    echo "      <option value=\"" . htmlspecialchars($val) . "\"$sel>" . htmlspecialchars($label) . "</option>\n";
+}
+?>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-sm btn-primary">Save language</button>
+</form>
 
 <h4 class="mt-4">API Key</h4>
 <p class="text-muted">

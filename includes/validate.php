@@ -156,7 +156,7 @@ function hc_validate(): void
 
     // Populate the legacy globals every page reads.
     $rows = dbi_get_cached_rows(
-        'SELECT login, firstname, lastname, email, role, enabled
+        'SELECT login, firstname, lastname, email, role, enabled, language
          FROM hc_user WHERE login = ?',
         [$login]
     );
@@ -185,6 +185,18 @@ function hc_validate(): void
     }
     $user_email = (string) ($row[3] ?? '');
     $is_admin = ($row[4] ?? 'viewer') === 'admin';
+
+    // HC-141: per-user language preference → set $LANGUAGE + $lang_file
+    // so translate() loads the correct file on first use.
+    global $LANGUAGE, $lang_file;
+    $userLang = ($row[6] ?? null);
+    if ($userLang !== null && $userLang !== '' && $userLang !== 'English-US') {
+        $langPath = __DIR__ . '/../translations/' . basename((string) $userLang) . '.txt';
+        if (file_exists($langPath)) {
+            $LANGUAGE = (string) $userLang;
+            $lang_file = 'translations/' . basename((string) $userLang) . '.txt';
+        }
+    }
 }
 
 function hc_redirect_to_login(string $currentScript): void

@@ -1,0 +1,120 @@
+# Brazilian Portuguese translation for HomeCare (HC-141)
+# Format: English Key: Portuguese Translation
+# Use "=" when the translation is the same as English
+
+Title: HomeCare
+
+# Direction (ltr or rtl)
+direction: ltr
+charset: UTF-8
+
+# Navigation
+Medications: Medicamentos
+Available Medications: Medicamentos Disponíveis
+Add New Medication: Adicionar Novo Medicamento
+Inventory Dashboard: Painel de Estoque
+Merge Medicines: Combinar Medicamentos
+Doses: Doses
+Dose Tracker: Rastreador de Doses
+Today's Schedule: Agenda de Hoje
+Bulk Intake (catch up): Registro em Massa (atualizar)
+Notes: Notas
+View Notes: Ver Notas
+Add Note: Adicionar Nota
+Paste Journal: Colar Diário
+Import Notes from File: Importar Notas de Arquivo
+Reports: Relatórios
+Intake History: Histórico de Tomadas
+Missed Medications: Medicamentos Perdidos
+Medication Supply: Estoque de Medicamentos
+Adherence: Adesão
+Settings: Configurações
+Your Settings: Suas Configurações
+Account & API key: Conta e Chave API
+Admin Settings: Configurações de Administrador
+Notifications (ntfy): Notificações (ntfy)
+Email (SMTP): E-mail (SMTP)
+Audit Log: Registro de Auditoria
+Help: Ajuda
+Help Contents: Conteúdo da Ajuda
+About HomeCare: Sobre o HomeCare
+Switch patient: Trocar paciente
+Viewing patient: Visualizando paciente
+Today: Hoje
+None: Nenhum
+
+# Common actions
+Add Medicine Intake: Adicionar Tomada de Medicamento
+Update Medicine Intake: Atualizar Tomada de Medicamento
+delete: excluir
+
+# Auth / errors
+Access denied: Acesso negado
+Unauthorized: Não autorizado
+You are not authorized.: Você não está autorizado.
+Error: Erro
+Fatal Error: Erro Fatal
+Invalid form request: Requisição de formulário inválida
+Unknown error.: Erro desconhecido.
+The following error occurred: Ocorreu o seguinte erro
+Database error XXX.: Erro de banco de dados XXX.
+Could not find XXX defined in...: Não foi possível encontrar XXX definido em...
+You must define XXX in: Você deve definir XXX em
+Incomplete settings.php file...: Arquivo settings.php incompleto...
+
+# Language names
+English: Inglês
+Spanish: Espanhol
+Portuguese/Brazil: Português/Brasil
+
+# Roles
+role: função
+
+# Misc
+Public Access: Acesso Público
+(not supported): (não suportado)
+
+# Month names
+January: Janeiro
+February: Fevereiro
+March: Março
+April: Abril
+May: Maio
+June: Junho
+July: Julho
+August: Agosto
+September: Setembro
+October: Outubro
+November: Novembro
+December: Dezembro
+
+# Month abbreviations
+Jan: Jan
+Feb: Fev
+Mar: Mar
+Apr: Abr
+Jun: Jun
+Jul: Jul
+Aug: Ago
+Sep: Set
+Oct: Out
+Nov: Nov
+Dec: Dez
+
+# Day names
+Sunday: Domingo
+Monday: Segunda-feira
+Tuesday: Terça-feira
+Wednesday: Quarta-feira
+Thursday: Quinta-feira
+Friday: Sexta-feira
+Saturday: Sábado
+
+# Day abbreviations
+Sun: Dom
+Mon: Seg
+Tue: Ter
+Wed: Qua
+Thu: Qui
+Fri: Sex
+Sat: Sáb

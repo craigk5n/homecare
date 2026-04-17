@@ -51,6 +51,8 @@ CREATE TABLE hc_user (
   last_login_ip VARCHAR(45) NULL,
   /* Weekly adherence-digest opt-in (HC-107); 'N' default */
   digest_enabled CHAR(1) NOT NULL DEFAULT 'N',
+  /* Per-user language preference (HC-141); NULL = system default (English-US) */
+  language VARCHAR(32) NULL,
   PRIMARY KEY (login)
 );
 
