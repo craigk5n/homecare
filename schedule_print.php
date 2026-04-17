@@ -110,8 +110,22 @@ foreach ($patients as $p) {
             }
         }
 
+        // $nextDose is now the first expected dose >= today midnight.
+        // But earlier doses today may have already been taken — back up
+        // by frequency steps to find the true first dose of the day so
+        // the sheet shows the complete day with taken doses checked off.
+        $firstOfDay = clone $nextDose;
+        while (true) {
+            $earlier = clone $firstOfDay;
+            $earlier->modify("-{$freqSeconds} seconds");
+            if ($earlier < $todayStart) {
+                break;
+            }
+            $firstOfDay = $earlier;
+        }
+
         // Walk through today generating each expected dose.
-        $current = clone $nextDose;
+        $current = clone $firstOfDay;
         while ($current <= $todayEnd) {
             if ($endDate !== null && $current > $endDate) {
                 break;
