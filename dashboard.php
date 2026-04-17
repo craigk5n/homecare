@@ -110,11 +110,17 @@ $recentSql = "SELECT p.name AS patient_name, m.name AS medicine_name,
                LIMIT 20";
 $recentRows = dbi_get_cached_rows($recentSql, []);
 
-print_header();
+// Auto-refresh every 60 seconds. The ?t= cache-buster ensures the
+// browser doesn't serve a stale cached page.
+$refreshUrl = 'dashboard.php?t=' . time();
+print_header('', '<meta http-equiv="refresh" content="60;url=' . htmlspecialchars($refreshUrl) . '">');
 ?>
 
 <div class="container mt-4" style="max-width:1100px;">
-  <h1 class="h4 mb-4"><?php etranslate('Dashboard'); ?></h1>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h4 mb-0"><?php etranslate('Dashboard'); ?></h1>
+    <small class="text-muted" title="Page refreshes automatically every 60 seconds">Auto-refresh: 60s</small>
+  </div>
 
   <!-- ── Summary cards ─────────────────────────────────────────── -->
   <div class="row mb-4">
