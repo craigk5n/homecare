@@ -35,20 +35,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && getPostValue('action') === 'add_wei
 
     if ($newWeight !== null && $newWeight !== '' && (float) $newWeight > 0) {
         $recordedAt = !empty($newDate) ? (string) $newDate : date('Y-m-d');
-        $weightRepo->insert($patient_id, (float) $newWeight, $recordedAt, $newNote !== '' ? $newNote : null);
+        $weightKg = inputWeightToKg((float) $newWeight);
+        $weightRepo->insert($patient_id, $weightKg, $recordedAt, $newNote !== '' ? $newNote : null);
 
-        // Also update the patient's current weight.
+        // Also update the patient's current weight (always stored in kg).
         dbi_execute(
             'UPDATE hc_patients SET weight_kg = ?, weight_as_of = ? WHERE id = ?',
-            [(float) $newWeight, $recordedAt, $patient_id],
+            [$weightKg, $recordedAt, $patient_id],
         );
 
         audit_log('weight.recorded', 'patient', $patient_id, [
-            'weight_kg' => (float) $newWeight,
+            'weight_kg' => $weightKg,
             'recorded_at' => $recordedAt,
         ]);
 
-        $flash = ['type' => 'success', 'text' => 'Weight recorded: ' . number_format((float) $newWeight, 2) . ' kg'];
+        $flash = ['type' => 'success', 'text' => 'Weight recorded: ' . displayWeight($weightKg) . ' ' . weightUnitLabel()];
     } else {
         $flash = ['type' => 'danger', 'text' => 'Please enter a valid weight.'];
     }
@@ -59,7 +60,9 @@ $history = $weightRepo->getHistory($patient_id, 200);
 // Prepare chart data (oldest first for the X-axis).
 $chartHistory = array_reverse($history);
 $chartLabels = array_map(static fn(array $r): string => $r['recorded_at'], $chartHistory);
-$chartValues = array_map(static fn(array $r): float => $r['weight_kg'], $chartHistory);
+$unit = weightUnitLabel();
+$convFactor = $unit === 'lb' ? 2.20462 : 1.0;
+$chartValues = array_map(static fn(array $r): float => round($r['weight_kg'] * $convFactor, 2), $chartHistory);
 
 // Compute stats.
 $latest = !empty($history) ? $history[0] : null;
@@ -71,7 +74,7 @@ if (count($chartValues) >= 2) {
     $last = $chartValues[count($chartValues) - 1];
     $diff = $last - $first;
     $sign = $diff >= 0 ? '+' : '';
-    $changeText = $sign . number_format($diff, 2) . ' kg overall';
+    $changeText = $sign . number_format($diff, 2) . ' ' . $unit . ' overall';
 }
 
 print_header();
@@ -96,7 +99,7 @@ print_header();
     <div class="col-md-3 mb-2">
       <div class="card h-100">
         <div class="card-body text-center py-3">
-          <div class="h3 mb-0"><?php echo number_format($latest['weight_kg'], 2); ?> kg</div>
+          <div class="h3 mb-0"><?php echo displayWeight($latest['weight_kg']); ?> <?php echo $unit; ?></div>
           <small class="text-muted">Current (<?php echo htmlspecialchars($latest['recorded_at']); ?>)</small>
         </div>
       </div>
@@ -105,7 +108,7 @@ print_header();
     <div class="col-md-3 mb-2">
       <div class="card h-100">
         <div class="card-body text-center py-3">
-          <div class="h5 mb-0"><?php echo number_format($minWeight, 2); ?> – <?php echo number_format($maxWeight, 2); ?> kg</div>
+          <div class="h5 mb-0"><?php echo number_format($minWeight, 2); ?> – <?php echo number_format($maxWeight, 2); ?> <?php echo $unit; ?></div>
           <small class="text-muted">Range</small>
         </div>
       </div>
@@ -165,7 +168,7 @@ print_header();
             <thead class="thead-light">
               <tr>
                 <th>Date</th>
-                <th class="text-right">Weight (kg)</th>
+                <th class="text-right">Weight (<?php echo $unit; ?>)</th>
                 <th>Note</th>
               </tr>
             </thead>
@@ -173,7 +176,7 @@ print_header();
               <?php foreach ($history as $row): ?>
               <tr>
                 <td><?php echo htmlspecialchars($row['recorded_at']); ?></td>
-                <td class="text-right"><?php echo number_format($row['weight_kg'], 2); ?></td>
+                <td class="text-right"><?php echo displayWeight($row['weight_kg']); ?></td>
                 <td class="text-muted"><?php echo $row['note'] ? htmlspecialchars($row['note']) : '—'; ?></td>
               </tr>
               <?php endforeach; ?>
@@ -193,10 +196,10 @@ print_header();
             <?php print_form_key(); ?>
             <input type="hidden" name="action" value="add_weight">
             <div class="form-group">
-              <label for="weight_kg">Weight (kg)</label>
+              <label for="weight_kg">Weight (<?php echo $unit; ?>)</label>
               <input type="number" step="0.01" min="0.01" class="form-control"
                      id="weight_kg" name="weight_kg" required
-                     value="<?php echo $latest ? number_format($latest['weight_kg'], 2, '.', '') : ''; ?>">
+                     value="<?php echo $latest ? displayWeight($latest['weight_kg'], 2) : ''; ?>">
             </div>
             <div class="form-group">
               <label for="recorded_at">Date</label>
@@ -229,7 +232,7 @@ print_header();
     data: {
       labels: labels,
       datasets: [{
-        label: 'Weight (kg)',
+        label: 'Weight (<?php echo $unit; ?>)',
         data: values,
         borderColor: 'rgba(44, 122, 123, 1)',
         backgroundColor: 'rgba(44, 122, 123, 0.1)',
@@ -248,7 +251,7 @@ print_header();
         tooltip: {
           callbacks: {
             label: function(context) {
-              return context.parsed.y.toFixed(2) + ' kg';
+              return context.parsed.y.toFixed(2) + ' <?php echo $unit; ?>';
             }
           }
         }
@@ -257,7 +260,7 @@ print_header();
         y: {
           beginAtZero: false,
           ticks: {
-            callback: function(value) { return value + ' kg'; }
+            callback: function(value) { return value + ' <?php echo $unit; ?>'; }
           }
         },
         x: {

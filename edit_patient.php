@@ -54,9 +54,11 @@ echo "</select>\n";
 echo "</div>\n";
 
 echo "<div class='form-group'>\n";
-echo "<label for='weight_kg'>Weight (kg):</label>\n";
+$wUnit = weightUnitLabel();
+$displayVal = $weight_kg !== null ? displayWeight((float) $weight_kg, 2) : null;
+echo "<label for='weight_kg'>Weight (" . htmlspecialchars($wUnit) . "):</label>\n";
 echo "<input type='number' step='0.01' min='0' name='weight_kg' id='weight_kg' class='form-control'"
-    . ($weight_kg !== null ? " value='" . htmlspecialchars((string) $weight_kg, ENT_QUOTES, 'UTF-8') . "'" : '')
+    . ($displayVal !== null ? " value='" . htmlspecialchars($displayVal, ENT_QUOTES, 'UTF-8') . "'" : '')
     . ">\n";
 echo "<small class='form-text text-muted'>Required for per-kg dosing schedules.</small>\n";
 echo "</div>\n";

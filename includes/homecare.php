@@ -133,6 +133,44 @@ function homecare_inventory_service(): InventoryService
     return $service;
 }
 
+/**
+ * Get the configured weight display unit ('kg' or 'lb').
+ */
+function getWeightUnit(): string
+{
+    return ($GLOBALS['weight_unit'] ?? 'kg') === 'lb' ? 'lb' : 'kg';
+}
+
+/**
+ * Convert a weight from internal kg storage to the display unit.
+ */
+function displayWeight(float $kg, int $decimals = 2): string
+{
+    if (getWeightUnit() === 'lb') {
+        return number_format($kg * 2.20462, $decimals);
+    }
+    return number_format($kg, $decimals);
+}
+
+/**
+ * Return the weight unit label string.
+ */
+function weightUnitLabel(): string
+{
+    return getWeightUnit();
+}
+
+/**
+ * Convert a user-entered weight in the display unit back to kg for storage.
+ */
+function inputWeightToKg(float $value): float
+{
+    if (getWeightUnit() === 'lb') {
+        return $value / 2.20462;
+    }
+    return $value;
+}
+
 // $lastTaken is the DateTime object of the last time the medication was taken
 // $frequency is how often to take it (1d, 8h, 12h, etc.)
 function calculateSecondsUntilDue($lastTaken, $frequency, $showNegative = false)

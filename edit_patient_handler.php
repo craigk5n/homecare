@@ -32,7 +32,7 @@ if ($weight_kg === '' || $weight_kg === null) {
     $weight_kg = null;
     $weight_as_of = null;
 } else {
-    $weight_kg = (float) $weight_kg;
+    $weight_kg = inputWeightToKg((float) $weight_kg);
     if (empty($weight_as_of)) {
         $weight_as_of = date('Y-m-d');
     }

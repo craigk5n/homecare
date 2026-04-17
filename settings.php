@@ -245,6 +245,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rpConfig->setHeader($header);
     audit_log('auth_mode.config_updated', 'config', null, $rpConfig->getAll());
     $flash = ['type' => 'success', 'text' => 'Authentication mode saved.'];
+} elseif ($action === 'save_weight_unit' && $isAdmin) {
+    $unit = trim((string) getPostValue('weight_unit'));
+    if ($unit !== 'lb') {
+        $unit = 'kg';
+    }
+    // Upsert into hc_config.
+    $existing = dbi_get_cached_rows("SELECT setting FROM hc_config WHERE setting = 'weight_unit'", []);
+    if (empty($existing)) {
+        dbi_execute("INSERT INTO hc_config (setting, value) VALUES ('weight_unit', ?)", [$unit]);
+    } else {
+        dbi_execute("UPDATE hc_config SET value = ? WHERE setting = 'weight_unit'", [$unit]);
+    }
+    $GLOBALS['weight_unit'] = $unit;
+    audit_log('weight_unit.config_updated', 'config', null, ['weight_unit' => $unit]);
+    $flash = ['type' => 'success', 'text' => 'Weight unit set to ' . strtoupper($unit) . '.'];
 } elseif ($action === 'save_ntfy' && $isAdmin) {
     $ntfyConfig->setUrl(trim((string) getPostValue('ntfy_url')));
     $ntfyConfig->setTopic(trim((string) getPostValue('ntfy_topic')));
@@ -760,6 +775,25 @@ foreach ($myChannels->defaultChannelNames() as $name) {
       </small>
     </div>
     <button type="submit" class="btn btn-primary">Save authentication settings</button>
+  </form>
+
+  <hr class="my-4">
+  <h4 id="weight-unit">Weight Unit <small class="text-muted">— admin only</small></h4>
+  <p class="text-muted">
+    Choose how weights are displayed throughout HomeCare.
+    Internal storage is always in kilograms; this setting controls display only.
+  </p>
+  <form method="post" class="form">
+    <?php print_form_key(); ?>
+    <input type="hidden" name="action" value="save_weight_unit">
+    <div class="form-group mb-3" style="max-width: 300px;">
+      <label for="weight_unit" class="form-label">Display Unit</label>
+      <select class="form-control" id="weight_unit" name="weight_unit">
+        <option value="kg" <?= getWeightUnit() === 'kg' ? 'selected' : '' ?>>Kilograms (kg)</option>
+        <option value="lb" <?= getWeightUnit() === 'lb' ? 'selected' : '' ?>>Pounds (lb)</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Save weight unit</button>
   </form>
 
   <hr class="my-4">

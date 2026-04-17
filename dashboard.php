@@ -348,8 +348,8 @@ $caughtUp = getGetValue('caught_up');
                   ?>
                     <a href="report_weight.php?patient_id=<?php echo (int) $pid; ?>"
                        class="ml-2 small text-muted text-decoration-none"
-                       title="<?php echo number_format($pw['current'], 2); ?> kg as of <?php echo htmlspecialchars($pw['date']); ?>"
-                       ><?php echo number_format($pw['current'], 1); ?>kg<?php echo $arrow; ?></a>
+                       title="<?php echo displayWeight($pw['current']); ?> <?php echo weightUnitLabel(); ?> as of <?php echo htmlspecialchars($pw['date']); ?>"
+                       ><?php echo displayWeight($pw['current'], 1); ?><?php echo weightUnitLabel(); ?><?php echo $arrow; ?></a>
                   <?php endif; ?>
                 </div>
                 <span>
