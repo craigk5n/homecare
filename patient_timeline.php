@@ -51,11 +51,13 @@ $intakeSql = "SELECT mi.taken_time AS event_time,
                 JOIN hc_medicines m ON ms.medicine_id = m.id
                WHERE ms.patient_id = ?";
 
+// COLLATE: hc_weight_history uses utf8mb4_0900_ai_ci while older tables
+// use utf8mb4_unicode_ci. Force a common collation so the UNION works.
 $weightSql = "SELECT CONCAT(wh.recorded_at, ' 00:00:00') AS event_time,
-                     'weight' AS event_type,
-                     CONCAT(wh.weight_kg, ' kg') AS title,
+                     'weight' COLLATE utf8mb4_unicode_ci AS event_type,
+                     CONCAT(wh.weight_kg, ' kg') COLLATE utf8mb4_unicode_ci AS title,
                      NULL AS detail,
-                     wh.note
+                     wh.note COLLATE utf8mb4_unicode_ci AS note
                 FROM hc_weight_history wh
                WHERE wh.patient_id = ?";
 
