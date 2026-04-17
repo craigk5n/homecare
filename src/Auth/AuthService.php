@@ -233,14 +233,14 @@ final class AuthService
             return AuthResult::fail('missing_token');
         }
 
-        $user = $this->users->findByRememberTokenHash(self::hashToken($rawToken));
+        $hash = self::hashToken($rawToken);
+        $user = $this->users->findByRememberTokenHash($hash);
         if ($user === null) {
             return AuthResult::fail('invalid_token');
         }
 
         $now = $this->now();
 
-        // A locked account can't be bypassed via the remember-me cookie.
         if (self::isLockedAt($user['locked_until'], $now)) {
             return AuthResult::fail('account_locked');
         }
@@ -249,19 +249,16 @@ final class AuthService
             return AuthResult::fail('account_disabled');
         }
 
-        $expires = $user['remember_token_expires'];
+        // Check expiry from the multi-device table first, then fall back
+        // to the legacy column for tokens minted before migration 029.
+        $expires = $this->getTokenExpiry($hash, $user);
         if ($expires === null || strtotime($expires) === false
             || strtotime($expires) < $now) {
-            // Clean up the dead token so a leaked DB doesn't keep being
-            // a foothold.
-            $this->users->updateRememberToken($user['login'], null, null);
+            $this->deleteSpecificToken($hash);
 
             return AuthResult::fail('expired_token');
         }
 
-        // HC-090: remember-me cannot skip TOTP. The cookie was minted
-        // during a successful post-TOTP login, but the account may have
-        // enabled 2FA afterward -- force a fresh TOTP prompt either way.
         if ($user['totp_enabled'] === 'Y' && $user['totp_secret'] !== null) {
             return AuthResult::requiresTotp($user);
         }
@@ -291,7 +288,23 @@ final class AuthService
         return AuthResult::ok($user, $token, $expiresUnix);
     }
 
-    public function logout(string $login): void
+    /**
+     * Log out one device by clearing its specific token.
+     * Pass the raw token from the cookie so only that device is affected.
+     */
+    public function logout(string $login, ?string $rawToken = null): void
+    {
+        if ($rawToken !== null && $rawToken !== '') {
+            $this->deleteSpecificToken(self::hashToken($rawToken));
+        } else {
+            $this->users->updateRememberToken($login, null, null);
+        }
+    }
+
+    /**
+     * Clear all remember-me tokens for the user (all devices).
+     */
+    public function logoutEverywhere(string $login): void
     {
         $this->users->updateRememberToken($login, null, null);
     }
@@ -328,5 +341,20 @@ final class AuthService
         $factory = $this->tokenFactory;
 
         return ($factory)();
+    }
+
+    /**
+     * @param array{remember_token_expires:?string} $user
+     */
+    private function getTokenExpiry(string $hash, array $user): ?string
+    {
+        $expiry = $this->users->getRememberTokenExpiry($hash);
+
+        return $expiry ?? $user['remember_token_expires'];
+    }
+
+    private function deleteSpecificToken(string $hash): void
+    {
+        $this->users->deleteRememberTokenByHash($hash);
     }
 }

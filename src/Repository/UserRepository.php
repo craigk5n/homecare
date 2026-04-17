@@ -50,6 +50,18 @@ final class UserRepository implements UserRepositoryInterface
             return null;
         }
 
+        // Multi-device: look up in hc_remember_tokens first
+        $tokenRows = $this->db->query(
+            'SELECT user_login FROM hc_remember_tokens WHERE token_hash = ?',
+            [$hash]
+        );
+
+        if ($tokenRows !== []) {
+            return $this->findByLogin((string) $tokenRows[0]['user_login']);
+        }
+
+        // Fallback: check the legacy single-column on hc_user for tokens
+        // created before migration 029.
         $rows = $this->db->query(
             $this->selectColumns() . ' WHERE remember_token = ?',
             [$hash]
@@ -82,9 +94,45 @@ final class UserRepository implements UserRepositoryInterface
 
     public function updateRememberToken(string $login, ?string $hash, ?string $expiresAt): bool
     {
+        if ($hash === null) {
+            // Clear: delete all tokens for this user (logout everywhere).
+            // Also clear legacy column for backwards compat.
+            $this->db->execute(
+                'DELETE FROM hc_remember_tokens WHERE user_login = ?',
+                [$login]
+            );
+
+            return $this->db->execute(
+                'UPDATE hc_user SET remember_token = NULL, remember_token_expires = NULL WHERE login = ?',
+                [$login]
+            );
+        }
+
+        // Insert new token into multi-device table.
+        $this->db->execute(
+            'INSERT INTO hc_remember_tokens (user_login, token_hash, expires_at)
+             VALUES (?, ?, ?)',
+            [$login, $hash, $expiresAt]
+        );
+
+        return true;
+    }
+
+    public function getRememberTokenExpiry(string $tokenHash): ?string
+    {
+        $rows = $this->db->query(
+            'SELECT expires_at FROM hc_remember_tokens WHERE token_hash = ?',
+            [$tokenHash]
+        );
+
+        return $rows === [] ? null : (string) $rows[0]['expires_at'];
+    }
+
+    public function deleteRememberTokenByHash(string $tokenHash): bool
+    {
         return $this->db->execute(
-            'UPDATE hc_user SET remember_token = ?, remember_token_expires = ? WHERE login = ?',
-            [$hash, $expiresAt, $login]
+            'DELETE FROM hc_remember_tokens WHERE token_hash = ?',
+            [$tokenHash]
         );
     }
 

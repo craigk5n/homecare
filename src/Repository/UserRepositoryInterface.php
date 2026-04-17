@@ -161,6 +161,17 @@ interface UserRepositoryInterface
     public function updateLastLoginIp(string $login, ?string $ip): bool;
 
     /**
+     * Get the expiry of a specific remember token from the multi-device table.
+     * Returns null if not found.
+     */
+    public function getRememberTokenExpiry(string $tokenHash): ?string;
+
+    /**
+     * Delete a specific remember token by its hash (single-device logout).
+     */
+    public function deleteRememberTokenByHash(string $tokenHash): bool;
+
+    /**
      * Toggle the weekly-digest opt-in flag (HC-107).
      */
     public function updateDigestEnabled(string $login, bool $on): bool;

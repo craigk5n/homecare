@@ -31,10 +31,11 @@ if ($login !== '' && $c) {
     $GLOBALS['login'] = $login;
     audit_log('user.logout', 'user');
 
+    $rawToken = isset($_COOKIE['hc_remember']) ? (string) $_COOKIE['hc_remember'] : null;
     (new AuthService(
         new UserRepository(new DbiAdapter()),
         new PasswordHasher()
-    ))->logout($login);
+    ))->logout($login, $rawToken);
 }
 
 // Clear session.

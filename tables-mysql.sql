@@ -66,6 +66,21 @@ CREATE TABLE hc_password_reset_tokens (
   KEY idx_prt_user_created (user_login, created_at)
 );
 
+/* Multi-device remember-me tokens (HC-141 follow-up).
+   Each row = one device's remember-me cookie. */
+CREATE TABLE hc_remember_tokens (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_login VARCHAR(25) NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  device_name VARCHAR(128) NULL,
+  last_ip VARCHAR(45) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY idx_remember_token_hash (token_hash),
+  KEY idx_remember_tokens_user (user_login)
+);
+
 CREATE TABLE `hc_patients` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(255) NOT NULL,

@@ -146,9 +146,10 @@ final class AuthServiceTest extends TestCase
             remember_token: hash('sha256', $rawToken),
             remember_token_expires: date('Y-m-d H:i:s', $this->now - 3600),
         ));
+        $this->users->method('getRememberTokenExpiry')->willReturn(null);
         $this->users->expects($this->once())
-            ->method('updateRememberToken')
-            ->with('alice', null, null);
+            ->method('deleteRememberTokenByHash')
+            ->with(hash('sha256', $rawToken));
 
         $result = $this->service()->loginWithRememberToken($rawToken);
 

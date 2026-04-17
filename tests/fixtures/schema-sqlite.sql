@@ -49,6 +49,19 @@ CREATE TABLE hc_password_reset_tokens (
 CREATE INDEX idx_prt_user_created
   ON hc_password_reset_tokens (user_login, created_at);
 
+CREATE TABLE hc_remember_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_login VARCHAR(25) NOT NULL,
+  token_hash CHAR(64) NOT NULL,
+  expires_at DATETIME NOT NULL,
+  device_name VARCHAR(128) NULL,
+  last_ip VARCHAR(45) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_used_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_remember_token_hash ON hc_remember_tokens (token_hash);
+CREATE INDEX idx_remember_tokens_user ON hc_remember_tokens (user_login);
+
 CREATE TABLE `hc_patients` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `name` VARCHAR(255) NOT NULL,
