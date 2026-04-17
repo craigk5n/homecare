@@ -42,11 +42,20 @@ echo "<div class='container mt-3'>\n";
 echo "<div class='card mb-4' id='scanner-card'>\n";
 echo "<div class='card-header d-flex justify-content-between align-items-center'>\n";
 echo "<strong>Scan Barcode</strong>\n";
-echo "<button type='button' class='btn btn-sm btn-outline-primary' id='scan-btn'>\n";
+// Live-scanner button (HTTPS only — hidden on HTTP by JS)
+echo "<button type='button' class='btn btn-sm btn-outline-primary' id='scan-btn' style='display:none'>\n";
 echo "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16' class='mr-1'><path d='M1.5 1a.5.5 0 0 0-.5.5v3a.5.5 0 0 1-1 0v-3A1.5 1.5 0 0 1 1.5 0h3a.5.5 0 0 1 0 1h-3zM11 .5a.5.5 0 0 1 .5-.5h3A1.5 1.5 0 0 1 16 1.5v3a.5.5 0 0 1-1 0v-3a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 1-.5-.5zM.5 11a.5.5 0 0 1 .5.5v3a.5.5 0 0 0 .5.5h3a.5.5 0 0 1 0 1h-3A1.5 1.5 0 0 1 0 14.5v-3a.5.5 0 0 1 .5-.5zm15 0a.5.5 0 0 1 .5.5v3a1.5 1.5 0 0 1-1.5 1.5h-3a.5.5 0 0 1 0-1h3a.5.5 0 0 0 .5-.5v-3a.5.5 0 0 1 .5-.5z'/><path d='M3 4.5a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7zm2 0a.5.5 0 0 1 1 0v7a.5.5 0 0 1-1 0v-7z'/></svg>";
 echo " Scan barcode</button>\n";
 echo "</div>\n";
 echo "<div class='card-body'>\n";
+// Photo capture input (HTTP fallback — hidden on HTTPS by JS)
+echo "<div id='capture-group' style='display:none'>\n";
+echo "<label for='barcode-photo' class='btn btn-outline-primary mb-2'>\n";
+echo "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='currentColor' viewBox='0 0 16 16' class='mr-1'><path d='M10.5 8.5a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0z'/><path d='M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-1.172a2 2 0 0 1-1.414-.586l-.828-.828A2 2 0 0 0 9.172 2H6.828a2 2 0 0 0-1.414.586l-.828.828A2 2 0 0 1 3.172 4H2zm.5 2a.5.5 0 1 1 0-1 .5.5 0 0 1 0 1zm9 2.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0z'/></svg>";
+echo " Take photo of barcode</label>\n";
+echo "<input type='file' id='barcode-photo' accept='image/*' capture='environment' class='d-none'>\n";
+echo "<div id='capture-processing' style='display:none' class='mb-2'><small class='text-muted'>Decoding barcode from photo...</small></div>\n";
+echo "</div>\n";
 echo "<div id='scanner-region' style='display:none;width:100%;max-width:400px'></div>\n";
 echo "<div id='scan-result' style='display:none'>\n";
 echo "<div class='alert alert-info' id='scan-status'></div>\n";
@@ -125,8 +134,11 @@ echo "</div>\n";
         newStockInput.removeAttribute('readonly');
     });
 
-    // Barcode scanner
+    // Shared elements
     var scanBtn = document.getElementById('scan-btn');
+    var captureGroup = document.getElementById('capture-group');
+    var barcodePhoto = document.getElementById('barcode-photo');
+    var captureProcessing = document.getElementById('capture-processing');
     var scannerRegion = document.getElementById('scanner-region');
     var scanResult = document.getElementById('scan-result');
     var scanStatus = document.getElementById('scan-status');
@@ -139,6 +151,14 @@ echo "</div>\n";
     var submitBtn = document.getElementById('submit-btn');
     var scanner = null;
     var scannedDrug = null;
+    var isSecure = window.isSecureContext;
+
+    // Show the appropriate scanner UI based on protocol
+    if (isSecure) {
+        if (scanBtn) scanBtn.style.display = '';
+    } else {
+        if (captureGroup) captureGroup.style.display = '';
+    }
 
     function stopScanner() {
         if (scanner) {
@@ -153,6 +173,7 @@ echo "</div>\n";
         scanResult.style.display = 'none';
         scanPreview.style.display = 'none';
         scanNotFound.style.display = 'none';
+        if (captureProcessing) captureProcessing.style.display = 'none';
         scannedDrug = null;
     }
 
@@ -191,7 +212,8 @@ echo "</div>\n";
         xhr.send();
     }
 
-    if (scanBtn && typeof Html5Qrcode !== 'undefined') {
+    // ── HTTPS: live camera scanner ──
+    if (isSecure && scanBtn && typeof Html5Qrcode !== 'undefined') {
         scanBtn.addEventListener('click', function() {
             resetScanUI();
 
@@ -220,30 +242,48 @@ echo "</div>\n";
                     stopScanner();
                     lookupNdc(decodedText);
                 },
-                function onScanFailure() {
-                    // ignore scan failures (continuous scanning)
-                }
+                function onScanFailure() {}
             ).catch(function(err) {
                 scannerRegion.style.display = 'none';
                 scanStatus.textContent = 'Camera access denied or unavailable: ' + err;
                 scanResult.style.display = 'block';
             });
         });
-    } else if (scanBtn) {
-        scanBtn.title = 'Barcode scanning library not loaded';
     }
 
+    // ── HTTP: photo capture + decode from image ──
+    if (!isSecure && barcodePhoto && typeof Html5Qrcode !== 'undefined') {
+        barcodePhoto.addEventListener('change', function() {
+            var file = barcodePhoto.files[0];
+            if (!file) return;
+
+            resetScanUI();
+            captureProcessing.style.display = 'block';
+
+            var html5Qr = new Html5Qrcode('scanner-region');
+            html5Qr.scanFileV2(file, false).then(function(result) {
+                captureProcessing.style.display = 'none';
+                lookupNdc(result.decodedText);
+            }).catch(function(err) {
+                captureProcessing.style.display = 'none';
+                scanStatus.textContent = 'Could not read a barcode from that photo. Try again with the barcode in focus.';
+                scanResult.style.display = 'block';
+            });
+
+            // Reset so the same file can be re-selected
+            barcodePhoto.value = '';
+        });
+    }
+
+    // ── Shared: "Use this medication" button ──
     if (useScannedBtn) {
         useScannedBtn.addEventListener('click', function() {
             if (!scannedDrug) return;
 
-            // Look up if this drug catalog entry maps to an existing medicine
             var xhr = new XMLHttpRequest();
             xhr.open('GET', 'api/v1/drugs.php?q=' + encodeURIComponent(scannedDrug.name) + '&limit=1');
             xhr.setRequestHeader('Authorization', 'Bearer ' + (window.HC_API_KEY || ''));
             xhr.onload = function() {
-                // Reload page with medicine_id if we can find the matching medicine
-                // For now, check if we're already on a medicine page
                 if (formMedicineId.value && formMedicineId.value !== '0') {
                     refillSource.value = 'barcode';
                     submitBtn.disabled = false;
@@ -251,7 +291,6 @@ echo "</div>\n";
                     scanPreview.querySelector('.alert').innerHTML += '<br><em>Refill source set to barcode scan.</em>';
                     useScannedBtn.disabled = true;
                 } else {
-                    // No medicine_id — redirect to inventory dashboard to pick the right medicine
                     alert('Scanned: ' + scannedDrug.name + '\n\nPlease select this medication from the inventory dashboard to record the refill.');
                     window.location.href = 'inventory_dashboard.php';
                 }
@@ -264,10 +303,15 @@ echo "</div>\n";
         });
     }
 
+    // ── Shared: "Scan again" button ──
     if (scanAgainBtn) {
         scanAgainBtn.addEventListener('click', function() {
             resetScanUI();
-            scanBtn.click();
+            if (isSecure && scanBtn) {
+                scanBtn.click();
+            } else if (barcodePhoto) {
+                barcodePhoto.click();
+            }
         });
     }
 })();
