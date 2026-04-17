@@ -28,6 +28,10 @@ data/attachments/
 # CI logs
 ci-logs/
 
+.env
+coverage.xml
+coverage/
+coverage.txt
 .phpunit.cache/
 .phpunit.result.cache
 includes/settings.php
