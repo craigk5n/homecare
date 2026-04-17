@@ -116,10 +116,45 @@ $refreshUrl = 'dashboard.php?t=' . time();
 print_header('', '<meta http-equiv="refresh" content="60;url=' . htmlspecialchars($refreshUrl) . '">');
 ?>
 
+<?php
+// Collect all overdue schedule IDs for the catch-up button.
+$allOverdueIds = [];
+foreach ($patientStats as $s) {
+    foreach ($s['overdue'] as $dose) {
+        $allOverdueIds[] = (int) $dose['schedule_id'];
+    }
+}
+
+// Flash message from bulk_catchup_handler.
+$caughtUp = getGetValue('caught_up');
+?>
+
 <div class="container mt-4" style="max-width:1100px;">
+  <?php if ($caughtUp !== null && $caughtUp !== ''): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      Recorded <?php echo (int) $caughtUp; ?> dose(s) as caught up.
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+    </div>
+  <?php endif; ?>
+
   <div class="d-flex justify-content-between align-items-center mb-4">
     <h1 class="h4 mb-0"><?php etranslate('Dashboard'); ?></h1>
-    <small class="text-muted" title="Page refreshes automatically every 60 seconds">Auto-refresh: 60s</small>
+    <div class="d-flex align-items-center">
+      <?php if (!empty($allOverdueIds) && (empty($readonly) || $readonly !== 'Y')): ?>
+        <form method="post" action="bulk_catchup_handler.php" class="d-inline mr-3"
+              onsubmit="return confirm('Record <?php echo count($allOverdueIds); ?> overdue dose(s) as taken now?')">
+          <?php print_form_key(); ?>
+          <?php foreach ($allOverdueIds as $sid): ?>
+            <input type="hidden" name="schedule_ids[]" value="<?php echo $sid; ?>">
+          <?php endforeach; ?>
+          <button type="submit" class="btn btn-sm btn-danger">
+            Mark all caught up (<?php echo count($allOverdueIds); ?>)
+          </button>
+        </form>
+      <?php endif; ?>
+      <a href="schedule_print.php" class="btn btn-sm btn-outline-secondary mr-2" title="Printable daily medication sheet">Print Sheet</a>
+      <small class="text-muted" title="Page refreshes automatically every 60 seconds">Auto-refresh: 60s</small>
+    </div>
   </div>
 
   <!-- ── Summary cards ─────────────────────────────────────────── -->

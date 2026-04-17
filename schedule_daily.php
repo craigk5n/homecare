@@ -150,6 +150,8 @@ echo '    <h5 class="page-title mb-0">Daily schedule: ' . htmlentities($patientN
 echo '    <div class="page-actions">';
 echo '      <a href="list_schedule.php?patient_id=' . $patient_id
     . '" class="btn btn-sm btn-outline-secondary">Full schedule</a>';
+echo '      <a href="schedule_print.php?patient_id=' . $patient_id
+    . '" class="btn btn-sm btn-outline-secondary" title="PDF medication sheet">PDF Sheet</a>';
 echo '      <button class="btn btn-sm btn-outline-secondary" data-print>Print</button>';
 echo '    </div>';
 echo '  </div>';
