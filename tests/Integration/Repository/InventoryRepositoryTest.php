@@ -27,7 +27,7 @@ final class InventoryRepositoryTest extends DatabaseTestCase
         $db->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$patientId, $this->medicineId, '2026-01-01', '8h', 1.5]
+            [$patientId, $this->medicineId, '2026-01-01', '8h', 1.5],
         );
         $this->scheduleId = $db->lastInsertId();
     }
@@ -43,17 +43,17 @@ final class InventoryRepositoryTest extends DatabaseTestCase
         $db->execute(
             'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock, recorded_at)
              VALUES (?, ?, ?, ?)',
-            [$this->medicineId, 30, 30, '2026-03-01 10:00:00']
+            [$this->medicineId, 30, 30, '2026-03-01 10:00:00'],
         );
         $db->execute(
             'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock, recorded_at)
              VALUES (?, ?, ?, ?)',
-            [$this->medicineId, 60, 60, '2026-04-01 10:00:00']
+            [$this->medicineId, 60, 60, '2026-04-01 10:00:00'],
         );
         $db->execute(
             'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock, recorded_at)
              VALUES (?, ?, ?, ?)',
-            [$this->medicineId, 45, 45, '2026-03-15 10:00:00']
+            [$this->medicineId, 45, 45, '2026-03-15 10:00:00'],
         );
 
         $latest = $this->repo->getLatestStock($this->medicineId);
@@ -68,15 +68,15 @@ final class InventoryRepositoryTest extends DatabaseTestCase
         $db = $this->getDb();
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$this->scheduleId, '2026-04-05 08:00:00']
+            [$this->scheduleId, '2026-04-05 08:00:00'],
         );
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$this->scheduleId, '2026-04-06 08:00:00']
+            [$this->scheduleId, '2026-04-06 08:00:00'],
         );
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$this->scheduleId, '2026-03-01 08:00:00']
+            [$this->scheduleId, '2026-03-01 08:00:00'],
         );
 
         // 2 intakes after 2026-04-01 * unit_per_dose 1.5 = 3.0
@@ -103,12 +103,12 @@ final class InventoryRepositoryTest extends DatabaseTestCase
         $db->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [1, $otherMed, '2026-01-01', '8h', 99.0]
+            [1, $otherMed, '2026-01-01', '8h', 99.0],
         );
         $otherSchedule = $db->lastInsertId();
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$otherSchedule, '2026-04-10 08:00:00']
+            [$otherSchedule, '2026-04-10 08:00:00'],
         );
 
         $this->assertSame(0.0, $this->repo->getTotalConsumedSince($this->medicineId, '2026-04-01 00:00:00'));

@@ -21,8 +21,7 @@ final readonly class JournalImportPlan
     public function __construct(
         public array $entries,
         public array $errors = [],
-    ) {
-    }
+    ) {}
 
     public function isValid(): bool
     {

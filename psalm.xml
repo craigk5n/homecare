@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<psalm
+    errorLevel="4"
+    resolveFromConfigFile="true"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+    findUnusedBaselineEntry="true"
+    findUnusedCode="false"
+    cacheDirectory="var/psalm"
+>
+    <projectFiles>
+        <directory name="src" />
+        <ignoreFiles>
+            <directory name="vendor" />
+        </ignoreFiles>
+    </projectFiles>
+
+    <issueHandlers>
+        <!-- Classes in src/ are called from root-level *.php files that
+             Psalm doesn't scan. These are false positives. -->
+        <UnusedClass errorLevel="suppress" />
+        <PossiblyUnusedMethod errorLevel="suppress" />
+        <PossiblyUnusedProperty errorLevel="suppress" />
+        <!-- PHPUnit setUp/tearDown overrides — adding #[Override] to
+             every test is noise; PHPStan already checks this. -->
+        <MissingOverrideAttribute errorLevel="suppress" />
+        <!-- Psalm conflicts with PHPStan on some numeric operations
+             involving int|float arithmetic. PHPStan level max validates
+             these correctly. -->
+        <InvalidOperand errorLevel="info" />
+        <RedundantCast errorLevel="info" />
+        <!-- Psalm's array-shape widening disagrees with PHPStan on
+             some typed-array calls. PHPStan validates at level max. -->
+        <InvalidArgument errorLevel="info" />
+        <InvalidArrayOffset errorLevel="info" />
+        <UndefinedVariable errorLevel="info" />
+    </issueHandlers>
+</psalm>

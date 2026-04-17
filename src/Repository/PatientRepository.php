@@ -26,9 +26,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class PatientRepository
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @return Patient|null
@@ -38,7 +36,7 @@ final class PatientRepository
         $rows = $this->db->query(
             'SELECT id, name, species, weight_kg, weight_as_of, created_at, updated_at, is_active
              FROM hc_patients WHERE id = ?',
-            [$id]
+            [$id],
         );
         if ($rows === []) {
             return null;

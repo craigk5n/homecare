@@ -47,7 +47,7 @@ final class AuthServiceTest extends TestCase
     public function testAttemptLoginFailsForWrongPassword(): void
     {
         $this->users->method('findByLogin')->willReturn(
-            $this->userRow(passwd: $this->hasher->hash('correct'))
+            $this->userRow(passwd: $this->hasher->hash('correct')),
         );
 
         $result = $this->service()->attemptLogin('alice', 'wrong');
@@ -59,7 +59,7 @@ final class AuthServiceTest extends TestCase
     public function testAttemptLoginSuccessWithoutRemember(): void
     {
         $this->users->method('findByLogin')->willReturn(
-            $this->userRow(passwd: $this->hasher->hash('correct'))
+            $this->userRow(passwd: $this->hasher->hash('correct')),
         );
         $this->users->expects($this->once())
             ->method('touchLastLogin')
@@ -77,14 +77,13 @@ final class AuthServiceTest extends TestCase
     public function testAttemptLoginSuccessWithRememberPersistsHashedToken(): void
     {
         $this->users->method('findByLogin')->willReturn(
-            $this->userRow(passwd: $this->hasher->hash('correct'))
+            $this->userRow(passwd: $this->hasher->hash('correct')),
         );
         $capturedHash = null;
         $capturedExpires = null;
         $this->users->expects($this->once())
             ->method('updateRememberToken')
-            ->willReturnCallback(function (string $login, ?string $hash, ?string $expires)
-                use (&$capturedHash, &$capturedExpires): bool {
+            ->willReturnCallback(function (string $login, ?string $hash, ?string $expires) use (&$capturedHash, &$capturedExpires): bool {
                 $this->assertSame('alice', $login);
                 $capturedHash = $hash;
                 $capturedExpires = $expires;
@@ -92,7 +91,7 @@ final class AuthServiceTest extends TestCase
                 return true;
             });
 
-        $result = $this->service(tokenFactory: static fn () => 'deadbeef')
+        $result = $this->service(tokenFactory: static fn() => 'deadbeef')
             ->attemptLogin('alice', 'correct', remember: true);
 
         $this->assertTrue($result->success);
@@ -100,7 +99,7 @@ final class AuthServiceTest extends TestCase
         $this->assertSame(hash('sha256', 'deadbeef'), $capturedHash, 'hash stored in DB');
         $this->assertSame(
             $this->now + AuthService::REMEMBER_LIFETIME_SECONDS,
-            $result->rememberExpires
+            $result->rememberExpires,
         );
         $this->assertNotNull($capturedExpires);
     }
@@ -114,7 +113,7 @@ final class AuthServiceTest extends TestCase
         $this->users->method('findByLogin')->willReturn($this->userRow(passwd: $lowCost));
         $this->users->expects($this->once())
             ->method('updatePasswordHash')
-            ->with('alice', self::callback(static fn (mixed $h): bool => is_string($h) && $h !== $lowCost));
+            ->with('alice', self::callback(static fn(mixed $h): bool => is_string($h) && $h !== $lowCost));
 
         $result = $this->service()->attemptLogin('alice', 'correct');
 
@@ -191,8 +190,8 @@ final class AuthServiceTest extends TestCase
         return new AuthService(
             $this->users,
             $this->hasher,
-            fn (): int => $this->now,
-            $tokenFactory ?? static fn (): string => 'fixed-token',
+            fn(): int => $this->now,
+            $tokenFactory ?? static fn(): string => 'fixed-token',
         );
     }
 

@@ -20,12 +20,12 @@ final class StepRepositoryTest extends DatabaseTestCase
 
         $db->execute('INSERT INTO hc_patients (name) VALUES (?)', ['Daisy']);
         $patientId = $db->lastInsertId();
-        $db->execute("INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)", ['Prednisone', '5mg']);
+        $db->execute('INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)', ['Prednisone', '5mg']);
         $medicineId = $db->lastInsertId();
         $db->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$patientId, $medicineId, '2026-01-01', '1d', 1.0]
+            [$patientId, $medicineId, '2026-01-01', '1d', 1.0],
         );
         $this->scheduleId = $db->lastInsertId();
     }

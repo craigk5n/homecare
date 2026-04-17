@@ -93,7 +93,7 @@ final class IntakeRepositoryTest extends DatabaseTestCase
         $moved = $this->repo->reassignIntakes(
             $this->scheduleId,
             $this->otherScheduleId,
-            '2026-04-01'
+            '2026-04-01',
         );
 
         $this->assertSame(2, $moved);

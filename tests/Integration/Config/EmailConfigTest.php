@@ -19,7 +19,7 @@ final class EmailConfigTest extends TestCase
         parent::setUp();
         $this->db = new SqliteDatabase();
         $this->db->pdo()->exec(
-            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))'
+            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))',
         );
         $this->config = new EmailConfig($this->db);
     }
@@ -65,7 +65,7 @@ final class EmailConfigTest extends TestCase
     {
         // Insert a value other than Y or N — should read as false.
         $this->db->execute(
-            "INSERT INTO hc_config (setting, value) VALUES ('smtp_enabled', 'yes')"
+            "INSERT INTO hc_config (setting, value) VALUES ('smtp_enabled', 'yes')",
         );
         $this->assertFalse($this->config->isEnabled());
     }

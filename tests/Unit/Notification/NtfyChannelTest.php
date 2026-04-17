@@ -21,9 +21,7 @@ final class RecordingHttpClient implements HttpClient
     /** @var list<array{url:string,body:string,headers:array<string,string>}> */
     public array $calls = [];
 
-    public function __construct(private readonly bool $succeeds = true)
-    {
-    }
+    public function __construct(private readonly bool $succeeds = true) {}
 
     public function post(string $url, string $body, array $headers): bool
     {
@@ -46,7 +44,7 @@ final class NtfyChannelTest extends TestCase
         parent::setUp();
         $this->db = new SqliteDatabase();
         $this->db->pdo()->exec(
-            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))'
+            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))',
         );
     }
 
@@ -76,13 +74,13 @@ final class NtfyChannelTest extends TestCase
         $http = new RecordingHttpClient();
 
         $this->assertTrue(
-            (new NtfyChannel($this->config(enabled: true), $http))->isReady()
+            (new NtfyChannel($this->config(enabled: true), $http))->isReady(),
         );
         $this->assertFalse(
-            (new NtfyChannel($this->config(enabled: false), $http))->isReady()
+            (new NtfyChannel($this->config(enabled: false), $http))->isReady(),
         );
         $this->assertFalse(
-            (new NtfyChannel($this->config(topic: ''), $http))->isReady()
+            (new NtfyChannel($this->config(topic: ''), $http))->isReady(),
         );
     }
 
@@ -92,7 +90,7 @@ final class NtfyChannelTest extends TestCase
         $channel = new NtfyChannel($this->config(enabled: false), $http);
 
         $this->assertFalse($channel->send(
-            new NotificationMessage('t', 'b')
+            new NotificationMessage('t', 'b'),
         ));
         $this->assertSame([], $http->calls, 'http client must not be called');
     }
@@ -134,7 +132,9 @@ final class NtfyChannelTest extends TestCase
         $channel = new NtfyChannel($this->config(topic: 'default'), $http);
 
         $channel->send(new NotificationMessage(
-            title: 't', body: 'b', recipient: 'override',
+            title: 't',
+            body: 'b',
+            recipient: 'override',
         ));
 
         $payload = json_decode($http->calls[0]['body'], true);

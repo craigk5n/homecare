@@ -87,7 +87,7 @@ final class PdfIntakeExporter
             // would silently fall back.
             'DejaVu Sans',
             7,
-            [0.44, 0.50, 0.59] // #718096 to match the CSS footer
+            [0.44, 0.50, 0.59], // #718096 to match the CSS footer
         );
 
         return (string) $dompdf->output();
@@ -119,7 +119,7 @@ final class PdfIntakeExporter
         ksort($byDate);
 
         $logoSrc = $this->logoAsDataUri();
-        $esc = static fn (string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $esc = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 
         $totalIntakes = count($rows);
         $totalDays = count($byDate);
@@ -155,7 +155,7 @@ final class PdfIntakeExporter
                     $body .= '<td class="col-dose">'
                         . $esc(self::formatDose(
                             (float) $r['unit_per_dose'],
-                            (string) $r['medicine_dosage']
+                            (string) $r['medicine_dosage'],
                         ))
                         . '</td>';
                     $body .= '<td class="col-freq">' . $esc((string) $r['frequency']) . '</td>';

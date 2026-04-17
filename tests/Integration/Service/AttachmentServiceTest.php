@@ -168,7 +168,7 @@ final class AttachmentServiceTest extends DatabaseTestCase
         /** @var \SplFileInfo $item */
         foreach (new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-            \RecursiveIteratorIterator::CHILD_FIRST
+            \RecursiveIteratorIterator::CHILD_FIRST,
         ) as $item) {
             if ($item->isDir()) {
                 rmdir($item->getPathname());

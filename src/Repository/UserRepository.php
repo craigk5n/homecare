@@ -13,9 +13,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class UserRepository implements UserRepositoryInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @return UserRecord|null
@@ -35,7 +33,7 @@ final class UserRepository implements UserRepositoryInterface
         // Case-insensitive — email addresses are canonical lowercase.
         $rows = $this->db->query(
             $this->selectColumns() . ' WHERE LOWER(email) = LOWER(?) LIMIT 1',
-            [$email]
+            [$email],
         );
 
         return $rows === [] ? null : self::hydrate($rows[0]);
@@ -53,7 +51,7 @@ final class UserRepository implements UserRepositoryInterface
         // Multi-device: look up in hc_remember_tokens first
         $tokenRows = $this->db->query(
             'SELECT user_login FROM hc_remember_tokens WHERE token_hash = ?',
-            [$hash]
+            [$hash],
         );
 
         if ($tokenRows !== []) {
@@ -64,7 +62,7 @@ final class UserRepository implements UserRepositoryInterface
         // created before migration 029.
         $rows = $this->db->query(
             $this->selectColumns() . ' WHERE remember_token = ?',
-            [$hash]
+            [$hash],
         );
 
         return $rows === [] ? null : self::hydrate($rows[0]);
@@ -78,7 +76,7 @@ final class UserRepository implements UserRepositoryInterface
 
         $rows = $this->db->query(
             $this->selectColumns() . ' WHERE api_key_hash = ?',
-            [$hash]
+            [$hash],
         );
 
         return $rows === [] ? null : self::hydrate($rows[0]);
@@ -88,7 +86,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET api_key_hash = ? WHERE login = ?',
-            [$hash, $login]
+            [$hash, $login],
         );
     }
 
@@ -99,12 +97,12 @@ final class UserRepository implements UserRepositoryInterface
             // Also clear legacy column for backwards compat.
             $this->db->execute(
                 'DELETE FROM hc_remember_tokens WHERE user_login = ?',
-                [$login]
+                [$login],
             );
 
             return $this->db->execute(
                 'UPDATE hc_user SET remember_token = NULL, remember_token_expires = NULL WHERE login = ?',
-                [$login]
+                [$login],
             );
         }
 
@@ -112,7 +110,7 @@ final class UserRepository implements UserRepositoryInterface
         $this->db->execute(
             'INSERT INTO hc_remember_tokens (user_login, token_hash, expires_at)
              VALUES (?, ?, ?)',
-            [$login, $hash, $expiresAt]
+            [$login, $hash, $expiresAt],
         );
 
         return true;
@@ -122,7 +120,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         $rows = $this->db->query(
             'SELECT expires_at FROM hc_remember_tokens WHERE token_hash = ?',
-            [$tokenHash]
+            [$tokenHash],
         );
 
         return $rows === [] ? null : (string) $rows[0]['expires_at'];
@@ -132,7 +130,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'DELETE FROM hc_remember_tokens WHERE token_hash = ?',
-            [$tokenHash]
+            [$tokenHash],
         );
     }
 
@@ -140,7 +138,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET passwd = ? WHERE login = ?',
-            [$hash, $login]
+            [$hash, $login],
         );
     }
 
@@ -148,7 +146,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET last_login = ? WHERE login = ?',
-            [$unixTimestamp, $login]
+            [$unixTimestamp, $login],
         );
     }
 
@@ -157,12 +155,12 @@ final class UserRepository implements UserRepositoryInterface
         // Bump atomically so a racing parallel request can't undercount.
         $this->db->execute(
             'UPDATE hc_user SET failed_attempts = failed_attempts + 1 WHERE login = ?',
-            [$login]
+            [$login],
         );
 
         $rows = $this->db->query(
             'SELECT failed_attempts FROM hc_user WHERE login = ?',
-            [$login]
+            [$login],
         );
         if ($rows === []) {
             return 0;
@@ -175,7 +173,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET locked_until = ? WHERE login = ?',
-            [$lockedUntil, $login]
+            [$lockedUntil, $login],
         );
     }
 
@@ -183,7 +181,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET failed_attempts = 0, locked_until = NULL WHERE login = ?',
-            [$login]
+            [$login],
         );
     }
 
@@ -191,7 +189,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET totp_secret = ? WHERE login = ?',
-            [$base32Secret, $login]
+            [$base32Secret, $login],
         );
     }
 
@@ -199,7 +197,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             "UPDATE hc_user SET totp_enabled = 'Y', totp_recovery_codes = ? WHERE login = ?",
-            [self::encodeRecoveryCodes($recoveryCodeHashes), $login]
+            [self::encodeRecoveryCodes($recoveryCodeHashes), $login],
         );
     }
 
@@ -207,7 +205,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             "UPDATE hc_user SET totp_secret = NULL, totp_enabled = 'N', totp_recovery_codes = NULL WHERE login = ?",
-            [$login]
+            [$login],
         );
     }
 
@@ -215,7 +213,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET totp_recovery_codes = ? WHERE login = ?',
-            [self::encodeRecoveryCodes($recoveryCodeHashes), $login]
+            [self::encodeRecoveryCodes($recoveryCodeHashes), $login],
         );
     }
 
@@ -228,7 +226,7 @@ final class UserRepository implements UserRepositoryInterface
 
         return $this->db->execute(
             'UPDATE hc_user SET email = ? WHERE login = ?',
-            [$stored, $login]
+            [$stored, $login],
         );
     }
 
@@ -236,7 +234,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET email_notifications = ? WHERE login = ?',
-            [$on ? 'Y' : 'N', $login]
+            [$on ? 'Y' : 'N', $login],
         );
     }
 
@@ -246,13 +244,13 @@ final class UserRepository implements UserRepositoryInterface
             "SELECT email FROM hc_user
              WHERE email_notifications = 'Y'
                AND email IS NOT NULL AND email <> ''
-               AND enabled = 'Y'"
+               AND enabled = 'Y'",
         );
 
         return array_values(array_filter(array_map(
-            static fn (array $r): string => (string) ($r['email'] ?? ''),
-            $rows
-        ), static fn (string $v): bool => $v !== ''));
+            static fn(array $r): string => (string) ($r['email'] ?? ''),
+            $rows,
+        ), static fn(string $v): bool => $v !== ''));
     }
 
     public function updateLastLoginIp(string $login, ?string $ip): bool
@@ -261,7 +259,7 @@ final class UserRepository implements UserRepositoryInterface
 
         return $this->db->execute(
             'UPDATE hc_user SET last_login_ip = ? WHERE login = ?',
-            [$stored, $login]
+            [$stored, $login],
         );
     }
 
@@ -269,7 +267,7 @@ final class UserRepository implements UserRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_user SET digest_enabled = ? WHERE login = ?',
-            [$on ? 'Y' : 'N', $login]
+            [$on ? 'Y' : 'N', $login],
         );
     }
 
@@ -279,7 +277,7 @@ final class UserRepository implements UserRepositoryInterface
             "SELECT login, email FROM hc_user
              WHERE digest_enabled = 'Y'
                AND email IS NOT NULL AND email <> ''
-               AND enabled = 'Y'"
+               AND enabled = 'Y'",
         );
 
         $out = [];
@@ -301,7 +299,7 @@ final class UserRepository implements UserRepositoryInterface
         // regardless of caller hygiene.
         $clean = array_values(array_unique(array_filter(
             $channelNames,
-            static fn (string $name): bool => $name !== ''
+            static fn(string $name): bool => $name !== '',
         )));
         $json = json_encode($clean);
         if ($json === false) {
@@ -310,7 +308,7 @@ final class UserRepository implements UserRepositoryInterface
 
         return $this->db->execute(
             'UPDATE hc_user SET notification_channels = ? WHERE login = ?',
-            [$json, $login]
+            [$json, $login],
         );
     }
 

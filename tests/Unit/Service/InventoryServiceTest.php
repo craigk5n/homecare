@@ -53,7 +53,7 @@ final class InventoryServiceTest extends TestCase
         ]);
         $this->inventory->method('getTotalConsumedSince')->willReturn(12.0);
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(['unit_per_dose' => 1.0, 'frequency' => '8h'])
+            self::schedule(['unit_per_dose' => 1.0, 'frequency' => '8h']),
         );
 
         $report = $this->service->calculateRemaining(1, 10);
@@ -75,7 +75,7 @@ final class InventoryServiceTest extends TestCase
         ]);
         $this->inventory->method('getTotalConsumedSince')->willReturn(0.0);
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(['unit_per_dose' => 2.0, 'frequency' => '1d', 'end_date' => null])
+            self::schedule(['unit_per_dose' => 2.0, 'frequency' => '1d', 'end_date' => null]),
         );
 
         // 10 days from startDate to yesterday, inclusive, at 1 dose/day * 2 units/dose = 20 units assumed.
@@ -97,7 +97,7 @@ final class InventoryServiceTest extends TestCase
         ]);
         $this->inventory->method('getTotalConsumedSince')->willReturn(5.0);
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(['unit_per_dose' => 0.0, 'frequency' => '8h'])
+            self::schedule(['unit_per_dose' => 0.0, 'frequency' => '8h']),
         );
 
         $report = $this->service->calculateRemaining(1, 10);
@@ -121,7 +121,7 @@ final class InventoryServiceTest extends TestCase
         ]);
         $this->inventory->method('getTotalConsumedSince')->willReturn(0.0);
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(['unit_per_dose' => 4.0, 'frequency' => '1d'])
+            self::schedule(['unit_per_dose' => 4.0, 'frequency' => '1d']),
         );
 
         $report = $this->service->calculateRemaining(1, 10);
@@ -155,7 +155,7 @@ final class InventoryServiceTest extends TestCase
         ]);
         $this->inventory->method('getTotalConsumedSince')->willReturn(4.0);
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(['unit_per_dose' => 0.5, 'frequency' => null, 'is_prn' => true])
+            self::schedule(['unit_per_dose' => 0.5, 'frequency' => null, 'is_prn' => true]),
         );
 
         $report = $this->service->calculateRemaining(1, 10);

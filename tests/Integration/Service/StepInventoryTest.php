@@ -30,9 +30,9 @@ final class StepInventoryTest extends DatabaseTestCase
             $this->steps,
         );
 
-        $db->execute("INSERT INTO hc_patients (name) VALUES (?)", ['Daisy']);
+        $db->execute('INSERT INTO hc_patients (name) VALUES (?)', ['Daisy']);
         $this->patientId = $db->lastInsertId();
-        $db->execute("INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)", ['Prednisone', '5mg']);
+        $db->execute('INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)', ['Prednisone', '5mg']);
         $this->medicineId = $db->lastInsertId();
     }
 
@@ -40,15 +40,15 @@ final class StepInventoryTest extends DatabaseTestCase
     {
         $db = $this->getDb();
         $db->execute(
-            "INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
-             VALUES (?, ?, ?, ?, ?)",
-            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 1.0]
+            'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
+             VALUES (?, ?, ?, ?, ?)',
+            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 1.0],
         );
         $schedId = $db->lastInsertId();
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 30.0, 30.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 30.0, 30.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $schedId);
@@ -61,9 +61,9 @@ final class StepInventoryTest extends DatabaseTestCase
     {
         $db = $this->getDb();
         $db->execute(
-            "INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
-             VALUES (?, ?, ?, ?, ?)",
-            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 1.0]
+            'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
+             VALUES (?, ?, ?, ?, ?)',
+            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 1.0],
         );
         $schedId = $db->lastInsertId();
 
@@ -71,8 +71,8 @@ final class StepInventoryTest extends DatabaseTestCase
         $this->steps->create($schedId, '2026-01-08', 2.0, 'Week 2: increase');
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 20.0, 20.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 20.0, 20.0],
         );
 
         // Today is after Jan 8, so the step's unit_per_dose (2.0) applies.
@@ -86,9 +86,9 @@ final class StepInventoryTest extends DatabaseTestCase
     {
         $db = $this->getDb();
         $db->execute(
-            "INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
-             VALUES (?, ?, ?, ?, ?)",
-            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 1.0]
+            'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
+             VALUES (?, ?, ?, ?, ?)',
+            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 1.0],
         );
         $schedId = $db->lastInsertId();
 
@@ -98,8 +98,8 @@ final class StepInventoryTest extends DatabaseTestCase
         $this->steps->create($schedId, '2099-01-01', 8.0, 'Far future');
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 40.0, 40.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 40.0, 40.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $schedId);
@@ -114,9 +114,9 @@ final class StepInventoryTest extends DatabaseTestCase
         $db = $this->getDb();
         // Schedule starts far in the future
         $db->execute(
-            "INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
-             VALUES (?, ?, ?, ?, ?)",
-            [$this->patientId, $this->medicineId, '2099-01-01', '1d', 5.0]
+            'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
+             VALUES (?, ?, ?, ?, ?)',
+            [$this->patientId, $this->medicineId, '2099-01-01', '1d', 5.0],
         );
         $schedId = $db->lastInsertId();
 
@@ -124,8 +124,8 @@ final class StepInventoryTest extends DatabaseTestCase
         $this->steps->create($schedId, '2099-06-01', 10.0, null);
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 50.0, 50.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 50.0, 50.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $schedId);
@@ -141,9 +141,9 @@ final class StepInventoryTest extends DatabaseTestCase
         $db->execute('UPDATE hc_patients SET weight_kg = ? WHERE id = ?', [4.5, $this->patientId]);
 
         $db->execute(
-            "INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose, dose_basis)
-             VALUES (?, ?, ?, ?, ?, ?)",
-            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 1.0, 'per_kg']
+            'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose, dose_basis)
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 1.0, 'per_kg'],
         );
         $schedId = $db->lastInsertId();
 
@@ -151,8 +151,8 @@ final class StepInventoryTest extends DatabaseTestCase
         $this->steps->create($schedId, '2026-01-08', 2.0, 'Increase to 2mg/kg');
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 90.0, 90.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 90.0, 90.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $schedId);

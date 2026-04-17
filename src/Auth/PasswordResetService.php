@@ -59,10 +59,10 @@ final class PasswordResetService
         ?callable $tokenFactory = null,
         ?callable $audit = null,
     ) {
-        $this->clock = $clock ?? static fn (): int => time();
+        $this->clock = $clock ?? static fn(): int => time();
         $this->tokenFactory = $tokenFactory
-            ?? static fn (): string => bin2hex(random_bytes(32));
-        $this->audit = $audit ?? static fn (string $action, string $details = ''): null => null;
+            ?? static fn(): string => bin2hex(random_bytes(32));
+        $this->audit = $audit ?? static fn(string $action, string $details = ''): null => null;
     }
 
     /**
@@ -114,14 +114,14 @@ final class PasswordResetService
             'INSERT INTO hc_password_reset_tokens
                 (token_hash, user_login, created_at, expires_at)
              VALUES (?, ?, ?, ?)',
-            [$hash, $user['login'], $createdAt, $expiresAt]
+            [$hash, $user['login'], $createdAt, $expiresAt],
         );
 
         $resetUrl = rtrim($baseUrl, '/') . '/reset_password.php?token=' . urlencode($rawToken);
         $this->emailChannel->send(new NotificationMessage(
-            title:     'HomeCare password reset',
-            body:      $this->renderEmailBody($user['login'], $resetUrl),
-            priority:  NotificationMessage::PRIORITY_HIGH,
+            title: 'HomeCare password reset',
+            body: $this->renderEmailBody($user['login'], $resetUrl),
+            priority: NotificationMessage::PRIORITY_HIGH,
             recipient: $email,
         ));
 
@@ -133,7 +133,8 @@ final class PasswordResetService
      * Returns null on unknown / used / expired tokens.
      */
     public function validate(
-        #[\SensitiveParameter] string $rawToken,
+        #[\SensitiveParameter]
+        string $rawToken,
     ): ?string {
         if ($rawToken === '') {
             return null;
@@ -142,7 +143,7 @@ final class PasswordResetService
         $rows = $this->db->query(
             'SELECT user_login, used_at, expires_at
              FROM hc_password_reset_tokens WHERE token_hash = ?',
-            [self::hashToken($rawToken)]
+            [self::hashToken($rawToken)],
         );
         if ($rows === []) {
             return null;
@@ -174,8 +175,10 @@ final class PasswordResetService
      * expired) OR on a downstream DB error. True on success.
      */
     public function complete(
-        #[\SensitiveParameter] string $rawToken,
-        #[\SensitiveParameter] string $newPassword,
+        #[\SensitiveParameter]
+        string $rawToken,
+        #[\SensitiveParameter]
+        string $newPassword,
     ): bool {
         $login = $this->validate($rawToken);
         if ($login === null) {
@@ -188,7 +191,7 @@ final class PasswordResetService
         // Consume-before-write: mark used first.
         $this->db->execute(
             'UPDATE hc_password_reset_tokens SET used_at = ? WHERE token_hash = ?',
-            [date('Y-m-d H:i:s', $now), self::hashToken($rawToken)]
+            [date('Y-m-d H:i:s', $now), self::hashToken($rawToken)],
         );
 
         $hashed = $this->hasher->hash($newPassword);
@@ -217,7 +220,7 @@ final class PasswordResetService
         $rows = $this->db->query(
             'SELECT COUNT(*) AS n FROM hc_password_reset_tokens
              WHERE user_login = ? AND created_at >= ?',
-            [$login, $oneHourAgo]
+            [$login, $oneHourAgo],
         );
         if ($rows === []) {
             return 0;

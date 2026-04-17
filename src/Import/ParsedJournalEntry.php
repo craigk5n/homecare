@@ -31,8 +31,7 @@ final readonly class ParsedJournalEntry
         public string $note,
         public string $confidence = self::CONF_OK,
         public bool $isDuplicate = false,
-    ) {
-    }
+    ) {}
 
     public function asDuplicate(): self
     {

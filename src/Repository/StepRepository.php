@@ -20,16 +20,14 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class StepRepository
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     public function create(int $scheduleId, string $startDate, float $unitPerDose, ?string $note): int
     {
         $this->db->execute(
             'INSERT INTO hc_schedule_steps (schedule_id, start_date, unit_per_dose, note)
              VALUES (?, ?, ?, ?)',
-            [$scheduleId, $startDate, $unitPerDose, $note]
+            [$scheduleId, $startDate, $unitPerDose, $note],
         );
 
         return $this->db->lastInsertId();
@@ -39,7 +37,7 @@ final class StepRepository
     {
         return $this->db->execute(
             'DELETE FROM hc_schedule_steps WHERE id = ?',
-            [$stepId]
+            [$stepId],
         );
     }
 
@@ -53,7 +51,7 @@ final class StepRepository
              FROM hc_schedule_steps
              WHERE schedule_id = ?
              ORDER BY start_date ASC',
-            [$scheduleId]
+            [$scheduleId],
         );
 
         return array_map(self::hydrate(...), $rows);
@@ -75,7 +73,7 @@ final class StepRepository
                AND start_date <= ?
              ORDER BY start_date DESC
              LIMIT 1',
-            [$scheduleId, $date]
+            [$scheduleId, $date],
         );
 
         return $rows === [] ? null : self::hydrate($rows[0]);

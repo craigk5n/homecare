@@ -27,7 +27,7 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
         $id = $this->repo->create(
             $this->patientId,
             'Ate well this morning',
-            '2026-04-15 07:45:00'
+            '2026-04-15 07:45:00',
         );
 
         $this->assertGreaterThan(0, $id);
@@ -50,7 +50,7 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
         $id = $this->repo->create($this->patientId, 'original', '2026-04-15 07:45:00');
 
         $this->assertTrue(
-            $this->repo->update($id, 'corrected', '2026-04-15 08:00:00')
+            $this->repo->update($id, 'corrected', '2026-04-15 08:00:00'),
         );
 
         $note = $this->repo->getById($id);
@@ -75,7 +75,7 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
 
         $notes = $this->repo->getForPatient($this->patientId);
 
-        $ids = array_map(static fn (array $n): int => $n['id'], $notes);
+        $ids = array_map(static fn(array $n): int => $n['id'], $notes);
         $this->assertSame([$newId, $midId, $oldId], $ids);
     }
 
@@ -100,7 +100,7 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
             $this->repo->create(
                 $this->patientId,
                 'note ' . $i,
-                sprintf('2026-04-%02d 07:45:00', 10 + $i)
+                sprintf('2026-04-%02d 07:45:00', 10 + $i),
             );
         }
 
@@ -116,14 +116,14 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
 
     public function testSearchFiltersByDateRange(): void
     {
-        $this->repo->create($this->patientId, 'early',  '2026-04-10 07:45:00');
+        $this->repo->create($this->patientId, 'early', '2026-04-10 07:45:00');
         $this->repo->create($this->patientId, 'middle', '2026-04-15 07:45:00');
-        $this->repo->create($this->patientId, 'late',   '2026-04-20 07:45:00');
+        $this->repo->create($this->patientId, 'late', '2026-04-20 07:45:00');
 
         $matches = $this->repo->search(
             $this->patientId,
             startDate: '2026-04-13 00:00:00',
-            endDate:   '2026-04-17 23:59:59',
+            endDate: '2026-04-17 23:59:59',
         );
 
         $this->assertCount(1, $matches);
@@ -132,9 +132,9 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
 
     public function testSearchFiltersByQueryString(): void
     {
-        $this->repo->create($this->patientId, 'Ate 5 kibble, turkey',    '2026-04-15 07:45:00');
-        $this->repo->create($this->patientId, 'Vomit after cheese',      '2026-04-15 09:00:00');
-        $this->repo->create($this->patientId, 'Ate 5 kibble, potatoes',  '2026-04-15 13:00:00');
+        $this->repo->create($this->patientId, 'Ate 5 kibble, turkey', '2026-04-15 07:45:00');
+        $this->repo->create($this->patientId, 'Vomit after cheese', '2026-04-15 09:00:00');
+        $this->repo->create($this->patientId, 'Ate 5 kibble, potatoes', '2026-04-15 13:00:00');
 
         $matches = $this->repo->search($this->patientId, query: 'kibble');
 
@@ -147,7 +147,7 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
     public function testSearchEscapesLikeWildcards(): void
     {
         $this->repo->create($this->patientId, 'weight up 3% since last visit', '2026-04-15 07:45:00');
-        $this->repo->create($this->patientId, 'totally unrelated note',        '2026-04-15 09:00:00');
+        $this->repo->create($this->patientId, 'totally unrelated note', '2026-04-15 09:00:00');
 
         // The "%" must match literally, not act as a wildcard.
         $matches = $this->repo->search($this->patientId, query: '3%');
@@ -162,8 +162,8 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
         $db->execute('INSERT INTO hc_patients (name) VALUES (?)', ['Fozzie']);
         $otherId = $db->lastInsertId();
 
-        $this->repo->create($this->patientId, 'mine',   '2026-04-15 07:45:00');
-        $this->repo->create($otherId,         'theirs', '2026-04-15 07:45:00');
+        $this->repo->create($this->patientId, 'mine', '2026-04-15 07:45:00');
+        $this->repo->create($otherId, 'theirs', '2026-04-15 07:45:00');
 
         $matches = $this->repo->search($this->patientId);
 
@@ -177,7 +177,7 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
             $this->repo->create(
                 $this->patientId,
                 'note ' . $i,
-                sprintf('2026-04-%02d 07:45:00', 10 + $i)
+                sprintf('2026-04-%02d 07:45:00', 10 + $i),
             );
         }
 
@@ -190,9 +190,9 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
 
     public function testCountSearchMatchesFilters(): void
     {
-        $this->repo->create($this->patientId, 'early',  '2026-04-10 07:45:00');
+        $this->repo->create($this->patientId, 'early', '2026-04-10 07:45:00');
         $this->repo->create($this->patientId, 'middle', '2026-04-15 07:45:00');
-        $this->repo->create($this->patientId, 'late',   '2026-04-20 07:45:00');
+        $this->repo->create($this->patientId, 'late', '2026-04-20 07:45:00');
 
         $this->assertSame(3, $this->repo->countSearch($this->patientId));
         $this->assertSame(
@@ -200,16 +200,16 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
             $this->repo->countSearch(
                 $this->patientId,
                 startDate: '2026-04-13 00:00:00',
-                endDate:   '2026-04-17 23:59:59',
-            )
+                endDate: '2026-04-17 23:59:59',
+            ),
         );
         $this->assertSame(
             1,
-            $this->repo->countSearch($this->patientId, query: 'earl')
+            $this->repo->countSearch($this->patientId, query: 'earl'),
         );
         $this->assertSame(
             0,
-            $this->repo->countSearch($this->patientId, query: 'nomatch')
+            $this->repo->countSearch($this->patientId, query: 'nomatch'),
         );
     }
 }

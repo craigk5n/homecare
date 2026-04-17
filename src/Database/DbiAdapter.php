@@ -59,7 +59,7 @@ final class DbiAdapter implements DatabaseInterface
         $conn = $GLOBALS['c'] ?? null;
         if (!$conn instanceof mysqli) {
             throw new RuntimeException(
-                'No active mysqli connection; cannot start transaction.'
+                'No active mysqli connection; cannot start transaction.',
             );
         }
 
@@ -85,7 +85,7 @@ final class DbiAdapter implements DatabaseInterface
         $conn = $GLOBALS['c'] ?? null;
         if (!$conn instanceof mysqli) {
             throw new RuntimeException(
-                'No active mysqli connection; cannot read insert ID.'
+                'No active mysqli connection; cannot read insert ID.',
             );
         }
 
@@ -101,7 +101,7 @@ final class DbiAdapter implements DatabaseInterface
     {
         if (!function_exists('dbi_execute')) {
             throw new RuntimeException(
-                'dbi4php.php is not loaded; DbiAdapter requires the legacy db layer to be bootstrapped.'
+                'dbi4php.php is not loaded; DbiAdapter requires the legacy db layer to be bootstrapped.',
             );
         }
 

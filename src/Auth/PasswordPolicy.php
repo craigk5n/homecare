@@ -75,7 +75,8 @@ final class PasswordPolicy
      * @return list<string> Human-readable violation messages; empty = pass.
      */
     public function validate(
-        #[\SensitiveParameter] string $password,
+        #[\SensitiveParameter]
+        string $password,
         array $userContext = [],
     ): array {
         $violations = [];
@@ -86,7 +87,7 @@ final class PasswordPolicy
             $violations[] = sprintf(
                 'Password must be at least %d characters (currently %d).',
                 $this->minLength,
-                $len
+                $len,
             );
         }
 
@@ -97,7 +98,7 @@ final class PasswordPolicy
             $violations[] = sprintf(
                 'Password needs at least one non-alphanumeric character, '
                 . 'or must be %d or more characters long.',
-                self::LONG_PASSWORD_BYPASS
+                self::LONG_PASSWORD_BYPASS,
             );
         }
 
@@ -135,7 +136,7 @@ final class PasswordPolicy
     {
         if ($this->commonPasswords === null) {
             $this->commonPasswords = self::loadCommonPasswords(
-                $this->commonPasswordsFile ?? self::defaultListPath()
+                $this->commonPasswordsFile ?? self::defaultListPath(),
             );
         }
 
@@ -172,7 +173,7 @@ final class PasswordPolicy
     {
         $rows = $db->query(
             "SELECT setting, value FROM hc_config
-             WHERE setting IN ('password_min_length', 'password_require_symbol')"
+             WHERE setting IN ('password_min_length', 'password_require_symbol')",
         );
         foreach ($rows as $row) {
             $key = (string) ($row['setting'] ?? '');

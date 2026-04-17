@@ -38,7 +38,7 @@ final readonly class NotificationMessage
         if ($priority < self::PRIORITY_MIN || $priority > self::PRIORITY_MAX) {
             throw new InvalidArgumentException(
                 "priority must be {$priority} between "
-                . self::PRIORITY_MIN . ' and ' . self::PRIORITY_MAX
+                . self::PRIORITY_MIN . ' and ' . self::PRIORITY_MAX,
             );
         }
     }

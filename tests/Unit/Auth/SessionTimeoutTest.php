@@ -18,7 +18,7 @@ final class SessionTimeoutTest extends TestCase
         // 5 minutes ago -- well inside the 30-minute window.
         $this->assertSame(
             SessionState::Active,
-            $timeout->evaluate($now - 5 * 60, $now)
+            $timeout->evaluate($now - 5 * 60, $now),
         );
     }
 
@@ -29,7 +29,7 @@ final class SessionTimeoutTest extends TestCase
         // 31 minutes ago -- past the window.
         $this->assertSame(
             SessionState::Expired,
-            $timeout->evaluate($now - 31 * 60, $now)
+            $timeout->evaluate($now - 31 * 60, $now),
         );
     }
 
@@ -38,7 +38,7 @@ final class SessionTimeoutTest extends TestCase
         $timeout = new SessionTimeout(30);
         $this->assertSame(
             SessionState::New,
-            $timeout->evaluate(null, 1_000_000)
+            $timeout->evaluate(null, 1_000_000),
         );
     }
 
@@ -49,7 +49,7 @@ final class SessionTimeoutTest extends TestCase
         $now = 1_000_000;
         $this->assertSame(
             SessionState::Active,
-            $timeout->evaluate($now - 30 * 60, $now)
+            $timeout->evaluate($now - 30 * 60, $now),
         );
     }
 
@@ -59,7 +59,7 @@ final class SessionTimeoutTest extends TestCase
         $now = 1_000_000;
         $this->assertSame(
             SessionState::Expired,
-            $timeout->evaluate($now - (30 * 60 + 1), $now)
+            $timeout->evaluate($now - (30 * 60 + 1), $now),
         );
     }
 
@@ -76,11 +76,11 @@ final class SessionTimeoutTest extends TestCase
         $now = 1_000_000;
         $this->assertSame(
             SessionState::Active,
-            $timeout->evaluate($now - 4 * 60, $now)
+            $timeout->evaluate($now - 4 * 60, $now),
         );
         $this->assertSame(
             SessionState::Expired,
-            $timeout->evaluate($now - 6 * 60, $now)
+            $timeout->evaluate($now - 6 * 60, $now),
         );
     }
 

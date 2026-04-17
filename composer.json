@@ -13,9 +13,11 @@
     "require-dev": {
         "ext-pdo": "*",
         "ext-pdo_sqlite": "*",
+        "friendsofphp/php-cs-fixer": "^3.95",
         "phpstan/phpstan": "^2.1",
         "phpstan/phpstan-phpunit": "^2.0",
-        "phpunit/phpunit": "^10.5"
+        "phpunit/phpunit": "^10.5",
+        "vimeo/psalm": "^6.16"
     },
     "autoload": {
         "psr-4": {
@@ -35,8 +37,13 @@
         "test:coverage": "phpunit --coverage-clover=coverage.xml --coverage-html=coverage --coverage-text=coverage.txt",
         "test:cov-check": "php tools/check_coverage.php",
         "analyse": "phpstan analyse",
+        "lint": "php-cs-fixer fix --dry-run --diff",
+        "lint:fix": "php-cs-fixer fix",
+        "psalm": "psalm --no-cache",
+        "psalm:taint": "psalm --taint-analysis --no-cache",
         "migrate": "php bin/migrate.php",
         "check": [
+            "@lint",
             "@analyse",
             "@test"
         ],

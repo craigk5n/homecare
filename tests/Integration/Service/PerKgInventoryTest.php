@@ -27,14 +27,14 @@ final class PerKgInventoryTest extends DatabaseTestCase
         );
 
         $db->execute(
-            "INSERT INTO hc_patients (name, species, weight_kg, weight_as_of) VALUES (?, ?, ?, ?)",
-            ['Daisy', 'cat', 4.5, '2026-04-01']
+            'INSERT INTO hc_patients (name, species, weight_kg, weight_as_of) VALUES (?, ?, ?, ?)',
+            ['Daisy', 'cat', 4.5, '2026-04-01'],
         );
         $this->patientId = $db->lastInsertId();
 
         $db->execute(
-            "INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)",
-            ['Tobramycin', '2 drops']
+            'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
+            ['Tobramycin', '2 drops'],
         );
         $this->medicineId = $db->lastInsertId();
     }
@@ -46,17 +46,17 @@ final class PerKgInventoryTest extends DatabaseTestCase
         // Schedule: 2 mg/kg twice daily. Patient weighs 4.5 kg.
         // Effective per-dose = 2 * 4.5 = 9.0 units.
         $db->execute(
-            "INSERT INTO hc_medicine_schedules
+            'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose, dose_basis)
-             VALUES (?, ?, ?, ?, ?, ?)",
-            [$this->patientId, $this->medicineId, '2026-01-01', '12h', 2.0, 'per_kg']
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [$this->patientId, $this->medicineId, '2026-01-01', '12h', 2.0, 'per_kg'],
         );
         $scheduleId = $db->lastInsertId();
 
         // Stock: 90 units.
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 90.0, 90.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 90.0, 90.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $scheduleId);
@@ -76,16 +76,16 @@ final class PerKgInventoryTest extends DatabaseTestCase
         $db->execute('UPDATE hc_patients SET weight_kg = ? WHERE id = ?', [10.0, $this->patientId]);
 
         $db->execute(
-            "INSERT INTO hc_medicine_schedules
+            'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose, dose_basis)
-             VALUES (?, ?, ?, ?, ?, ?)",
-            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 5.0, 'per_kg']
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [$this->patientId, $this->medicineId, '2026-01-01', '1d', 5.0, 'per_kg'],
         );
         $scheduleId = $db->lastInsertId();
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 200.0, 200.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 200.0, 200.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $scheduleId);
@@ -100,20 +100,20 @@ final class PerKgInventoryTest extends DatabaseTestCase
     {
         $db = $this->getDb();
         // Patient with no weight.
-        $db->execute("INSERT INTO hc_patients (name, species) VALUES (?, ?)", ['Ghost', 'cat']);
+        $db->execute('INSERT INTO hc_patients (name, species) VALUES (?, ?)', ['Ghost', 'cat']);
         $noWeightPatient = $db->lastInsertId();
 
         $db->execute(
-            "INSERT INTO hc_medicine_schedules
+            'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose, dose_basis)
-             VALUES (?, ?, ?, ?, ?, ?)",
-            [$noWeightPatient, $this->medicineId, '2026-01-01', '8h', 3.0, 'per_kg']
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [$noWeightPatient, $this->medicineId, '2026-01-01', '8h', 3.0, 'per_kg'],
         );
         $scheduleId = $db->lastInsertId();
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 30.0, 30.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 30.0, 30.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $scheduleId);
@@ -128,22 +128,22 @@ final class PerKgInventoryTest extends DatabaseTestCase
     {
         $db = $this->getDb();
         $db->execute(
-            "INSERT INTO hc_patients (name, species, weight_kg) VALUES (?, ?, ?)",
-            ['Tiny', 'bird', 0.0]
+            'INSERT INTO hc_patients (name, species, weight_kg) VALUES (?, ?, ?)',
+            ['Tiny', 'bird', 0.0],
         );
         $zeroWeightPatient = $db->lastInsertId();
 
         $db->execute(
-            "INSERT INTO hc_medicine_schedules
+            'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose, dose_basis)
-             VALUES (?, ?, ?, ?, ?, ?)",
-            [$zeroWeightPatient, $this->medicineId, '2026-01-01', '1d', 1.0, 'per_kg']
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [$zeroWeightPatient, $this->medicineId, '2026-01-01', '1d', 1.0, 'per_kg'],
         );
         $scheduleId = $db->lastInsertId();
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 10.0, 10.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 10.0, 10.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $scheduleId);
@@ -158,16 +158,16 @@ final class PerKgInventoryTest extends DatabaseTestCase
 
         // dose_basis='fixed' should NOT multiply by weight.
         $db->execute(
-            "INSERT INTO hc_medicine_schedules
+            'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose, dose_basis)
-             VALUES (?, ?, ?, ?, ?, ?)",
-            [$this->patientId, $this->medicineId, '2026-01-01', '8h', 1.0, 'fixed']
+             VALUES (?, ?, ?, ?, ?, ?)',
+            [$this->patientId, $this->medicineId, '2026-01-01', '8h', 1.0, 'fixed'],
         );
         $scheduleId = $db->lastInsertId();
 
         $db->execute(
-            "INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)",
-            [$this->medicineId, 30.0, 30.0]
+            'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock) VALUES (?, ?, ?)',
+            [$this->medicineId, 30.0, 30.0],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $scheduleId);

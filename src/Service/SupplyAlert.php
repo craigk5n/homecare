@@ -16,8 +16,7 @@ final class SupplyAlert
         public readonly string $medicineName,
         public readonly int $remainingDays,
         public readonly string $projectedDepletion,
-    ) {
-    }
+    ) {}
 
     /**
      * Human-readable line for the ntfy body.

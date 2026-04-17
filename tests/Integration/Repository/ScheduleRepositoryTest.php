@@ -72,7 +72,7 @@ final class ScheduleRepositoryTest extends DatabaseTestCase
         $rows = $this->repo->getActiveSchedules($this->patientId, '2026-04-13');
 
         $this->assertCount(2, $rows);
-        $frequencies = array_map(static fn (array $r): ?string => $r['frequency'], $rows);
+        $frequencies = array_map(static fn(array $r): ?string => $r['frequency'], $rows);
         sort($frequencies);
         $this->assertSame(['12h', '8h'], $frequencies);
     }
@@ -85,7 +85,7 @@ final class ScheduleRepositoryTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$otherPatient, $this->medicineId, '2026-03-01', '12h', 1.0]
+            [$otherPatient, $this->medicineId, '2026-03-01', '12h', 1.0],
         );
 
         $rows = $this->repo->getActiveSchedules($this->patientId, '2026-04-13');
@@ -202,7 +202,7 @@ final class ScheduleRepositoryTest extends DatabaseTestCase
         $db = $this->getDb();
         $db->execute(
             'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
-            ['Sildenafil', '20mg']
+            ['Sildenafil', '20mg'],
         );
 
         return $db->lastInsertId();
@@ -215,7 +215,7 @@ final class ScheduleRepositoryTest extends DatabaseTestCase
             'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?, ?)',
-            [$this->patientId, $this->medicineId, $start, $end, $frequency, 1.0]
+            [$this->patientId, $this->medicineId, $start, $end, $frequency, 1.0],
         );
 
         return $db->lastInsertId();

@@ -29,8 +29,7 @@ final class ApiResponse
         public readonly ?array $data,
         public readonly ?string $message,
         public readonly int $httpStatus,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string,mixed>|list<mixed> $data

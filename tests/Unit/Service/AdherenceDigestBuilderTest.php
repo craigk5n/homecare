@@ -25,7 +25,7 @@ final class AdherenceDigestBuilderTest extends TestCase
 
         $this->assertStringStartsWith(
             'Weekly adherence digest — 2026-04-13',
-            $body
+            $body,
         );
     }
 
@@ -100,8 +100,11 @@ final class AdherenceDigestBuilderTest extends TestCase
         $posApollo = strpos($body, 'Apollo');
         $this->assertNotFalse($posZelda);
         $this->assertNotFalse($posApollo);
-        $this->assertLessThan($posApollo, $posZelda,
-            'Zelda appears first in input, should appear first in body');
+        $this->assertLessThan(
+            $posApollo,
+            $posZelda,
+            'Zelda appears first in input, should appear first in body',
+        );
     }
 
     public function testRowOrderingFollowsInputOrder(): void

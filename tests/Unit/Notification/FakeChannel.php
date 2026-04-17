@@ -27,8 +27,7 @@ final class FakeChannel implements NotificationChannel
         private readonly string $name,
         private bool $ready = true,
         private readonly bool $succeeds = true,
-    ) {
-    }
+    ) {}
 
     public function name(): string
     {

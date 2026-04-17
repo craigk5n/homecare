@@ -84,8 +84,8 @@ final class JournalParser
             $body = trim(implode("\n", $pending['body']));
             $entries[] = new ParsedJournalEntry(
                 lineNumber: $pending['line'],
-                noteTime:   $pending['date'] . ' ' . $time,
-                note:       $body,
+                noteTime: $pending['date'] . ' ' . $time,
+                note: $body,
                 confidence: $conf,
             );
             $lastTimeInBlock = $time;

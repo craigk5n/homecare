@@ -36,8 +36,7 @@ final class CaregiverNoteImporter
         private readonly CaregiverNoteRepository $notes,
         private readonly PatientRepository $patients,
         private readonly NoteTimeParser $timeParser = new NoteTimeParser(),
-    ) {
-    }
+    ) {}
 
     /**
      * Parse and validate file contents. Does not touch the database
@@ -115,7 +114,7 @@ final class CaregiverNoteImporter
     {
         if (!$plan->isValid()) {
             throw new RuntimeException(
-                'Cannot commit an invalid import plan; fix row errors first.'
+                'Cannot commit an invalid import plan; fix row errors first.',
             );
         }
 
@@ -126,7 +125,7 @@ final class CaregiverNoteImporter
                 // Guaranteed non-null by isValid(), but PHPStan needs the assertion.
                 if ($row->patientId === null || $row->noteTime === null || $row->note === null) {
                     throw new RuntimeException(
-                        "Row {$row->lineNumber}: unexpectedly missing required fields at commit time."
+                        "Row {$row->lineNumber}: unexpectedly missing required fields at commit time.",
                     );
                 }
                 $this->notes->create($row->patientId, $row->note, $row->noteTime);
@@ -167,7 +166,7 @@ final class CaregiverNoteImporter
         $noteTimeRaw = $get('note_time') ?? '';
         $noteTime = null;
         if ($noteTimeRaw === '') {
-            $errors[] = "missing note_time";
+            $errors[] = 'missing note_time';
         } else {
             try {
                 $noteTime = $this->timeParser->parse($noteTimeRaw);
@@ -179,7 +178,7 @@ final class CaregiverNoteImporter
         // note --------------------------------------------------------
         $note = $get('note') ?? '';
         if ($note === '') {
-            $errors[] = "missing note";
+            $errors[] = 'missing note';
         }
 
         // patient -----------------------------------------------------
@@ -215,15 +214,15 @@ final class CaregiverNoteImporter
                 $patientId = $defaultPatientId;
             }
         } else {
-            $errors[] = "missing patient_id or patient_name";
+            $errors[] = 'missing patient_id or patient_name';
         }
 
         return new ParsedRow(
             lineNumber: $lineNumber,
-            patientId:  $patientId,
-            noteTime:   $noteTime,
-            note:       $note === '' ? null : $note,
-            errors:     $errors,
+            patientId: $patientId,
+            noteTime: $noteTime,
+            note: $note === '' ? null : $note,
+            errors: $errors,
         );
     }
 
@@ -301,8 +300,8 @@ final class CaregiverNoteImporter
         $fields = str_getcsv($line, $delimiter, '"', '\\');
 
         return array_map(
-            static fn ($v): string => $v === null ? '' : (string) $v,
-            $fields
+            static fn($v): string => $v === null ? '' : (string) $v,
+            $fields,
         );
     }
 

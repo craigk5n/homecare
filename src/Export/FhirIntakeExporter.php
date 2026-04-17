@@ -35,7 +35,7 @@ final class FhirIntakeExporter
 
     public function __construct(?callable $clock = null)
     {
-        $this->clock = $clock ?? static fn (): string => gmdate('Y-m-d\TH:i:s\Z');
+        $this->clock = $clock ?? static fn(): string => gmdate('Y-m-d\TH:i:s\Z');
     }
 
     /**
@@ -74,7 +74,7 @@ final class FhirIntakeExporter
                 $medicines[$medicineId] = self::medicationResource(
                     $medicineId,
                     $row['medicine_name'],
-                    $row['medicine_dosage']
+                    $row['medicine_dosage'],
                 );
                 $entries[] = self::entry($medicines[$medicineId]);
             }

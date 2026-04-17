@@ -133,7 +133,7 @@ final class ScheduleCalculatorTest extends TestCase
             ScheduleCalculator::calculateSecondsUntilDueOrNull(
                 date('Y-m-d H:i:s', time() - 3600),
                 null,
-            )
+            ),
         );
     }
 
@@ -146,7 +146,7 @@ final class ScheduleCalculatorTest extends TestCase
     public function testCalculateNextDueDateOrNullReturnsNullForNullFrequency(): void
     {
         $this->assertNull(
-            ScheduleCalculator::calculateNextDueDateOrNull('2026-04-13 10:00:00', null)
+            ScheduleCalculator::calculateNextDueDateOrNull('2026-04-13 10:00:00', null),
         );
     }
 
@@ -154,7 +154,7 @@ final class ScheduleCalculatorTest extends TestCase
     {
         $this->assertSame(
             '2026-04-13 18:00',
-            ScheduleCalculator::calculateNextDueDateOrNull('2026-04-13 10:00:00', '8h')
+            ScheduleCalculator::calculateNextDueDateOrNull('2026-04-13 10:00:00', '8h'),
         );
     }
 
@@ -197,7 +197,7 @@ final class ScheduleCalculatorTest extends TestCase
         // 21 on + 7 off = 28-day cycle. Range: exactly one full cycle.
         $this->assertSame(
             21,
-            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-01', '2026-01-28')
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-01', '2026-01-28'),
         );
     }
 
@@ -206,7 +206,7 @@ final class ScheduleCalculatorTest extends TestCase
         // Range covers only the first 10 on-days.
         $this->assertSame(
             10,
-            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-01', '2026-01-10')
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-01', '2026-01-10'),
         );
     }
 
@@ -215,7 +215,7 @@ final class ScheduleCalculatorTest extends TestCase
         // Range falls entirely within the off-period.
         $this->assertSame(
             0,
-            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-22', '2026-01-28')
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-22', '2026-01-28'),
         );
     }
 
@@ -224,7 +224,7 @@ final class ScheduleCalculatorTest extends TestCase
         // Day 20 (Jan 21) on, Day 21 (Jan 22) off → 1 on-day in 2-day range.
         $this->assertSame(
             1,
-            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-21', '2026-01-22')
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-21', '2026-01-22'),
         );
     }
 
@@ -232,7 +232,7 @@ final class ScheduleCalculatorTest extends TestCase
     {
         $this->assertSame(
             7,
-            ScheduleCalculator::countOnDaysInRange('2026-01-01', null, null, '2026-04-01', '2026-04-07')
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', null, null, '2026-04-01', '2026-04-07'),
         );
     }
 
@@ -241,7 +241,7 @@ final class ScheduleCalculatorTest extends TestCase
         // 7 on, 3 off = 10-day cycle. Range: 30 days = 3 full cycles → 21 on-days.
         $this->assertSame(
             21,
-            ScheduleCalculator::countOnDaysInRange('2026-01-01', 7, 3, '2026-01-01', '2026-01-30')
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 7, 3, '2026-01-01', '2026-01-30'),
         );
     }
 
@@ -261,7 +261,7 @@ final class ScheduleCalculatorTest extends TestCase
     {
         $this->assertSame(
             ['08:00', '14:00', '20:00'],
-            ScheduleCalculator::parseWallClockTimes('20:00,08:00,14:00')
+            ScheduleCalculator::parseWallClockTimes('20:00,08:00,14:00'),
         );
     }
 

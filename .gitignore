@@ -34,6 +34,7 @@ coverage/
 coverage.txt
 .phpunit.cache/
 .phpunit.result.cache
+var/
 includes/settings.php
 homecare-dump.sql
 *.log

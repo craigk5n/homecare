@@ -36,7 +36,7 @@ final class SupplyAlertService
         private readonly SupplyAlertLogInterface $log,
         ?callable $clock = null,
     ) {
-        $this->clock = $clock ?? static fn (): string => date('Y-m-d H:i:s');
+        $this->clock = $clock ?? static fn(): string => date('Y-m-d H:i:s');
     }
 
     /**
@@ -113,7 +113,7 @@ final class SupplyAlertService
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
              GROUP BY ms.medicine_id
              ORDER BY m.name ASC",
-            [$today, $today]
+            [$today, $today],
         );
 
         $alerts = [];

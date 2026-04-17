@@ -31,9 +31,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class InventoryFactory
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @param InventoryOverrides $overrides
@@ -61,7 +59,7 @@ final class InventoryFactory
                 $record['current_stock'],
                 $record['recorded_at'],
                 $record['note'],
-            ]
+            ],
         );
 
         return [

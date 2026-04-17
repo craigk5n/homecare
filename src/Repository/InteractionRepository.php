@@ -21,9 +21,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class InteractionRepository implements InteractionRepositoryInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @param list<string> $ingredientsA
@@ -58,7 +56,7 @@ final class InteractionRepository implements InteractionRepositoryInterface
                 WHEN 'moderate' THEN 2
                 ELSE 3
              END, ingredient_a",
-            $params
+            $params,
         );
 
         $results = [];
@@ -94,13 +92,13 @@ final class InteractionRepository implements InteractionRepositoryInterface
 
         $this->db->execute(
             'DELETE FROM hc_drug_interactions WHERE ingredient_a = ? AND ingredient_b = ?',
-            [$a, $b]
+            [$a, $b],
         );
 
         $this->db->execute(
             'INSERT INTO hc_drug_interactions (ingredient_a, ingredient_b, severity, description)
              VALUES (?, ?, ?, ?)',
-            [$a, $b, $severity, $description]
+            [$a, $b, $severity, $description],
         );
     }
 

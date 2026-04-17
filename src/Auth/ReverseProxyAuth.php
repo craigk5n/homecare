@@ -23,8 +23,7 @@ final class ReverseProxyAuth
     public function __construct(
         private readonly ReverseProxyConfig $config,
         private readonly UserRepository $userRepo,
-    ) {
-    }
+    ) {}
 
     /**
      * Attempt to authenticate from the proxy header.

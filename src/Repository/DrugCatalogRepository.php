@@ -22,9 +22,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @return list<DrugCatalogEntry>
@@ -42,7 +40,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
              WHERE name LIKE ?
              ORDER BY name ASC
              LIMIT ?',
-            ['%' . $query . '%', $limit]
+            ['%' . $query . '%', $limit],
         );
 
         return array_map([$this, 'hydrate'], $rows);
@@ -56,7 +54,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
         $rows = $this->db->query(
             'SELECT id, rxnorm_id, ndc, name, strength, dosage_form, ingredient_names, generic
              FROM hc_drug_catalog WHERE id = ?',
-            [$id]
+            [$id],
         );
 
         return $rows === [] ? null : $this->hydrate($rows[0]);
@@ -70,7 +68,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
         $rows = $this->db->query(
             'SELECT id, rxnorm_id, ndc, name, strength, dosage_form, ingredient_names, generic
              FROM hc_drug_catalog WHERE rxnorm_id = ?',
-            [$rxnormId]
+            [$rxnormId],
         );
 
         return $rows === [] ? null : $this->hydrate($rows[0]);
@@ -89,7 +87,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
         $rows = $this->db->query(
             'SELECT id, rxnorm_id, ndc, name, strength, dosage_form, ingredient_names, generic
              FROM hc_drug_catalog WHERE ndc = ?',
-            [$ndc]
+            [$ndc],
         );
 
         return array_map([$this, 'hydrate'], $rows);
@@ -116,7 +114,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
                         $data['ingredient_names'],
                         $data['generic'] ? 'Y' : 'N',
                         $rxnormId,
-                    ]
+                    ],
                 );
 
                 return $existing['id'];
@@ -133,7 +131,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
                 $data['dosage_form'],
                 $data['ingredient_names'],
                 $data['generic'] ? 'Y' : 'N',
-            ]
+            ],
         );
 
         return $this->db->lastInsertId();

@@ -35,7 +35,7 @@ final class SchedulesApi
         private readonly DatabaseInterface $db,
         ?callable $clock = null,
     ) {
-        $this->clock = $clock ?? static fn (): string => date('Y-m-d');
+        $this->clock = $clock ?? static fn(): string => date('Y-m-d');
     }
 
     /**
@@ -66,7 +66,7 @@ final class SchedulesApi
                AND ms.start_date <= ?
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
              ORDER BY m.name ASC, ms.id ASC',
-            [$patientId, $today, $today]
+            [$patientId, $today, $today],
         );
 
         $out = [];

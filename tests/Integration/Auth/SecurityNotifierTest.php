@@ -16,9 +16,7 @@ final class SilentChannel implements NotificationChannel
     /** @var list<NotificationMessage> */
     public array $sent = [];
 
-    public function __construct(public bool $ready = true)
-    {
-    }
+    public function __construct(public bool $ready = true) {}
 
     public function name(): string
     {
@@ -64,7 +62,7 @@ final class SecurityNotifierTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, email, is_admin, role, enabled)
              VALUES (?, ?, ?, 'N', 'caregiver', 'Y')",
-            ['alice', (new PasswordHasher())->hash('pw'), 'alice@example.org']
+            ['alice', (new PasswordHasher())->hash('pw'), 'alice@example.org'],
         );
     }
 
@@ -86,8 +84,10 @@ final class SecurityNotifierTest extends DatabaseTestCase
         $this->notifier->notify('alice', SecurityNotifier::EVENT_TOTP_DISABLED);
 
         $this->assertCount(1, $this->channel->sent);
-        $this->assertStringContainsString('Two-factor authentication was just turned off',
-            $this->channel->sent[0]->body);
+        $this->assertStringContainsString(
+            'Two-factor authentication was just turned off',
+            $this->channel->sent[0]->body,
+        );
     }
 
     public function testApikeyGeneratedDispatches(): void
@@ -103,8 +103,10 @@ final class SecurityNotifierTest extends DatabaseTestCase
         $this->notifier->notify('alice', SecurityNotifier::EVENT_APIKEY_REVOKED);
 
         $this->assertCount(1, $this->channel->sent);
-        $this->assertStringContainsString('API key was just revoked',
-            $this->channel->sent[0]->body);
+        $this->assertStringContainsString(
+            'API key was just revoked',
+            $this->channel->sent[0]->body,
+        );
     }
 
     public function testLockoutDispatches(): void
@@ -121,7 +123,7 @@ final class SecurityNotifierTest extends DatabaseTestCase
         $this->notifier->notify(
             'alice',
             SecurityNotifier::EVENT_LOGIN_NEW_IP,
-            ['ip' => '203.0.113.7', 'previous_ip' => '192.0.2.1']
+            ['ip' => '203.0.113.7', 'previous_ip' => '192.0.2.1'],
         );
 
         $this->assertCount(1, $this->channel->sent);
@@ -133,7 +135,7 @@ final class SecurityNotifierTest extends DatabaseTestCase
     public function testMasterToggleOffSuppressesDispatch(): void
     {
         $this->getDb()->execute(
-            "INSERT INTO hc_config (setting, value) VALUES ('security_email_enabled', 'N')"
+            "INSERT INTO hc_config (setting, value) VALUES ('security_email_enabled', 'N')",
         );
 
         $this->notifier->notify('alice', SecurityNotifier::EVENT_PASSWORD_CHANGED);
@@ -167,8 +169,14 @@ final class SecurityNotifierTest extends DatabaseTestCase
     public function testTransportFailureIsSwallowed(): void
     {
         $throwingChannel = new class implements NotificationChannel {
-            public function name(): string { return 'bad'; }
-            public function isReady(): bool { return true; }
+            public function name(): string
+            {
+                return 'bad';
+            }
+            public function isReady(): bool
+            {
+                return true;
+            }
             public function send(NotificationMessage $message): bool
             {
                 throw new \RuntimeException('SMTP down');

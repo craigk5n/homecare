@@ -46,7 +46,7 @@ final class IntakeCsvExportTest extends DatabaseTestCase
         $this->assertCount(1, $lines, 'only the header row should be present');
         $this->assertSame(
             'Date,Time,Medication,Dosage,Frequency,UnitPerDose,Notes',
-            $lines[0]
+            $lines[0],
         );
     }
 
@@ -68,11 +68,11 @@ final class IntakeCsvExportTest extends DatabaseTestCase
         $this->assertCount(3, $rows); // header + 2 data rows
         $this->assertSame(
             ['2026-04-05', '08:00:00', 'Sildenafil', '20mg', '8h', '1.5', 'with food'],
-            $rows[1]
+            $rows[1],
         );
         $this->assertSame(
             ['2026-04-05', '16:30:00', 'Sildenafil', '20mg', '8h', '1.5', ''],
-            $rows[2]
+            $rows[2],
         );
     }
 

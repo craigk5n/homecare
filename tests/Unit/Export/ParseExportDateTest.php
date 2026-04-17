@@ -65,6 +65,6 @@ final class ParseExportDateTest extends TestCase
         yield 'invalid month'       => ['2026-13-01'];
         yield 'invalid day'         => ['2026-02-30'];
         yield 'invalid compact day' => ['20260230'];
-        yield 'non-leap year Feb 29'=> ['20260229'];
+        yield 'non-leap year Feb 29' => ['20260229'];
     }
 }

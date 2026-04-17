@@ -1,16 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 namespace HomeCare\Tests\Integration\Audit;
 
-use HomeCare\Tests\Integration\DatabaseTestCase;
-use HomeCare\Tests\Factory\PatientFactory;
-use HomeCare\Tests\Factory\MedicineFactory;
-use HomeCare\Tests\Factory\ScheduleFactory;
 use HomeCare\Tests\Factory\IntakeFactory;
+use HomeCare\Tests\Factory\MedicineFactory;
+use HomeCare\Tests\Factory\PatientFactory;
+use HomeCare\Tests\Factory\ScheduleFactory;
+use HomeCare\Tests\Integration\DatabaseTestCase;
+
 use function Safe\json_encode;
-use const JSON_PRETTY_PRINT;
-use const JSON_UNESCAPED_SLASHES;
 
 class AuditLogViewerTest extends DatabaseTestCase
 {
@@ -31,7 +31,7 @@ class AuditLogViewerTest extends DatabaseTestCase
                 details TEXT,
                 ip_address TEXT NOT NULL,
                 created_at DATETIME NOT NULL
-            )'
+            )',
         );
     }
 
@@ -47,13 +47,13 @@ class AuditLogViewerTest extends DatabaseTestCase
             'entity_id' => null,
             'details' => null,
             'ip_address' => '127.0.0.1',
-            'created_at' => date('Y-m-d H:i:s')
+            'created_at' => date('Y-m-d H:i:s'),
         ];
         $data = array_merge($defaults, $data);
         /** @var array{user_login:string, action:string, entity_type:?string, entity_id:?int, details:?string, ip_address:string, created_at:string} $data */
         $this->getDb()->execute(
             'INSERT INTO ' . self::AUDIT_TABLE . ' (user_login, action, entity_type, entity_id, details, ip_address, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [$data['user_login'], $data['action'], $data['entity_type'], $data['entity_id'], $data['details'], $data['ip_address'], $data['created_at']]
+            [$data['user_login'], $data['action'], $data['entity_type'], $data['entity_id'], $data['details'], $data['ip_address'], $data['created_at']],
         );
         return (int) $this->getDb()->lastInsertId();
     }
@@ -64,7 +64,7 @@ class AuditLogViewerTest extends DatabaseTestCase
             'INSERT INTO ' . self::AUDIT_TABLE . ' (user_login, action, ip_address, created_at) VALUES
             ("admin", "user.login", "127.0.0.1", "2026-04-13 10:00:00"),
             ("caregiver", "intake.recorded", "10.0.0.1", "2026-04-13 11:00:00"),
-            ("admin", "schedule.created", "127.0.0.1", "2026-04-13 12:00:00")'
+            ("admin", "schedule.created", "127.0.0.1", "2026-04-13 12:00:00")',
         );
 
         $repo = new \HomeCare\Repository\AuditRepository($this->getDb());
@@ -117,7 +117,7 @@ class AuditLogViewerTest extends DatabaseTestCase
         $repo = new \HomeCare\Repository\AuditRepository($this->getDb());
         $rows = $repo->search([
             'date_from' => date('Y-m-d', strtotime('-1 day')),
-            'date_to' => date('Y-m-d')
+            'date_to' => date('Y-m-d'),
         ]);
 
         $this->assertCount(1, $rows);
@@ -149,7 +149,7 @@ class AuditLogViewerTest extends DatabaseTestCase
         $medicine = $medicineFactory->create(['name' => 'Test Medicine']);
         $schedule = $scheduleFactory->create([
             'patient_id' => $patient['id'],
-            'medicine_id' => $medicine['id']
+            'medicine_id' => $medicine['id'],
         ]);
         $intake = $intakeFactory->create(['schedule_id' => $schedule['id']]);
 
@@ -157,22 +157,22 @@ class AuditLogViewerTest extends DatabaseTestCase
         $this->insertAuditLog([
             'action' => 'patient.created',
             'entity_type' => 'patient',
-            'entity_id' => $patient['id']
+            'entity_id' => $patient['id'],
         ]);
         $this->insertAuditLog([
             'action' => 'medicine.created',
             'entity_type' => 'medicine',
-            'entity_id' => $medicine['id']
+            'entity_id' => $medicine['id'],
         ]);
         $this->insertAuditLog([
             'action' => 'schedule.created',
             'entity_type' => 'schedule',
-            'entity_id' => $schedule['id']
+            'entity_id' => $schedule['id'],
         ]);
         $this->insertAuditLog([
             'action' => 'intake.recorded',
             'entity_type' => 'intake',
-            'entity_id' => $intake['id']
+            'entity_id' => $intake['id'],
         ]);
 
         $repo = new \HomeCare\Repository\AuditRepository($this->getDb());

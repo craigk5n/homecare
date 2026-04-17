@@ -35,7 +35,7 @@ final class UserRepositoryEmailSubscribersTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, email, is_admin, role, enabled, email_notifications)
              VALUES (?, ?, ?, 'N', 'caregiver', ?, ?)",
-            [$login, $this->hasher->hash('pw'), $email, $enabled, $emailNotifications]
+            [$login, $this->hasher->hash('pw'), $email, $enabled, $emailNotifications],
         );
     }
 
@@ -101,7 +101,7 @@ final class UserRepositoryEmailSubscribersTest extends DatabaseTestCase
     public function testGetEmailSubscribersReturnsOptedInUsers(): void
     {
         $this->seedUser('alice', email: 'alice@example.org', emailNotifications: 'Y');
-        $this->seedUser('bob',   email: 'bob@example.org',   emailNotifications: 'Y');
+        $this->seedUser('bob', email: 'bob@example.org', emailNotifications: 'Y');
         $this->seedUser('carol', email: 'carol@example.org', emailNotifications: 'N');
 
         $subscribers = $this->users->getEmailSubscribers();
@@ -126,7 +126,7 @@ final class UserRepositoryEmailSubscribersTest extends DatabaseTestCase
             'alice',
             email: 'alice@example.org',
             emailNotifications: 'Y',
-            enabled: 'N'
+            enabled: 'N',
         );
 
         $this->assertSame([], $this->users->getEmailSubscribers());

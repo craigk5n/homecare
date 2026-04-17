@@ -48,14 +48,14 @@ final class Login2faTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, is_admin, role, enabled)
              VALUES (?, ?, 'N', 'caregiver', 'Y')",
-            ['alice', $this->hasher->hash('correct-horse')]
+            ['alice', $this->hasher->hash('correct-horse')],
         );
 
         $this->secret = $this->totp->generateSecret();
         $this->recoveryCodes = $this->totp->generateRecoveryCodes(5);
         $hashes = array_map(
-            static fn (string $c): string => TotpService::hashRecoveryCode($c),
-            $this->recoveryCodes
+            static fn(string $c): string => TotpService::hashRecoveryCode($c),
+            $this->recoveryCodes,
         );
 
         $this->users->setTotpSecret('alice', $this->secret);
@@ -179,7 +179,7 @@ final class Login2faTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, is_admin, role, enabled)
              VALUES (?, ?, 'N', 'caregiver', 'Y')",
-            ['bob', $this->hasher->hash('pw')]
+            ['bob', $this->hasher->hash('pw')],
         );
 
         $result = $this->auth->verifyTotp('bob', '000000');

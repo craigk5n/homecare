@@ -21,9 +21,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class MedicineFactory
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @param MedicineOverrides $overrides
@@ -39,7 +37,7 @@ final class MedicineFactory
 
         $this->db->execute(
             'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
-            [$record['name'], $record['dosage']]
+            [$record['name'], $record['dosage']],
         );
 
         return [

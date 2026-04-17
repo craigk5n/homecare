@@ -43,9 +43,9 @@ final class AuthService
         ?callable $tokenFactory = null,
         private readonly ?TotpService $totp = null,
     ) {
-        $this->clock = $clock ?? static fn (): int => time();
+        $this->clock = $clock ?? static fn(): int => time();
         $this->tokenFactory = $tokenFactory
-            ?? static fn (): string => bin2hex(random_bytes(32));
+            ?? static fn(): string => bin2hex(random_bytes(32));
     }
 
     /**
@@ -55,7 +55,8 @@ final class AuthService
      */
     public function attemptLogin(
         string $login,
-        #[\SensitiveParameter] string $password,
+        #[\SensitiveParameter]
+        string $password,
         bool $remember = false,
     ): AuthResult {
         $user = $this->users->findByLogin($login);
@@ -81,7 +82,7 @@ final class AuthService
             if ($attempts >= self::MAX_FAILED_ATTEMPTS) {
                 $this->users->applyLockout(
                     $user['login'],
-                    date('Y-m-d H:i:s', $now + self::LOCKOUT_MINUTES * 60)
+                    date('Y-m-d H:i:s', $now + self::LOCKOUT_MINUTES * 60),
                 );
                 // Flag the edge-triggered lockout so the caller can
                 // fire the security email exactly once. `attempts`
@@ -134,7 +135,8 @@ final class AuthService
      */
     public function verifyTotp(
         string $login,
-        #[\SensitiveParameter] string $code,
+        #[\SensitiveParameter]
+        string $code,
         bool $remember = false,
     ): AuthResult {
         if ($this->totp === null) {
@@ -177,7 +179,7 @@ final class AuthService
         if ($attempts >= self::MAX_FAILED_ATTEMPTS) {
             $this->users->applyLockout(
                 $user['login'],
-                date('Y-m-d H:i:s', $now + self::LOCKOUT_MINUTES * 60)
+                date('Y-m-d H:i:s', $now + self::LOCKOUT_MINUTES * 60),
             );
             $justLockedOut = $attempts === self::MAX_FAILED_ATTEMPTS;
         }
@@ -214,7 +216,7 @@ final class AuthService
         $this->users->updateRememberToken(
             $user['login'],
             $hash,
-            date('Y-m-d H:i:s', $expiresUnix)
+            date('Y-m-d H:i:s', $expiresUnix),
         );
 
         return AuthResult::ok($user, $token, $expiresUnix, usedRecoveryCode: $usedRecoveryCode);
@@ -282,7 +284,7 @@ final class AuthService
         $this->users->updateRememberToken(
             $login,
             self::hashToken($token),
-            date('Y-m-d H:i:s', $expiresUnix)
+            date('Y-m-d H:i:s', $expiresUnix),
         );
 
         return AuthResult::ok($user, $token, $expiresUnix);

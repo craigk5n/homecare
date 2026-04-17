@@ -15,8 +15,7 @@ final class DrugsApi
 {
     public function __construct(
         private readonly DrugCatalogRepositoryInterface $catalog,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, string> $params GET parameters

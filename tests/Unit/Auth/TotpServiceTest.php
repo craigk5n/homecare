@@ -115,7 +115,7 @@ final class TotpServiceTest extends TestCase
     {
         $this->assertSame(
             TotpService::hashRecoveryCode('ab12cd34ef'),
-            TotpService::hashRecoveryCode('AB12-cd34-EF')
+            TotpService::hashRecoveryCode('AB12-cd34-EF'),
         );
     }
 
@@ -164,12 +164,12 @@ final class TotpServiceTest extends TestCase
         $this->assertSame([], TotpService::decodeStoredRecoveryCodes('not-json'));
         $this->assertSame(
             ['abc', 'def'],
-            TotpService::decodeStoredRecoveryCodes('["abc","def"]')
+            TotpService::decodeStoredRecoveryCodes('["abc","def"]'),
         );
         // Non-string entries silently dropped.
         $this->assertSame(
             ['abc'],
-            TotpService::decodeStoredRecoveryCodes('["abc", 42, null, ""]')
+            TotpService::decodeStoredRecoveryCodes('["abc", 42, null, ""]'),
         );
     }
 }

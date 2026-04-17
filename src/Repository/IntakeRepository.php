@@ -24,9 +24,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class IntakeRepository implements IntakeRepositoryInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @return list<Intake>
@@ -38,7 +36,7 @@ final class IntakeRepository implements IntakeRepositoryInterface
              FROM hc_medicine_intake
              WHERE schedule_id = ? AND taken_time > ?
              ORDER BY taken_time ASC',
-            [$scheduleId, $since]
+            [$scheduleId, $since],
         );
 
         return array_map(self::hydrate(...), $rows);
@@ -48,7 +46,7 @@ final class IntakeRepository implements IntakeRepositoryInterface
     {
         $rows = $this->db->query(
             'SELECT COUNT(*) AS n FROM hc_medicine_intake WHERE schedule_id = ? AND taken_time > ?',
-            [$scheduleId, $since]
+            [$scheduleId, $since],
         );
 
         return $rows === [] ? 0 : (int) $rows[0]['n'];
@@ -59,7 +57,7 @@ final class IntakeRepository implements IntakeRepositoryInterface
         $rows = $this->db->query(
             'SELECT COUNT(*) AS n FROM hc_medicine_intake
              WHERE schedule_id = ? AND taken_time >= ? AND taken_time <= ?',
-            [$scheduleId, $from, $to]
+            [$scheduleId, $from, $to],
         );
 
         return $rows === [] ? 0 : (int) $rows[0]['n'];
@@ -68,19 +66,19 @@ final class IntakeRepository implements IntakeRepositoryInterface
     public function recordIntake(
         int $scheduleId,
         ?string $takenTime = null,
-        ?string $note = null
+        ?string $note = null,
     ): int {
         if ($takenTime === null) {
             // Use the DB default (CURRENT_TIMESTAMP). Explicit NULL would violate
             // the default; omitting the column in the insert triggers the default.
             $this->db->execute(
                 'INSERT INTO hc_medicine_intake (schedule_id, note) VALUES (?, ?)',
-                [$scheduleId, $note]
+                [$scheduleId, $note],
             );
         } else {
             $this->db->execute(
                 'INSERT INTO hc_medicine_intake (schedule_id, taken_time, note) VALUES (?, ?, ?)',
-                [$scheduleId, $takenTime, $note]
+                [$scheduleId, $takenTime, $note],
             );
         }
 
@@ -102,7 +100,7 @@ final class IntakeRepository implements IntakeRepositoryInterface
         $this->db->execute(
             'UPDATE hc_medicine_intake SET schedule_id = ?
              WHERE schedule_id = ? AND taken_time > ?',
-            [$toScheduleId, $fromScheduleId, $since]
+            [$toScheduleId, $fromScheduleId, $since],
         );
 
         return $count;

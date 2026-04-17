@@ -23,9 +23,7 @@ final class ReverseProxyConfig
     public const AUTH_MODE_REVERSE_PROXY = 'reverse_proxy';
     public const DEFAULT_HEADER = 'X-Forwarded-User';
 
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     public function getAuthMode(): string
     {
@@ -70,7 +68,7 @@ final class ReverseProxyConfig
     {
         $rows = $this->db->query(
             'SELECT value FROM hc_config WHERE setting = ?',
-            [$key]
+            [$key],
         );
         if ($rows === []) {
             return null;
@@ -84,17 +82,17 @@ final class ReverseProxyConfig
     {
         $existing = $this->db->query(
             'SELECT setting FROM hc_config WHERE setting = ?',
-            [$key]
+            [$key],
         );
         if ($existing === []) {
             $this->db->execute(
                 'INSERT INTO hc_config (setting, value) VALUES (?, ?)',
-                [$key, $value]
+                [$key, $value],
             );
         } else {
             $this->db->execute(
                 'UPDATE hc_config SET value = ? WHERE setting = ?',
-                [$value, $key]
+                [$value, $key],
             );
         }
     }

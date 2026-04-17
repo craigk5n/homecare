@@ -14,9 +14,9 @@
 #   bin/ci ci-down             Tear down CI containers and volumes
 #   bin/ci ci-e2e              E2E tests against CI environment
 #
-# Future (lower priority):
-#   bin/ci lint [--fix]        PHPCS coding standards (not yet configured)
-#   bin/ci psalm               Psalm taint analysis (not yet configured)
+# Code quality:
+#   bin/ci lint [--fix]        PHP-CS-Fixer (PER-CS rules)
+#   bin/ci psalm               Psalm static analysis
 #
 # Mirrors the GitHub Actions CI workflow for local execution.
 # All output is logged to ci-logs/<command>-<timestamp>.log
@@ -136,6 +136,25 @@ cmd_analyse() {
   vendor/bin/phpstan analyse --no-progress "$@"
 }
 
+cmd_lint() {
+  local fix=false
+  if [[ "${1:-}" == "--fix" ]]; then
+    fix=true; shift
+  fi
+  if [[ "$fix" == "true" ]]; then
+    echo "Running PHP-CS-Fixer (fix mode)..."
+    vendor/bin/php-cs-fixer fix "$@"
+  else
+    echo "Running PHP-CS-Fixer (dry-run)..."
+    vendor/bin/php-cs-fixer fix --dry-run --diff "$@"
+  fi
+}
+
+cmd_psalm() {
+  echo "Running Psalm..."
+  vendor/bin/psalm --no-cache "$@"
+}
+
 cmd_e2e() {
   local setup=false port=8080 extra_args=()
   while [[ $# -gt 0 ]]; do
@@ -210,6 +229,7 @@ cmd_ci_e2e() {
 }
 
 cmd_all() {
+  run_step "PHP-CS-Fixer" cmd_lint
   run_step "PHPUnit (with coverage)" cmd_test --coverage
   run_step "PHPStan"  cmd_analyse
   run_step "CI Environment Up" cmd_ci_up
@@ -229,6 +249,8 @@ cmd_default() {
       *) echo "Unknown option: $1"; exit 1 ;;
     esac
   done
+
+  run_step "PHP-CS-Fixer" cmd_lint
 
   if [[ "$coverage" == "true" ]]; then
     run_step "PHPUnit (with coverage)" cmd_test --coverage
@@ -319,6 +341,8 @@ fi
 case "$CMD" in
   test)     cmd_test "$@" ;;
   analyse)  cmd_analyse "$@" ;;
+  lint)     cmd_lint "$@" ;;
+  psalm)    cmd_psalm "$@" ;;
   e2e)      cmd_e2e "$@" ;;
   all)      cmd_all "$@" ;;
   ci-up)    cmd_ci_up "$@" ;;
@@ -328,9 +352,11 @@ case "$CMD" in
     echo "Usage: bin/ci [command] [options]"
     echo ""
     echo "Local checks (no Docker needed):"
-    echo "  (default)     Run unit tests + PHPStan"
+    echo "  (default)     Run lint + unit tests + PHPStan"
     echo "  test          PHPUnit tests (--coverage, --filter=Name)"
     echo "  analyse       PHPStan static analysis"
+    echo "  lint          PHP-CS-Fixer dry-run (--fix to auto-fix)"
+    echo "  psalm         Psalm static analysis"
     echo ""
     echo "Full pipeline (uses isolated CI containers on :${CI_PORT}):"
     echo "  all           Everything: test, analyse, ci-up, ci-e2e, ci-down"
@@ -350,9 +376,8 @@ case "$CMD" in
     echo "Environment variables:"
     echo "  HC_CI_PORT    CI web port (default: 18090)"
     echo ""
-    echo "Future (lower priority, not yet configured):"
-    echo "  lint          PHPCS / PHP-CS-Fixer coding standards"
-    echo "  psalm         Psalm taint analysis"
+    echo "Advanced:"
+    echo "  psalm --taint-analysis   Psalm taint analysis (injection detection)"
     ;;
   "")       cmd_default ;;
   *)        cmd_default "$CMD" "$@" ;;

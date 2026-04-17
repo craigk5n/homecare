@@ -31,7 +31,7 @@ final class AdherenceServiceTest extends TestCase
     public function testPerfectAdherenceIsOneHundredPercent(): void
     {
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-04-01', end: null, frequency: '8h')
+            self::schedule(start: '2026-04-01', end: null, frequency: '8h'),
         );
         // 10 days * 3 doses/day = 30 expected; 30 actual → 100%.
         $this->intakes->method('countIntakesBetween')->willReturn(30);
@@ -48,7 +48,7 @@ final class AdherenceServiceTest extends TestCase
     public function testHalfDosesMissedIsFiftyPercent(): void
     {
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-04-01', end: null, frequency: '12h')
+            self::schedule(start: '2026-04-01', end: null, frequency: '12h'),
         );
         // 10 days * 2 doses/day = 20 expected; 10 actual → 50%.
         $this->intakes->method('countIntakesBetween')->willReturn(10);
@@ -66,7 +66,7 @@ final class AdherenceServiceTest extends TestCase
         // Schedule started Apr 6, so only 5 effective days (Apr 6–10).
         // 5 * 1 dose/day = 5 expected.
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-04-06', end: null, frequency: '1d')
+            self::schedule(start: '2026-04-06', end: null, frequency: '1d'),
         );
         $this->intakes->method('countIntakesBetween')->willReturn(5);
 
@@ -85,7 +85,7 @@ final class AdherenceServiceTest extends TestCase
         // Query window: Apr 1 – Apr 10. Schedule ended Apr 5. Effective:
         // Apr 1–5 = 5 days * 2 doses/day (12h) = 10 expected.
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-01-01', end: '2026-04-05', frequency: '12h')
+            self::schedule(start: '2026-01-01', end: '2026-04-05', frequency: '12h'),
         );
         $this->intakes->method('countIntakesBetween')->willReturn(10);
 
@@ -97,7 +97,7 @@ final class AdherenceServiceTest extends TestCase
     public function testNoIntakesIsZeroPercent(): void
     {
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-04-01', end: null, frequency: '1d')
+            self::schedule(start: '2026-04-01', end: null, frequency: '1d'),
         );
         $this->intakes->method('countIntakesBetween')->willReturn(0);
 
@@ -112,7 +112,7 @@ final class AdherenceServiceTest extends TestCase
     {
         // 10 days * 3 doses/day = 30 expected. Actual = 23 → 76.666...% → 76.7%
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-04-01', end: null, frequency: '8h')
+            self::schedule(start: '2026-04-01', end: null, frequency: '8h'),
         );
         $this->intakes->method('countIntakesBetween')->willReturn(23);
 
@@ -154,7 +154,7 @@ final class AdherenceServiceTest extends TestCase
         // case that the UI distinguishes from "active but 0%": coverage_days
         // must be zero so the report can gray the bar out.
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-01-01', end: '2026-02-28', frequency: '1d')
+            self::schedule(start: '2026-01-01', end: '2026-02-28', frequency: '1d'),
         );
         $this->intakes->method('countIntakesBetween')->willReturn(0);
 
@@ -172,7 +172,7 @@ final class AdherenceServiceTest extends TestCase
         // recorded is 0% adherence — but coverage_days > 0 so the UI
         // reports it as a real zero, not "N/A".
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-04-01', end: null, frequency: '1d')
+            self::schedule(start: '2026-04-01', end: null, frequency: '1d'),
         );
         $this->intakes->method('countIntakesBetween')->willReturn(0);
 
@@ -189,7 +189,7 @@ final class AdherenceServiceTest extends TestCase
     {
         // Not capped -- makes accidental double-recording visible on reports.
         $this->schedules->method('getScheduleById')->willReturn(
-            self::schedule(start: '2026-04-01', end: null, frequency: '1d')
+            self::schedule(start: '2026-04-01', end: null, frequency: '1d'),
         );
         $this->intakes->method('countIntakesBetween')->willReturn(15);
 

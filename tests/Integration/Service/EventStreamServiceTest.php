@@ -162,7 +162,7 @@ final class EventStreamServiceTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_audit_log (user_login, action, entity_type, entity_id, created_at)
              VALUES (?, ?, ?, ?, datetime(\'now\'))',
-            [$user, $action, $entityType, $entityId]
+            [$user, $action, $entityType, $entityId],
         );
 
         return $this->getDb()->lastInsertId();
@@ -179,7 +179,7 @@ final class EventStreamServiceTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
-            ['TestMed', '10mg']
+            ['TestMed', '10mg'],
         );
 
         return $this->getDb()->lastInsertId();
@@ -190,7 +190,7 @@ final class EventStreamServiceTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$patientId, $medicineId, '2026-01-01', '8h', 1.0]
+            [$patientId, $medicineId, '2026-01-01', '8h', 1.0],
         );
 
         return $this->getDb()->lastInsertId();

@@ -175,7 +175,7 @@ final class MedicationSummaryTest extends DatabaseTestCase
 
         $summary = $this->report->build($this->patientId, '2026-04-13');
         $this->assertNotNull($summary);
-        $names = array_map(static fn (array $r): string => $r['medicine_name'], $summary['active']);
+        $names = array_map(static fn(array $r): string => $r['medicine_name'], $summary['active']);
         $this->assertSame(['Apple', 'Mango', 'Zebra'], $names);
     }
 }

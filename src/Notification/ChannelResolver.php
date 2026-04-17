@@ -23,9 +23,7 @@ namespace HomeCare\Notification;
  */
 final class ChannelResolver
 {
-    public function __construct(private readonly ChannelRegistry $registry)
-    {
-    }
+    public function __construct(private readonly ChannelRegistry $registry) {}
 
     /**
      * @return list<string> channel names, filtered to the ones

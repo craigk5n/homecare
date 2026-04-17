@@ -28,7 +28,7 @@ interface IntakeRepositoryInterface
     public function recordIntake(
         int $scheduleId,
         ?string $takenTime = null,
-        ?string $note = null
+        ?string $note = null,
     ): int;
 
     public function reassignIntakes(int $fromScheduleId, int $toScheduleId, string $since): int;

@@ -13,7 +13,7 @@ final readonly class CadenceCheck
     public function __construct(
         private IntakeRepositoryInterface $intakes,
         private ScheduleRepositoryInterface $schedules,
-        private ScheduleCalculator $calc
+        private ScheduleCalculator $calc,
     ) {}
 
     /**

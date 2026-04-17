@@ -94,7 +94,7 @@ final class PdfIntakeExporterTest extends TestCase
         $this->assertSame(
             2,
             substr_count($html, '<h2>'),
-            'one h2 heading per calendar day'
+            'one h2 heading per calendar day',
         );
         $this->assertStringContainsString('February 14, 2026', $html);
         $this->assertStringContainsString('February 15, 2026', $html);

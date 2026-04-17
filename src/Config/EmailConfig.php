@@ -27,9 +27,7 @@ final class EmailConfig
     public const DEFAULT_FROM_NAME = 'HomeCare';
     public const DEFAULT_ENABLED = false;
 
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     public function getDsn(): string
     {
@@ -99,7 +97,7 @@ final class EmailConfig
     {
         $rows = $this->db->query(
             'SELECT value FROM hc_config WHERE setting = ?',
-            [$key]
+            [$key],
         );
         if ($rows === []) {
             return null;
@@ -113,17 +111,17 @@ final class EmailConfig
     {
         $existing = $this->db->query(
             'SELECT setting FROM hc_config WHERE setting = ?',
-            [$key]
+            [$key],
         );
         if ($existing === []) {
             $this->db->execute(
                 'INSERT INTO hc_config (setting, value) VALUES (?, ?)',
-                [$key, $value]
+                [$key, $value],
             );
         } else {
             $this->db->execute(
                 'UPDATE hc_config SET value = ? WHERE setting = ?',
-                [$value, $key]
+                [$value, $key],
             );
         }
     }

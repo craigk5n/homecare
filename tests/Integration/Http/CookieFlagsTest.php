@@ -71,7 +71,7 @@ final class CookieFlagsTest extends TestCase
         $this->assertGreaterThan(
             time() + 360 * 86400,
             $expiresUnix,
-            'remember-me cookie should live ~365 days'
+            'remember-me cookie should live ~365 days',
         );
     }
 

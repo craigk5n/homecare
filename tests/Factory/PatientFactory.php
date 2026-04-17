@@ -27,9 +27,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class PatientFactory
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @param PatientOverrides $overrides
@@ -45,7 +43,7 @@ final class PatientFactory
 
         $this->db->execute(
             'INSERT INTO hc_patients (name, is_active) VALUES (?, ?)',
-            [$record['name'], $record['is_active']]
+            [$record['name'], $record['is_active']],
         );
 
         return [

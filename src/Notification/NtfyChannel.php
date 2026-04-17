@@ -24,8 +24,7 @@ final class NtfyChannel implements NotificationChannel
     public function __construct(
         private readonly NtfyConfig $config,
         private readonly HttpClient $http = new CurlHttpClient(),
-    ) {
-    }
+    ) {}
 
     public function name(): string
     {
@@ -66,7 +65,7 @@ final class NtfyChannel implements NotificationChannel
         return $this->http->post(
             $this->config->getUrl(),
             $body,
-            ['Content-Type' => 'application/json']
+            ['Content-Type' => 'application/json'],
         );
     }
 }

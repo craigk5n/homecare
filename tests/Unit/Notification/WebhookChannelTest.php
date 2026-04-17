@@ -27,9 +27,7 @@ final class ProgrammableHttpClient implements HttpClient
     /**
      * @param list<bool> $responses
      */
-    public function __construct(private array $responses)
-    {
-    }
+    public function __construct(private array $responses) {}
 
     public function post(string $url, string $body, array $headers): bool
     {
@@ -52,7 +50,7 @@ final class WebhookChannelTest extends TestCase
         parent::setUp();
         $this->db = new SqliteDatabase();
         $this->db->pdo()->exec(
-            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))'
+            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))',
         );
         $this->sleeps = [];
     }
@@ -86,8 +84,8 @@ final class WebhookChannelTest extends TestCase
             sleeper: function (int $s): void {
                 $this->sleeps[] = $s;
             },
-            clock: static fn (): int => 1_735_689_600,
-            idFactory: static fn (): string => 'hc-webhook-deadbeef',
+            clock: static fn(): int => 1_735_689_600,
+            idFactory: static fn(): string => 'hc-webhook-deadbeef',
         );
 
         return [$channel, $http];
@@ -146,10 +144,10 @@ final class WebhookChannelTest extends TestCase
         $payload = json_decode($http->calls[0]['body'], true);
         $this->assertIsArray($payload);
         $this->assertSame('Medication Reminder', $payload['title']);
-        $this->assertSame('Tobra due in 5 min',  $payload['body']);
-        $this->assertSame(4,                     $payload['priority']);
-        $this->assertSame(['pill', 'daisy'],     $payload['tags']);
-        $this->assertSame(1_735_689_600,         $payload['timestamp']);
+        $this->assertSame('Tobra due in 5 min', $payload['body']);
+        $this->assertSame(4, $payload['priority']);
+        $this->assertSame(['pill', 'daisy'], $payload['tags']);
+        $this->assertSame(1_735_689_600, $payload['timestamp']);
         $this->assertSame('hc-webhook-deadbeef', $payload['message_id']);
     }
 
@@ -195,7 +193,7 @@ final class WebhookChannelTest extends TestCase
         $this->assertCount(2, $http->calls);
         $this->assertSame(
             $http->calls[0]['headers']['X-HomeCare-Signature'],
-            $http->calls[1]['headers']['X-HomeCare-Signature']
+            $http->calls[1]['headers']['X-HomeCare-Signature'],
         );
         $this->assertSame($http->calls[0]['body'], $http->calls[1]['body']);
     }

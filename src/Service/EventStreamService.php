@@ -22,9 +22,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class EventStreamService
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * Fetch audit events with id > $sinceId, optionally filtered to a patient.
@@ -39,7 +37,7 @@ final class EventStreamService
              WHERE id > ?
              ORDER BY id ASC
              LIMIT ?',
-            [$sinceId, $limit]
+            [$sinceId, $limit],
         );
 
         $scheduleIds = $patientId !== null ? $this->getPatientScheduleIds($patientId) : [];
@@ -75,10 +73,10 @@ final class EventStreamService
     {
         $rows = $this->db->query(
             'SELECT id FROM hc_medicine_schedules WHERE patient_id = ?',
-            [$patientId]
+            [$patientId],
         );
 
-        return array_map(static fn (array $r): int => (int) $r['id'], $rows);
+        return array_map(static fn(array $r): int => (int) $r['id'], $rows);
     }
 
     /**

@@ -15,15 +15,13 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class LateDoseAlertLog implements LateDoseAlertLogInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     public function lastDueAt(int $scheduleId): ?string
     {
         $rows = $this->db->query(
             'SELECT last_due_at FROM hc_late_dose_alert_log WHERE schedule_id = ?',
-            [$scheduleId]
+            [$scheduleId],
         );
         if ($rows === []) {
             return null;
@@ -36,19 +34,19 @@ final class LateDoseAlertLog implements LateDoseAlertLogInterface
     {
         $existing = $this->db->query(
             'SELECT schedule_id FROM hc_late_dose_alert_log WHERE schedule_id = ?',
-            [$scheduleId]
+            [$scheduleId],
         );
         if ($existing === []) {
             $this->db->execute(
                 'INSERT INTO hc_late_dose_alert_log
                     (schedule_id, last_due_at, sent_at) VALUES (?, ?, ?)',
-                [$scheduleId, $dueAt, $sentAt]
+                [$scheduleId, $dueAt, $sentAt],
             );
         } else {
             $this->db->execute(
                 'UPDATE hc_late_dose_alert_log
                     SET last_due_at = ?, sent_at = ? WHERE schedule_id = ?',
-                [$dueAt, $sentAt, $scheduleId]
+                [$dueAt, $sentAt, $scheduleId],
             );
         }
     }

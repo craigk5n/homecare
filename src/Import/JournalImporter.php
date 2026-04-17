@@ -22,8 +22,7 @@ final class JournalImporter
     public function __construct(
         private readonly DatabaseInterface $db,
         private readonly CaregiverNoteRepository $notes,
-    ) {
-    }
+    ) {}
 
     /**
      * Return a new plan with each entry's `isDuplicate` flag set according
@@ -39,8 +38,8 @@ final class JournalImporter
         }
 
         $times = array_map(
-            static fn (ParsedJournalEntry $e): string => $e->noteTime,
-            $plan->entries
+            static fn(ParsedJournalEntry $e): string => $e->noteTime,
+            $plan->entries,
         );
         $min = min($times);
         $max = max($times);
@@ -78,7 +77,7 @@ final class JournalImporter
     {
         if (!$plan->isValid()) {
             throw new RuntimeException(
-                'Cannot commit an invalid journal plan; fix file errors first.'
+                'Cannot commit an invalid journal plan; fix file errors first.',
             );
         }
 

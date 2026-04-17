@@ -97,7 +97,7 @@ final class PatientAdherenceReportTest extends DatabaseTestCase
             '2025-12-31',
         );
 
-        $names = array_map(static fn (array $r): string => $r['medicine_name'], $rows);
+        $names = array_map(static fn(array $r): string => $r['medicine_name'], $rows);
         $this->assertContains('Tobramycin', $names);
     }
 
@@ -195,7 +195,7 @@ final class PatientAdherenceReportTest extends DatabaseTestCase
         }
 
         $rows = $this->report->build($this->patientId, '2026-04-14');
-        $names = array_map(static fn (array $r): string => $r['medicine_name'], $rows);
+        $names = array_map(static fn(array $r): string => $r['medicine_name'], $rows);
         // Seeded Sildenafil + three new meds; sorted.
         $this->assertSame(['Apple', 'Mango', 'Sildenafil', 'Zelda'], $names);
     }

@@ -11,7 +11,6 @@ use HomeCare\Notification\NotificationMessage;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\MailerInterface;
-use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\RawMessage;
 
@@ -42,7 +41,7 @@ final class EmailChannelTest extends TestCase
         parent::setUp();
         $this->db = new SqliteDatabase();
         $this->db->pdo()->exec(
-            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))'
+            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))',
         );
     }
 
@@ -81,16 +80,16 @@ final class EmailChannelTest extends TestCase
     public function testIsReadyFollowsConfig(): void
     {
         $this->assertFalse(
-            (new EmailChannel($this->config(enabled: false)))->isReady()
+            (new EmailChannel($this->config(enabled: false)))->isReady(),
         );
         $this->assertFalse(
-            (new EmailChannel($this->config(dsn: '')))->isReady()
+            (new EmailChannel($this->config(dsn: '')))->isReady(),
         );
         $this->assertFalse(
-            (new EmailChannel($this->config(from: '')))->isReady()
+            (new EmailChannel($this->config(from: '')))->isReady(),
         );
         $this->assertTrue(
-            (new EmailChannel($this->config()))->isReady()
+            (new EmailChannel($this->config()))->isReady(),
         );
     }
 
@@ -99,7 +98,9 @@ final class EmailChannelTest extends TestCase
         [$channel, $rec] = $this->channelWithRecorder($this->config(enabled: false));
 
         $ok = $channel->send(new NotificationMessage(
-            'subject', 'body', recipient: 'alice@example.org'
+            'subject',
+            'body',
+            recipient: 'alice@example.org',
         ));
 
         $this->assertFalse($ok);
@@ -134,7 +135,7 @@ final class EmailChannelTest extends TestCase
 
         $email = $rec->sent[0];
         $this->assertSame('Medication Reminder', $email->getSubject());
-        $this->assertSame("Tobra due in 5 min", $email->getTextBody());
+        $this->assertSame('Tobra due in 5 min', $email->getTextBody());
 
         $from = $email->getFrom()[0];
         $this->assertSame('alerts@homecare.local', $from->getAddress());
@@ -183,7 +184,9 @@ final class EmailChannelTest extends TestCase
 
         // Send should not throw — only return false.
         $ok = @$channel->send(new NotificationMessage(
-            'subject', 'body', recipient: 'alice@example.org'
+            'subject',
+            'body',
+            recipient: 'alice@example.org',
         ));
 
         $this->assertFalse($ok);

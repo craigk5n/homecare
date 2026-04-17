@@ -26,7 +26,7 @@ final class UserRepositoryNotificationChannelsTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, is_admin, role, enabled)
              VALUES (?, ?, 'N', 'caregiver', 'Y')",
-            ['alice', (new PasswordHasher())->hash('pw')]
+            ['alice', (new PasswordHasher())->hash('pw')],
         );
     }
 
@@ -46,7 +46,7 @@ final class UserRepositoryNotificationChannelsTest extends DatabaseTestCase
         $this->assertNotNull($row);
         $this->assertSame(
             ['ntfy', 'email'],
-            json_decode($row['notification_channels'], true)
+            json_decode($row['notification_channels'], true),
         );
     }
 
@@ -65,14 +65,14 @@ final class UserRepositoryNotificationChannelsTest extends DatabaseTestCase
         // Repeat names + blank strings should not appear in storage.
         $this->users->updateNotificationChannels(
             'alice',
-            ['email', '', 'email', 'ntfy', '']
+            ['email', '', 'email', 'ntfy', ''],
         );
 
         $row = $this->users->findByLogin('alice');
         $this->assertNotNull($row);
         $this->assertSame(
             ['email', 'ntfy'],
-            json_decode($row['notification_channels'], true)
+            json_decode($row['notification_channels'], true),
         );
     }
 }

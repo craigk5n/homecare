@@ -91,7 +91,7 @@ final class RoleMigrationTest extends TestCase
     private function applyMigration(): void
     {
         $sql = (string) file_get_contents(
-            __DIR__ . '/../../../migrations/002_add_role_to_hc_user.sql'
+            __DIR__ . '/../../../migrations/002_add_role_to_hc_user.sql',
         );
         $this->pdo->exec($sql);
     }

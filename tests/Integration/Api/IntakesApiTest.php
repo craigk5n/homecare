@@ -30,7 +30,7 @@ final class IntakesApiTest extends DatabaseTestCase
             new IntakeRepository($db),
             // Fixed "now" = 2026-04-14 12:00:00 UTC so the days-window math
             // is deterministic across test environments.
-            static fn (): int => 1776470400,
+            static fn(): int => 1776470400,
         );
 
         $patient = (new PatientFactory($db))->create();

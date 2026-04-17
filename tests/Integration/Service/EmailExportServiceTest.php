@@ -57,24 +57,24 @@ final class EmailExportServiceTest extends DatabaseTestCase
         parent::setUp();
 
         $db = $this->getDb();
-        $db->execute("INSERT INTO hc_patients (name) VALUES (?)", ['Daisy']);
+        $db->execute('INSERT INTO hc_patients (name) VALUES (?)', ['Daisy']);
         $this->patientId = $db->lastInsertId();
         $db->execute(
-            "INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)",
-            ['Tobra', '2 drops']
+            'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
+            ['Tobra', '2 drops'],
         );
         $medicineId = $db->lastInsertId();
         $db->execute(
             'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$this->patientId, $medicineId, '2026-01-01', '8h', 1.0]
+            [$this->patientId, $medicineId, '2026-01-01', '8h', 1.0],
         );
         $this->scheduleId = $db->lastInsertId();
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time, note)
              VALUES (?, ?, ?)',
-            [$this->scheduleId, '2026-04-10 08:00:00', 'morning']
+            [$this->scheduleId, '2026-04-10 08:00:00', 'morning'],
         );
 
         // Minimal email config so isReady() passes.
@@ -89,18 +89,18 @@ final class EmailExportServiceTest extends DatabaseTestCase
         $this->currentClock = (int) strtotime('2026-04-16 12:00:00');
 
         $this->service = new EmailExportService(
-            db:            $db,
-            emailConfig:   $config,
-            exportQuery:   new IntakeExportQuery($db),
-            csvExporter:   new CsvIntakeExporter(),
-            fhirExporter:  new FhirIntakeExporter(),
+            db: $db,
+            emailConfig: $config,
+            exportQuery: new IntakeExportQuery($db),
+            csvExporter: new CsvIntakeExporter(),
+            fhirExporter: new FhirIntakeExporter(),
             summaryReport: new MedicationSummaryReport(
                 $db,
                 new InventoryService(new InventoryRepository($db), new ScheduleRepository($db)),
             ),
-            mailer:        $this->mailer,
-            clock:         fn (): string => date('Y-m-d H:i:s', $this->currentClock),
-            audit:         function (string $a, string $e, ?int $id, array $d): void {
+            mailer: $this->mailer,
+            clock: fn(): string => date('Y-m-d H:i:s', $this->currentClock),
+            audit: function (string $a, string $e, ?int $id, array $d): void {
                 /** @var array<string,mixed> $d */
                 $this->auditEvents[] = [
                     'action' => $a,
@@ -121,7 +121,7 @@ final class EmailExportServiceTest extends DatabaseTestCase
                         json_encode($d),
                         '127.0.0.1',
                         date('Y-m-d H:i:s', $this->currentClock),
-                    ]
+                    ],
                 );
             },
         );
@@ -254,8 +254,10 @@ final class EmailExportServiceTest extends DatabaseTestCase
             '2026-04-30',
         );
 
-        $this->assertTrue($bobResult['ok'],
-            "alice's quota must not affect bob");
+        $this->assertTrue(
+            $bobResult['ok'],
+            "alice's quota must not affect bob",
+        );
     }
 
     public function testInvalidRecipientIsRejected(): void
@@ -300,16 +302,16 @@ final class EmailExportServiceTest extends DatabaseTestCase
         $config->setEnabled(false);
 
         $svc = new EmailExportService(
-            db:            $db,
-            emailConfig:   $config,
-            exportQuery:   new IntakeExportQuery($db),
-            csvExporter:   new CsvIntakeExporter(),
-            fhirExporter:  new FhirIntakeExporter(),
+            db: $db,
+            emailConfig: $config,
+            exportQuery: new IntakeExportQuery($db),
+            csvExporter: new CsvIntakeExporter(),
+            fhirExporter: new FhirIntakeExporter(),
             summaryReport: new MedicationSummaryReport(
                 $db,
                 new InventoryService(new InventoryRepository($db), new ScheduleRepository($db)),
             ),
-            mailer:        $this->mailer,
+            mailer: $this->mailer,
         );
 
         $result = $svc->sendCsvExport(

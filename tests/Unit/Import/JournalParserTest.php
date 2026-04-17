@@ -70,7 +70,7 @@ TXT;
         }
         $this->assertSame(
             ['2026-04-14 01:20:00', '2026-04-14 01:35:00'],
-            $nonMonotonic
+            $nonMonotonic,
         );
 
         // First Wednesday entry is ok with right time/note body.
@@ -120,7 +120,7 @@ TXT;
         $this->assertCount(1, $plan->entries);
         $this->assertSame(
             "Ate breakfast.\nHad some water too.\nThen went back to sleep.",
-            $plan->entries[0]->note
+            $plan->entries[0]->note,
         );
     }
 

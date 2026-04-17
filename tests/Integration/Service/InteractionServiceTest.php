@@ -186,7 +186,7 @@ final class InteractionServiceTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_drug_catalog (name, ingredient_names) VALUES (?, ?)',
-            [$name, $ingredients]
+            [$name, $ingredients],
         );
 
         return $this->getDb()->lastInsertId();
@@ -196,7 +196,7 @@ final class InteractionServiceTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_medicines (name, dosage, drug_catalog_id) VALUES (?, ?, ?)',
-            [$name, 'test', $catalogId]
+            [$name, 'test', $catalogId],
         );
 
         return $this->getDb()->lastInsertId();
@@ -206,7 +206,7 @@ final class InteractionServiceTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
-            [$name, 'test']
+            [$name, 'test'],
         );
 
         return $this->getDb()->lastInsertId();
@@ -217,7 +217,7 @@ final class InteractionServiceTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$patientId, $medicineId, '2026-01-01', '1d', 1.0]
+            [$patientId, $medicineId, '2026-01-01', '1d', 1.0],
         );
 
         return $this->getDb()->lastInsertId();
@@ -228,7 +228,7 @@ final class InteractionServiceTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?, ?)',
-            [$patientId, $medicineId, '2025-01-01', '2025-06-01', '1d', 1.0]
+            [$patientId, $medicineId, '2025-01-01', '2025-06-01', '1d', 1.0],
         );
 
         return $this->getDb()->lastInsertId();
@@ -241,7 +241,7 @@ final class InteractionServiceTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_drug_interactions (ingredient_a, ingredient_b, severity, description)
              VALUES (?, ?, ?, ?)',
-            [$ordered[0], $ordered[1], $severity, $description]
+            [$ordered[0], $ordered[1], $severity, $description],
         );
     }
 }

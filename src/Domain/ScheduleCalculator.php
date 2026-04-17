@@ -46,7 +46,7 @@ final class ScheduleCalculator
     public static function calculateSecondsUntilDue(
         string $lastTaken,
         string $frequency,
-        bool $showNegative = false
+        bool $showNegative = false,
     ): int {
         $lastTakenTimestamp = strtotime($lastTaken);
         if ($lastTakenTimestamp === false) {
@@ -118,7 +118,7 @@ final class ScheduleCalculator
     public static function calculateSecondsUntilDueOrNull(
         string $lastTaken,
         ?string $frequency,
-        bool $showNegative = false
+        bool $showNegative = false,
     ): ?int {
         if ($frequency === null) {
             return null;
@@ -240,7 +240,7 @@ final class ScheduleCalculator
         }
 
         $times = array_map('trim', explode(',', $wallClockTimes));
-        $times = array_values(array_filter($times, static fn (string $t): bool => $t !== ''));
+        $times = array_values(array_filter($times, static fn(string $t): bool => $t !== ''));
         sort($times);
 
         return $times;

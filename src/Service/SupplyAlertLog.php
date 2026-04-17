@@ -15,15 +15,13 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class SupplyAlertLog implements SupplyAlertLogInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     public function lastSentAt(int $medicineId): ?string
     {
         $rows = $this->db->query(
             'SELECT last_sent_at FROM hc_supply_alert_log WHERE medicine_id = ?',
-            [$medicineId]
+            [$medicineId],
         );
         if ($rows === []) {
             return null;
@@ -36,17 +34,17 @@ final class SupplyAlertLog implements SupplyAlertLogInterface
     {
         $existing = $this->db->query(
             'SELECT medicine_id FROM hc_supply_alert_log WHERE medicine_id = ?',
-            [$medicineId]
+            [$medicineId],
         );
         if ($existing === []) {
             $this->db->execute(
                 'INSERT INTO hc_supply_alert_log (medicine_id, last_sent_at) VALUES (?, ?)',
-                [$medicineId, $whenDateTime]
+                [$medicineId, $whenDateTime],
             );
         } else {
             $this->db->execute(
                 'UPDATE hc_supply_alert_log SET last_sent_at = ? WHERE medicine_id = ?',
-                [$whenDateTime, $medicineId]
+                [$whenDateTime, $medicineId],
             );
         }
     }

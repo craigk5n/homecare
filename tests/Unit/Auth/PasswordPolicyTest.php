@@ -22,7 +22,7 @@ final class PasswordPolicyTest extends TestCase
         $this->listFile = tempnam(sys_get_temp_dir(), 'pwlist_');
         file_put_contents(
             $this->listFile,
-            "password\n12345678\nqwerty\nletmein\npassword12!\nsecret123!\n"
+            "password\n12345678\nqwerty\nletmein\npassword12!\nsecret123!\n",
         );
     }
 
@@ -41,7 +41,7 @@ final class PasswordPolicyTest extends TestCase
         return PasswordPolicy::withRules(
             $minLength,
             $requireSymbol,
-            $this->listFile
+            $this->listFile,
         );
     }
 
@@ -98,7 +98,7 @@ final class PasswordPolicyTest extends TestCase
 
         $this->assertEmpty(array_filter(
             $errors,
-            static fn (string $e): bool => str_contains($e, 'email')
+            static fn(string $e): bool => str_contains($e, 'email'),
         ));
     }
 
@@ -134,7 +134,7 @@ final class PasswordPolicyTest extends TestCase
 
         $this->assertNotEmpty(array_filter(
             $errors,
-            static fn (string $e): bool => str_contains($e, 'common-password')
+            static fn(string $e): bool => str_contains($e, 'common-password'),
         ));
     }
 
@@ -143,7 +143,7 @@ final class PasswordPolicyTest extends TestCase
         // 6-char pw passes if the minimum is 6.
         $this->assertSame(
             [],
-            $this->policy(minLength: 6, requireSymbol: false)->validate('abc123')
+            $this->policy(minLength: 6, requireSymbol: false)->validate('abc123'),
         );
     }
 
@@ -177,7 +177,7 @@ final class PasswordPolicyTest extends TestCase
     public function testMissingCommonPasswordsFileDegradesGracefully(): void
     {
         $policy = PasswordPolicy::withRules(
-            commonPasswordsFile: '/nonexistent/path.txt'
+            commonPasswordsFile: '/nonexistent/path.txt',
         );
         // Other rules still apply; fixture list is unreachable, so
         // a normally-rejected password now passes rule 4 (the file

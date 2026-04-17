@@ -20,16 +20,14 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class PauseRepository
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     public function create(int $scheduleId, string $startDate, ?string $endDate, ?string $reason): int
     {
         $this->db->execute(
             'INSERT INTO hc_schedule_pauses (schedule_id, start_date, end_date, reason)
              VALUES (?, ?, ?, ?)',
-            [$scheduleId, $startDate, $endDate, $reason]
+            [$scheduleId, $startDate, $endDate, $reason],
         );
 
         return $this->db->lastInsertId();
@@ -39,7 +37,7 @@ final class PauseRepository
     {
         return $this->db->execute(
             'DELETE FROM hc_schedule_pauses WHERE id = ?',
-            [$pauseId]
+            [$pauseId],
         );
     }
 
@@ -53,7 +51,7 @@ final class PauseRepository
              FROM hc_schedule_pauses
              WHERE schedule_id = ?
              ORDER BY start_date DESC',
-            [$scheduleId]
+            [$scheduleId],
         );
 
         return array_map(self::hydrate(...), $rows);
@@ -73,7 +71,7 @@ final class PauseRepository
                AND start_date <= ?
                AND (end_date IS NULL OR end_date >= ?)
              LIMIT 1',
-            [$scheduleId, $date, $date]
+            [$scheduleId, $date, $date],
         );
 
         return $rows !== [];
@@ -96,7 +94,7 @@ final class PauseRepository
                AND start_date <= ?
                AND (end_date IS NULL OR end_date >= ?)
              ORDER BY start_date ASC',
-            [$scheduleId, $endDate, $startDate]
+            [$scheduleId, $endDate, $startDate],
         );
 
         if ($rows === []) {
@@ -127,7 +125,7 @@ final class PauseRepository
             return 0;
         }
 
-        usort($intervals, static fn (array $a, array $b): int => $a[0] <=> $b[0]);
+        usort($intervals, static fn(array $a, array $b): int => $a[0] <=> $b[0]);
 
         $merged = [$intervals[0]];
         for ($i = 1; $i < count($intervals); $i++) {
@@ -160,14 +158,14 @@ final class PauseRepository
                AND start_date <= ?
                AND (end_date IS NULL OR end_date >= ?)
              ORDER BY id',
-            [$scheduleId, $resumeDate, $resumeDate]
+            [$scheduleId, $resumeDate, $resumeDate],
         );
 
         $count = 0;
         foreach ($active as $row) {
             $this->db->execute(
                 'UPDATE hc_schedule_pauses SET end_date = ? WHERE id = ?',
-                [$resumeDate, (int) $row['id']]
+                [$resumeDate, (int) $row['id']],
             );
             $count++;
         }

@@ -16,8 +16,7 @@ final class InteractionsApi
 {
     public function __construct(
         private readonly InteractionServiceInterface $service,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array<string, string> $params GET parameters

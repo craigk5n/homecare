@@ -34,8 +34,7 @@ final class PatientAdherenceReport
     public function __construct(
         private readonly DatabaseInterface $db,
         private readonly AdherenceService $adherence,
-    ) {
-    }
+    ) {}
 
     /**
      * Build the per-schedule adherence snapshot.
@@ -76,7 +75,7 @@ final class PatientAdherenceReport
                AND ms.start_date <= ?
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
              ORDER BY m.name ASC, ms.id ASC",
-            [$patientId, $filterEnd, $filterStart]
+            [$patientId, $filterEnd, $filterStart],
         );
 
         $out = [];

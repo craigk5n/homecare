@@ -26,8 +26,7 @@ final class InteractionService implements InteractionServiceInterface
     public function __construct(
         private readonly InteractionRepositoryInterface $interactions,
         private readonly DatabaseInterface $db,
-    ) {
-    }
+    ) {}
 
     /**
      * Check whether a medicine interacts with any of the patient's active schedules.
@@ -49,7 +48,7 @@ final class InteractionService implements InteractionServiceInterface
                AND ms.medicine_id != ?
                AND (ms.end_date IS NULL OR ms.end_date >= DATE('now'))
                AND ms.start_date <= DATE('now')",
-            [$patientId, $newMedicineId]
+            [$patientId, $newMedicineId],
         );
 
         $results = [];
@@ -97,7 +96,7 @@ final class InteractionService implements InteractionServiceInterface
              WHERE ms.patient_id = ?
                AND (ms.end_date IS NULL OR ms.end_date >= DATE('now'))
                AND ms.start_date <= DATE('now')",
-            [$patientId]
+            [$patientId],
         );
 
         $medicineIngredients = [];
@@ -161,7 +160,7 @@ final class InteractionService implements InteractionServiceInterface
              FROM hc_medicines m
              JOIN hc_drug_catalog dc ON dc.id = m.drug_catalog_id
              WHERE m.id = ?',
-            [$medicineId]
+            [$medicineId],
         );
 
         if ($rows === [] || $rows[0]['ingredient_names'] === null) {
@@ -170,7 +169,7 @@ final class InteractionService implements InteractionServiceInterface
 
         $raw = (string) $rows[0]['ingredient_names'];
         $parts = array_map('trim', explode('/', $raw));
-        $parts = array_filter($parts, static fn (string $s): bool => $s !== '');
+        $parts = array_filter($parts, static fn(string $s): bool => $s !== '');
 
         return array_values(array_map('strtolower', $parts));
     }

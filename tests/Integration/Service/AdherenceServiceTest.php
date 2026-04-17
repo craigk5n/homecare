@@ -64,7 +64,7 @@ final class AdherenceServiceTest extends DatabaseTestCase
         $result = $this->service->calculateAdherence(
             $this->scheduleId,
             '2026-04-01',
-            '2026-04-07'
+            '2026-04-07',
         );
 
         $this->assertSame(21, $result['expected']);
@@ -85,7 +85,7 @@ final class AdherenceServiceTest extends DatabaseTestCase
         $result = $this->service->calculateAdherence(
             $this->scheduleId,
             '2026-04-01',
-            '2026-04-07'
+            '2026-04-07',
         );
 
         $this->assertSame(21, $result['expected']);
@@ -112,7 +112,7 @@ final class AdherenceServiceTest extends DatabaseTestCase
         $result = $this->service->calculateAdherence(
             $this->scheduleId,
             '2026-04-01',
-            '2026-04-01'
+            '2026-04-01',
         );
 
         $this->assertSame(3, $result['expected']); // 1 day * 3 doses
@@ -141,7 +141,7 @@ final class AdherenceServiceTest extends DatabaseTestCase
         $result = $this->service->calculateAdherence(
             $this->scheduleId,
             '2026-04-01',
-            '2026-04-01'
+            '2026-04-01',
         );
         $this->assertSame(1, $result['actual']);
     }
@@ -151,7 +151,7 @@ final class AdherenceServiceTest extends DatabaseTestCase
         $result = $this->service->calculateAdherence(
             $this->scheduleId,
             '2026-04-01',
-            '2026-04-07'
+            '2026-04-07',
         );
         $this->assertSame(21, $result['expected']);
         $this->assertSame(0, $result['actual']);
@@ -206,12 +206,12 @@ final class AdherenceServiceTest extends DatabaseTestCase
         // 4 intakes inside the effective window (2026-04-12 .. 2026-04-14
         // = 3 days * 2 doses = 6 expected).
         foreach (['2026-04-12 08:00:00', '2026-04-12 20:00:00',
-                  '2026-04-13 08:00:00', '2026-04-13 20:00:00'] as $t) {
+            '2026-04-13 08:00:00', '2026-04-13 20:00:00'] as $t) {
             $this->intakes->create(['schedule_id' => $newSched, 'taken_time' => $t]);
         }
         // 4 intakes recorded BEFORE the schedule started -- must be ignored.
         foreach (['2026-04-08 08:00:00', '2026-04-09 08:00:00',
-                  '2026-04-10 08:00:00', '2026-04-11 08:00:00'] as $t) {
+            '2026-04-10 08:00:00', '2026-04-11 08:00:00'] as $t) {
             $this->intakes->create(['schedule_id' => $newSched, 'taken_time' => $t]);
         }
 

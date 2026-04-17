@@ -80,7 +80,7 @@ final class NoteTimeParser
 
         throw new InvalidArgumentException(
             "unrecognised note_time '{$trimmed}'"
-            . " (expected ISO 8601, US date/time, or YYYY-MM-DD)"
+            . ' (expected ISO 8601, US date/time, or YYYY-MM-DD)',
         );
     }
 }

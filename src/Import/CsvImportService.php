@@ -35,8 +35,7 @@ final class CsvImportService
     public function __construct(
         private readonly DatabaseInterface $db,
         private readonly bool $createMissing = false,
-    ) {
-    }
+    ) {}
 
     /**
      * Validate an intake CSV without committing. Returns a preview.
@@ -56,7 +55,7 @@ final class CsvImportService
     public function importIntakes(string $csvContent, int $patientId): array
     {
         return $this->db->transactional(
-            fn () => $this->processIntakes($csvContent, $patientId, dryRun: false)
+            fn() => $this->processIntakes($csvContent, $patientId, dryRun: false),
         );
     }
 
@@ -78,7 +77,7 @@ final class CsvImportService
     public function importSchedules(string $csvContent): array
     {
         return $this->db->transactional(
-            fn () => $this->processSchedules($csvContent, dryRun: false)
+            fn() => $this->processSchedules($csvContent, dryRun: false),
         );
     }
 
@@ -138,7 +137,7 @@ final class CsvImportService
             if (!$dryRun) {
                 $this->db->execute(
                     'INSERT INTO hc_medicine_intake (schedule_id, taken_time, note) VALUES (?, ?, ?)',
-                    [$scheduleId, $takenTime, $note !== '' ? $note : null]
+                    [$scheduleId, $takenTime, $note !== '' ? $note : null],
                 );
             }
 
@@ -205,7 +204,7 @@ final class CsvImportService
                 $this->db->execute(
                     'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose)
                      VALUES (?, ?, ?, ?, ?, ?)',
-                    [$patientId, $medicineId, $startDate, $endDate !== '' ? $endDate : null, $frequency, (float) $unitPerDose]
+                    [$patientId, $medicineId, $startDate, $endDate !== '' ? $endDate : null, $frequency, (float) $unitPerDose],
                 );
             }
 
@@ -235,7 +234,7 @@ final class CsvImportService
             return [];
         }
 
-        $header = array_map(static fn (string|null $v): string => trim((string) $v), $header);
+        $header = array_map(static fn(?string $v): string => trim((string) $v), $header);
         $rows = [];
         while (($line = fgetcsv($handle)) !== false) {
             if ($line === [null]) {
@@ -271,7 +270,7 @@ final class CsvImportService
     {
         $rows = $this->db->query(
             'SELECT id FROM hc_patients WHERE name = ? LIMIT 1',
-            [$name]
+            [$name],
         );
 
         if ($rows !== []) {
@@ -291,7 +290,7 @@ final class CsvImportService
     {
         $rows = $this->db->query(
             'SELECT id FROM hc_medicines WHERE name = ? LIMIT 1',
-            [$name]
+            [$name],
         );
 
         if ($rows !== []) {
@@ -301,7 +300,7 @@ final class CsvImportService
         if ($this->createMissing && $dosage !== '') {
             $this->db->execute(
                 'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
-                [$name, $dosage]
+                [$name, $dosage],
             );
 
             return $this->db->lastInsertId();
@@ -318,7 +317,7 @@ final class CsvImportService
                AND start_date <= ?
                AND (end_date IS NULL OR end_date >= ?)
              ORDER BY id DESC LIMIT 1',
-            [$patientId, $medicineId, $date, $date]
+            [$patientId, $medicineId, $date, $date],
         );
 
         return $rows !== [] ? (int) $rows[0]['id'] : null;
@@ -328,7 +327,7 @@ final class CsvImportService
     {
         $rows = $this->db->query(
             'SELECT 1 FROM hc_medicine_intake WHERE schedule_id = ? AND taken_time = ? LIMIT 1',
-            [$scheduleId, $takenTime]
+            [$scheduleId, $takenTime],
         );
 
         return $rows !== [];

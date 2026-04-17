@@ -238,7 +238,7 @@ final class DrugCatalogRepositoryTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_drug_catalog (rxnorm_id, name) VALUES (?, ?)',
-            [$rxnormId, $name]
+            [$rxnormId, $name],
         );
 
         return $this->getDb()->lastInsertId();
@@ -251,7 +251,7 @@ final class DrugCatalogRepositoryTest extends DatabaseTestCase
     ): int {
         $this->getDb()->execute(
             'INSERT INTO hc_drug_catalog (rxnorm_id, name, generic) VALUES (?, ?, ?)',
-            [$rxnormId, $name, $generic ? 'Y' : 'N']
+            [$rxnormId, $name, $generic ? 'Y' : 'N'],
         );
 
         return $this->getDb()->lastInsertId();
@@ -261,7 +261,7 @@ final class DrugCatalogRepositoryTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_drug_catalog (rxnorm_id, ndc, name) VALUES (?, ?, ?)',
-            [$rxnormId, $ndc, $name]
+            [$rxnormId, $ndc, $name],
         );
 
         return $this->getDb()->lastInsertId();

@@ -29,9 +29,7 @@ final class ApiKeyAuth
      */
     public const KEY_BYTES = 32;
 
-    public function __construct(private readonly UserRepositoryInterface $users)
-    {
-    }
+    public function __construct(private readonly UserRepositoryInterface $users) {}
 
     /**
      * Authenticate an inbound Authorization header.

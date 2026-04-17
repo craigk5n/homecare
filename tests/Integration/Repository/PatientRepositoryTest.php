@@ -67,8 +67,8 @@ final class PatientRepositoryTest extends DatabaseTestCase
         }
 
         $names = array_map(
-            static fn (array $p): string => $p['name'],
-            $this->repo->getAll()
+            static fn(array $p): string => $p['name'],
+            $this->repo->getAll(),
         );
 
         $this->assertSame(['Apollo', 'Milo', 'Zelda'], $names);

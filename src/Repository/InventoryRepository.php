@@ -27,9 +27,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class InventoryRepository implements InventoryRepositoryInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * Product-catalog name for a medicine, or null if the medicine is missing.
@@ -42,7 +40,7 @@ final class InventoryRepository implements InventoryRepositoryInterface
     {
         $rows = $this->db->query(
             'SELECT name FROM hc_medicines WHERE id = ?',
-            [$medicineId]
+            [$medicineId],
         );
 
         return $rows === [] ? null : (string) $rows[0]['name'];
@@ -59,7 +57,7 @@ final class InventoryRepository implements InventoryRepositoryInterface
              WHERE medicine_id = ?
              ORDER BY recorded_at DESC, id DESC
              LIMIT 1',
-            [$medicineId]
+            [$medicineId],
         );
 
         if ($rows === []) {
@@ -89,7 +87,7 @@ final class InventoryRepository implements InventoryRepositoryInterface
              FROM hc_medicine_intake i
              JOIN hc_medicine_schedules s ON s.id = i.schedule_id
              WHERE s.medicine_id = ? AND i.taken_time > ?',
-            [$medicineId, $since]
+            [$medicineId, $since],
         );
 
         if ($rows === [] || $rows[0]['total_consumed'] === null) {

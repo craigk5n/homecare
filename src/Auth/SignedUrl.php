@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Token-signed URL generator and verifier for shareable feeds and exports.
  *
@@ -14,6 +15,7 @@ declare(strict_types=1);
 namespace HomeCare\Auth;
 
 use HomeCare\Database\DbiAdapter;
+
 use const JSON_UNESCAPED_SLASHES;
 
 final class SignedUrl

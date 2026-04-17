@@ -27,11 +27,11 @@ final class ChannelResolverTest extends TestCase
 
         $this->assertSame(
             ['ntfy', 'email', 'webhook'],
-            $resolver->resolveFor('[]')
+            $resolver->resolveFor('[]'),
         );
         $this->assertSame(
             ['ntfy', 'email', 'webhook'],
-            $resolver->resolveFor('')
+            $resolver->resolveFor(''),
         );
     }
 
@@ -41,7 +41,7 @@ final class ChannelResolverTest extends TestCase
 
         $this->assertSame(
             ['email'],
-            $resolver->resolveFor('["email"]')
+            $resolver->resolveFor('["email"]'),
         );
     }
 
@@ -51,7 +51,7 @@ final class ChannelResolverTest extends TestCase
 
         $this->assertSame(
             ['email', 'ntfy'],
-            $resolver->resolveFor('["email","ntfy"]')
+            $resolver->resolveFor('["email","ntfy"]'),
         );
     }
 
@@ -77,7 +77,7 @@ final class ChannelResolverTest extends TestCase
         // pick up the channels that are.
         $this->assertSame(
             ['ntfy'],
-            $resolver->resolveFor('["smoke-signals","ntfy"]')
+            $resolver->resolveFor('["smoke-signals","ntfy"]'),
         );
     }
 
@@ -87,7 +87,7 @@ final class ChannelResolverTest extends TestCase
 
         $this->assertSame(
             ['ntfy', 'email', 'webhook'],
-            $resolver->resolveFor('not-json')
+            $resolver->resolveFor('not-json'),
         );
     }
 
@@ -98,7 +98,7 @@ final class ChannelResolverTest extends TestCase
         // "email", 42, null, "" → only "email" and "ntfy" survive.
         $this->assertSame(
             ['email', 'ntfy'],
-            $resolver->resolveFor('["email",42,null,"","ntfy"]')
+            $resolver->resolveFor('["email",42,null,"","ntfy"]'),
         );
     }
 

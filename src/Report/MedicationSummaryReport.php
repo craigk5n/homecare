@@ -56,8 +56,7 @@ final class MedicationSummaryReport
     public function __construct(
         private readonly DatabaseInterface $db,
         private readonly InventoryService $inventory,
-    ) {
-    }
+    ) {}
 
     /**
      * @return Summary|null Null when the patient does not exist.
@@ -65,7 +64,7 @@ final class MedicationSummaryReport
     public function build(
         int $patientId,
         string $today,
-        int $discontinuedWindowDays = self::DEFAULT_DISCONTINUED_WINDOW_DAYS
+        int $discontinuedWindowDays = self::DEFAULT_DISCONTINUED_WINDOW_DAYS,
     ): ?array {
         $patient = $this->fetchPatient($patientId);
         if ($patient === null) {
@@ -89,7 +88,7 @@ final class MedicationSummaryReport
     {
         $rows = $this->db->query(
             'SELECT id, name, species, weight_kg, weight_as_of FROM hc_patients WHERE id = ?',
-            [$patientId]
+            [$patientId],
         );
         if ($rows === []) {
             return null;
@@ -118,7 +117,7 @@ final class MedicationSummaryReport
                AND ms.start_date <= ?
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
              ORDER BY m.name ASC',
-            [$patientId, $today, $today]
+            [$patientId, $today, $today],
         );
 
         $active = [];
@@ -168,7 +167,7 @@ final class MedicationSummaryReport
                AND ms.end_date < ?
                AND ms.end_date >= ?
              ORDER BY ms.end_date DESC, m.name ASC',
-            [$patientId, $today, $cutoff]
+            [$patientId, $today, $cutoff],
         );
 
         $out = [];

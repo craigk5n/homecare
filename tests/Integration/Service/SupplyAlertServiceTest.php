@@ -30,7 +30,7 @@ final class SupplyAlertServiceTest extends DatabaseTestCase
             $db,
             new InventoryService(new InventoryRepository($db), new ScheduleRepository($db)),
             $this->log,
-            static fn (): string => '2026-04-14 12:00:00',
+            static fn(): string => '2026-04-14 12:00:00',
         );
 
         $this->patientId = (new PatientFactory($db))->create()['id'];
@@ -132,7 +132,7 @@ final class SupplyAlertServiceTest extends DatabaseTestCase
         $alerts = $this->service->findPendingAlerts(thresholdDays: 7);
 
         $this->assertCount(2, $alerts);
-        $names = array_map(static fn (\HomeCare\Service\SupplyAlert $a): string => $a->medicineName, $alerts);
+        $names = array_map(static fn(\HomeCare\Service\SupplyAlert $a): string => $a->medicineName, $alerts);
         $this->assertSame(['A-Low', 'B-Also-Low'], $names);
     }
 

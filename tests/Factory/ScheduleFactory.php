@@ -42,9 +42,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class ScheduleFactory
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @param ScheduleOverrides $overrides
@@ -90,7 +88,7 @@ final class ScheduleFactory
                 $doseBasis,
                 $cycleOn,
                 $cycleOff,
-            ]
+            ],
         );
 
         return [

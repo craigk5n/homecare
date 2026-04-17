@@ -48,8 +48,7 @@ final class SecurityNotifier
         private readonly UserRepositoryInterface $users,
         private readonly NotificationChannel $emailChannel,
         private readonly string $baseUrl = '',
-    ) {
-    }
+    ) {}
 
     /**
      * Dispatch an email for $event. Every exception is caught.
@@ -75,10 +74,10 @@ final class SecurityNotifier
 
         try {
             $this->emailChannel->send(new NotificationMessage(
-                title:     $template['subject'],
-                body:      $template['body'],
-                priority:  NotificationMessage::PRIORITY_HIGH,
-                tags:      ['security'],
+                title: $template['subject'],
+                body: $template['body'],
+                priority: NotificationMessage::PRIORITY_HIGH,
+                tags: ['security'],
                 recipient: $user['email'],
             ));
         } catch (\Throwable $e) {
@@ -90,7 +89,7 @@ final class SecurityNotifier
     private function isEnabled(): bool
     {
         $rows = $this->db->query(
-            "SELECT value FROM hc_config WHERE setting = 'security_email_enabled'"
+            "SELECT value FROM hc_config WHERE setting = 'security_email_enabled'",
         );
         if ($rows === []) {
             // Default ON — spec: "Operator can mute" means the setting
@@ -126,7 +125,7 @@ final class SecurityNotifier
                 return [
                     'subject' => 'Two-factor authentication disabled on your HomeCare account',
                     'body' => "Hi {$login},\n\n"
-                        . "Two-factor authentication was just turned off on your "
+                        . 'Two-factor authentication was just turned off on your '
                         . "HomeCare account at {$when}."
                         . $footer,
                 ];
@@ -143,7 +142,7 @@ final class SecurityNotifier
                 return [
                     'subject' => 'HomeCare API key generated',
                     'body' => "Hi {$login},\n\n"
-                        . "A new API key was just generated on your HomeCare "
+                        . 'A new API key was just generated on your HomeCare '
                         . "account at {$when}."
                         . $footer,
                 ];
@@ -153,7 +152,7 @@ final class SecurityNotifier
                     'subject' => 'HomeCare API key revoked',
                     'body' => "Hi {$login},\n\n"
                         . "Your HomeCare API key was just revoked at {$when}. "
-                        . "Any scripts using it are now returning 401."
+                        . 'Any scripts using it are now returning 401.'
                         . $footer,
                 ];
 
@@ -162,9 +161,9 @@ final class SecurityNotifier
                     'subject' => 'HomeCare account locked after repeated failed logins',
                     'body' => "Hi {$login},\n\n"
                         . "Your HomeCare account was just locked at {$when} "
-                        . "after too many failed login attempts. It will unlock "
+                        . 'after too many failed login attempts. It will unlock '
                         . "automatically in 15 minutes.\n\n"
-                        . "If this was you mistyping a password, no action is "
+                        . 'If this was you mistyping a password, no action is '
                         . "needed. If it wasn't, someone may be trying to break "
                         . "in — change your password when you're next logged in."
                         . $footer,

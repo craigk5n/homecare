@@ -28,7 +28,7 @@ final class AuthApiTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, is_admin, role, enabled)
              VALUES (?, '', 'N', 'caregiver', 'Y')",
-            ['alice']
+            ['alice'],
         );
     }
 

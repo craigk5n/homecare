@@ -23,9 +23,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class IntakeFactory
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @param IntakeOverrides $overrides
@@ -41,7 +39,7 @@ final class IntakeFactory
 
         $this->db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time, note) VALUES (?, ?, ?)',
-            [$overrides['schedule_id'], $takenTime, $note]
+            [$overrides['schedule_id'], $takenTime, $note],
         );
 
         return [

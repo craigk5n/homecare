@@ -44,8 +44,7 @@ final class AdherenceService
         private readonly ScheduleRepositoryInterface $schedules,
         private readonly IntakeRepositoryInterface $intakes,
         private readonly ?PauseRepository $pauses = null,
-    ) {
-    }
+    ) {}
 
     /**
      * @return AdherenceReport
@@ -107,7 +106,7 @@ final class AdherenceService
                 $pausedDays = $this->pauses->countPausedDaysInRange(
                     $scheduleId,
                     $effectiveStart,
-                    $effectiveEnd
+                    $effectiveEnd,
                 );
                 $coverageDays = max(0, $coverageDays - $pausedDays);
             }
@@ -128,7 +127,7 @@ final class AdherenceService
             $actual = $this->intakes->countIntakesBetween(
                 $scheduleId,
                 $effectiveStart . ' 00:00:00',
-                $effectiveEnd . ' 23:59:59'
+                $effectiveEnd . ' 23:59:59',
             );
         }
 

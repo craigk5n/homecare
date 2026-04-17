@@ -30,7 +30,7 @@ final class LoginRateLimitTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, is_admin, role, enabled)
              VALUES (?, ?, 'N', 'caregiver', 'Y')",
-            ['alice', $this->hasher->hash('correct-horse')]
+            ['alice', $this->hasher->hash('correct-horse')],
         );
     }
 
@@ -69,20 +69,26 @@ final class LoginRateLimitTest extends DatabaseTestCase
         // Attempts 1–4: failed, not yet locked.
         for ($i = 0; $i < 4; $i++) {
             $r = $auth->attemptLogin('alice', 'wrong');
-            $this->assertFalse($r->justLockedOut,
-                "attempt {$i} should not be flagged as just-locked-out");
+            $this->assertFalse(
+                $r->justLockedOut,
+                "attempt {$i} should not be flagged as just-locked-out",
+            );
         }
 
         // Attempt 5: this is the one that trips the lockout.
         $fifth = $auth->attemptLogin('alice', 'wrong');
-        $this->assertTrue($fifth->justLockedOut,
-            'the Nth failure that trips applyLockout must be edge-triggered');
+        $this->assertTrue(
+            $fifth->justLockedOut,
+            'the Nth failure that trips applyLockout must be edge-triggered',
+        );
 
         // Subsequent attempts while locked must NOT re-fire the flag,
         // otherwise the security email would fire on every attempt.
         $sixth = $auth->attemptLogin('alice', 'wrong');
-        $this->assertFalse($sixth->justLockedOut,
-            'already-locked attempts must not re-fire justLockedOut');
+        $this->assertFalse(
+            $sixth->justLockedOut,
+            'already-locked attempts must not re-fire justLockedOut',
+        );
     }
 
     public function testLoginAttemptWhileLockedIsRejected(): void
@@ -161,7 +167,7 @@ final class LoginRateLimitTest extends DatabaseTestCase
         return new AuthService(
             $this->users,
             $this->hasher,
-            fn (): int => $this->now,
+            fn(): int => $this->now,
         );
     }
 }

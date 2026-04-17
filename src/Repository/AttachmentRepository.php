@@ -34,9 +34,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class AttachmentRepository implements AttachmentRepositoryInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @return Attachment|null
@@ -47,7 +45,7 @@ final class AttachmentRepository implements AttachmentRepositoryInterface
             'SELECT id, owner_type, owner_id, filename, mime_type, size_bytes,
                     sha256, storage_path, uploaded_by, uploaded_at
              FROM hc_attachments WHERE id = ?',
-            [$id]
+            [$id],
         );
 
         return $rows === [] ? null : self::hydrate($rows[0]);
@@ -64,7 +62,7 @@ final class AttachmentRepository implements AttachmentRepositoryInterface
              FROM hc_attachments
              WHERE owner_type = ? AND owner_id = ?
              ORDER BY uploaded_at DESC',
-            [$ownerType, $ownerId]
+            [$ownerType, $ownerId],
         );
 
         return array_map(self::hydrate(...), $rows);
@@ -88,7 +86,7 @@ final class AttachmentRepository implements AttachmentRepositoryInterface
                 $data['sha256'],
                 $data['storage_path'],
                 $data['uploaded_by'],
-            ]
+            ],
         );
 
         return $this->db->lastInsertId();

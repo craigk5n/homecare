@@ -16,9 +16,7 @@ use HomeCare\Repository\UserRepositoryInterface;
  */
 final class ApiAuth
 {
-    public function __construct(private readonly UserRepositoryInterface $users)
-    {
-    }
+    public function __construct(private readonly UserRepositoryInterface $users) {}
 
     /**
      * @param array<string,mixed> $server Typically `$_SERVER`.

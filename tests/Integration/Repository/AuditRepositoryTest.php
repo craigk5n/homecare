@@ -34,16 +34,16 @@ final class AuditRepositoryTest extends DatabaseTestCase
     {
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'admin',
-            static fn (): string => '10.0.0.1',
-            static fn (): string => '2026-04-13 10:00:00',
+            static fn(): string => 'admin',
+            static fn(): string => '10.0.0.1',
+            static fn(): string => '2026-04-13 10:00:00',
         );
         $logger->log('user.login', 'user', null);
         $logger2 = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'admin',
-            static fn (): string => '10.0.0.1',
-            static fn (): string => '2026-04-13 11:00:00',
+            static fn(): string => 'admin',
+            static fn(): string => '10.0.0.1',
+            static fn(): string => '2026-04-13 11:00:00',
         );
         $logger2->log('user.logout', 'user', null);
 
@@ -248,8 +248,8 @@ final class AuditRepositoryTest extends DatabaseTestCase
     ): void {
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => $login,
-            static fn (): string => '10.0.0.1',
+            static fn(): string => $login,
+            static fn(): string => '10.0.0.1',
         );
         $logger->log($action, $entityType, $entityId);
     }
@@ -263,9 +263,9 @@ final class AuditRepositoryTest extends DatabaseTestCase
     ): void {
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => $login,
-            static fn (): string => '10.0.0.1',
-            static fn (): string => $createdAt,
+            static fn(): string => $login,
+            static fn(): string => '10.0.0.1',
+            static fn(): string => $createdAt,
         );
         $logger->log($action, $entityType, $entityId);
     }

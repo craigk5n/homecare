@@ -33,7 +33,7 @@ final class FhirIntakeExportTest extends DatabaseTestCase
         $db = $this->getDb();
         $this->query = new IntakeExportQuery($db);
         $this->fhir = new FhirIntakeExporter(
-            static fn (): string => '2026-04-13T12:00:00Z',
+            static fn(): string => '2026-04-13T12:00:00Z',
         );
 
         $this->patientId = (new PatientFactory($db))->create(['name' => 'Daisy'])['id'];
@@ -97,17 +97,17 @@ final class FhirIntakeExportTest extends DatabaseTestCase
         $this->assertSame(
             1,
             substr_count($json, '"resourceType": "Patient"'),
-            'one Patient resource for a single patient across three intakes'
+            'one Patient resource for a single patient across three intakes',
         );
         $this->assertSame(
             1,
             substr_count($json, '"resourceType": "Medication"'),
-            'one Medication resource for a single medicine across three intakes'
+            'one Medication resource for a single medicine across three intakes',
         );
         $this->assertSame(
             3,
             substr_count($json, '"resourceType": "MedicationAdministration"'),
-            'one MedicationAdministration per intake'
+            'one MedicationAdministration per intake',
         );
     }
 
@@ -119,7 +119,7 @@ final class FhirIntakeExportTest extends DatabaseTestCase
         ]);
 
         $json = $this->fhir->toJson(
-            $this->query->fetch($this->patientId, '2026-04-01', '2026-04-30')
+            $this->query->fetch($this->patientId, '2026-04-01', '2026-04-30'),
         );
 
         $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
@@ -136,7 +136,7 @@ final class FhirIntakeExportTest extends DatabaseTestCase
         ]);
 
         $json = $this->fhir->toJson(
-            $this->query->fetch($this->patientId, '2026-04-01', '2026-04-30')
+            $this->query->fetch($this->patientId, '2026-04-01', '2026-04-30'),
         );
 
         // A `note` field would serialise as `"note": [...]`. Its absence

@@ -34,7 +34,7 @@ final class TotpService
         ?callable $randomCodeFactory = null,
     ) {
         $this->randomCodeFactory = $randomCodeFactory
-            ?? static fn (): string => self::defaultRecoveryCode();
+            ?? static fn(): string => self::defaultRecoveryCode();
     }
 
     /**
@@ -133,7 +133,8 @@ final class TotpService
      * @return list<string>|null
      */
     public function consumeRecoveryCode(
-        #[\SensitiveParameter] string $code,
+        #[\SensitiveParameter]
+        string $code,
         array $storedHashes,
     ): ?array {
         $needle = self::hashRecoveryCode($code);

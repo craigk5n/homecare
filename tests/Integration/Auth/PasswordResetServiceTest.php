@@ -21,9 +21,7 @@ final class RecordingChannel implements NotificationChannel
     /** @var list<NotificationMessage> */
     public array $sent = [];
 
-    public function __construct(private readonly bool $ready = true)
-    {
-    }
+    public function __construct(private readonly bool $ready = true) {}
 
     public function name(): string
     {
@@ -85,7 +83,7 @@ final class PasswordResetServiceTest extends DatabaseTestCase
             users: $this->users,
             hasher: $this->hasher,
             emailChannel: $this->channel,
-            clock: fn (): int => $this->clock,
+            clock: fn(): int => $this->clock,
             tokenFactory: function () use (&$idx, $tokens): string {
                 return $tokens[$idx++] ?? 'tok-overflow-' . $idx;
             },
@@ -98,7 +96,7 @@ final class PasswordResetServiceTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, email, is_admin, role, enabled)
              VALUES (?, ?, ?, 'N', 'caregiver', 'Y')",
-            ['alice', $this->hasher->hash('old-pw'), 'alice@example.org']
+            ['alice', $this->hasher->hash('old-pw'), 'alice@example.org'],
         );
     }
 
@@ -144,7 +142,7 @@ final class PasswordResetServiceTest extends DatabaseTestCase
         $this->assertSame([], $this->channel->sent);
         $this->assertSame(
             'password_reset.requested_unknown',
-            $this->auditLog[0]['action']
+            $this->auditLog[0]['action'],
         );
     }
 
@@ -152,7 +150,7 @@ final class PasswordResetServiceTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             "UPDATE hc_user SET enabled = 'N' WHERE login = ?",
-            ['alice']
+            ['alice'],
         );
 
         $this->service->initiate('alice', 'https://app.test');
@@ -163,8 +161,8 @@ final class PasswordResetServiceTest extends DatabaseTestCase
     public function testInitiateSilentWhenUserHasNoEmail(): void
     {
         $this->getDb()->execute(
-            "UPDATE hc_user SET email = NULL WHERE login = ?",
-            ['alice']
+            'UPDATE hc_user SET email = NULL WHERE login = ?',
+            ['alice'],
         );
 
         $this->service->initiate('alice', 'https://app.test');
@@ -172,7 +170,7 @@ final class PasswordResetServiceTest extends DatabaseTestCase
         $this->assertSame([], $this->channel->sent);
         $this->assertSame(
             'password_reset.requested_no_email',
-            $this->auditLog[0]['action']
+            $this->auditLog[0]['action'],
         );
     }
 
@@ -215,7 +213,7 @@ final class PasswordResetServiceTest extends DatabaseTestCase
 
         $rateLimited = array_filter(
             $this->auditLog,
-            static fn (array $r): bool => $r['action'] === 'password_reset.rate_limited'
+            static fn(array $r): bool => $r['action'] === 'password_reset.rate_limited',
         );
         $this->assertCount(1, $rateLimited);
     }
@@ -242,8 +240,8 @@ final class PasswordResetServiceTest extends DatabaseTestCase
         $this->service->initiate('alice', 'https://app.test');
         $hash = PasswordResetService::hashToken('tok0');
         $this->getDb()->execute(
-            "UPDATE hc_password_reset_tokens SET used_at = ? WHERE token_hash = ?",
-            [date('Y-m-d H:i:s', $this->clock - 10), $hash]
+            'UPDATE hc_password_reset_tokens SET used_at = ? WHERE token_hash = ?',
+            [date('Y-m-d H:i:s', $this->clock - 10), $hash],
         );
 
         $this->assertNull($this->service->validate('tok0'));
@@ -254,11 +252,11 @@ final class PasswordResetServiceTest extends DatabaseTestCase
     {
         $this->assertSame(
             PasswordResetService::hashToken('abc'),
-            PasswordResetService::hashToken('abc')
+            PasswordResetService::hashToken('abc'),
         );
         $this->assertNotSame(
             PasswordResetService::hashToken('abc'),
-            PasswordResetService::hashToken('abd')
+            PasswordResetService::hashToken('abd'),
         );
     }
 }

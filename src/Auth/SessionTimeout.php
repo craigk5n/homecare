@@ -27,7 +27,7 @@ final class SessionTimeout
     {
         if ($timeoutMinutes <= 0) {
             throw new InvalidArgumentException(
-                "Session timeout must be positive; got {$timeoutMinutes}"
+                "Session timeout must be positive; got {$timeoutMinutes}",
             );
         }
 

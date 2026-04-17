@@ -13,9 +13,9 @@ final class AuditLoggerTest extends DatabaseTestCase
     {
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'admin',
-            static fn (): string => '10.0.0.5',
-            static fn (): string => '2026-04-13 15:00:00',
+            static fn(): string => 'admin',
+            static fn(): string => '10.0.0.5',
+            static fn(): string => '2026-04-13 15:00:00',
         );
 
         $logger->log('intake.recorded', 'schedule', 42, ['source' => 'web', 'dose' => 1.5]);
@@ -39,8 +39,8 @@ final class AuditLoggerTest extends DatabaseTestCase
     {
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'alice',
-            static fn (): ?string => null,
+            static fn(): string => 'alice',
+            static fn(): ?string => null,
         );
         $logger->log('user.login');
 
@@ -68,7 +68,7 @@ final class AuditLoggerTest extends DatabaseTestCase
     {
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'admin',
+            static fn(): string => 'admin',
         );
 
         $logger->log('schedule.created', 'schedule', 1);
@@ -76,10 +76,10 @@ final class AuditLoggerTest extends DatabaseTestCase
         $logger->log('intake.recorded', 'schedule', 1);
 
         $rows = $this->getDb()->query('SELECT action FROM hc_audit_log ORDER BY id');
-        $actions = array_map(static fn (array $r): string => (string) $r['action'], $rows);
+        $actions = array_map(static fn(array $r): string => (string) $r['action'], $rows);
         $this->assertSame(
             ['schedule.created', 'dosage.adjusted', 'intake.recorded'],
-            $actions
+            $actions,
         );
     }
 
@@ -91,7 +91,7 @@ final class AuditLoggerTest extends DatabaseTestCase
 
         $logger = new AuditLogger(
             $this->getDb(),
-            static fn (): string => 'admin',
+            static fn(): string => 'admin',
         );
 
         // Capture error_log() output -- set to a temp file for the duration.

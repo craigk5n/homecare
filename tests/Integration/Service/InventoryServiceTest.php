@@ -39,7 +39,7 @@ final class InventoryServiceTest extends DatabaseTestCase
         $db->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$patientId, $this->medicineId, '2026-01-01', '8h', 1.0]
+            [$patientId, $this->medicineId, '2026-01-01', '8h', 1.0],
         );
         $this->scheduleId = $db->lastInsertId();
     }
@@ -50,20 +50,20 @@ final class InventoryServiceTest extends DatabaseTestCase
         $db->execute(
             'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock, recorded_at)
              VALUES (?, ?, ?, ?)',
-            [$this->medicineId, 30, 30, '2026-04-01 00:00:00']
+            [$this->medicineId, 30, 30, '2026-04-01 00:00:00'],
         );
         // Three intakes after the inventory snapshot, each consuming unit_per_dose 1.0.
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$this->scheduleId, '2026-04-05 08:00:00']
+            [$this->scheduleId, '2026-04-05 08:00:00'],
         );
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$this->scheduleId, '2026-04-06 08:00:00']
+            [$this->scheduleId, '2026-04-06 08:00:00'],
         );
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$this->scheduleId, '2026-04-07 08:00:00']
+            [$this->scheduleId, '2026-04-07 08:00:00'],
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $this->scheduleId);
@@ -93,23 +93,23 @@ final class InventoryServiceTest extends DatabaseTestCase
         $db->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [1, $this->medicineId, '2026-04-05', '12h', 2.0]
+            [1, $this->medicineId, '2026-04-05', '12h', 2.0],
         );
         $secondSchedule = $db->lastInsertId();
 
         $db->execute(
             'INSERT INTO hc_medicine_inventory (medicine_id, quantity, current_stock, recorded_at)
              VALUES (?, ?, ?, ?)',
-            [$this->medicineId, 20, 20, '2026-04-01 00:00:00']
+            [$this->medicineId, 20, 20, '2026-04-01 00:00:00'],
         );
 
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$this->scheduleId, '2026-04-03 08:00:00']    // 1 unit
+            [$this->scheduleId, '2026-04-03 08:00:00'],    // 1 unit
         );
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$secondSchedule, '2026-04-06 08:00:00']      // 2 units
+            [$secondSchedule, '2026-04-06 08:00:00'],      // 2 units
         );
 
         $report = $this->service->calculateRemaining($this->medicineId, $this->scheduleId);

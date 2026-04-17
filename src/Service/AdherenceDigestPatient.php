@@ -19,6 +19,5 @@ final readonly class AdherenceDigestPatient
     public function __construct(
         public string $patientName,
         public array $rows = [],
-    ) {
-    }
+    ) {}
 }

@@ -24,15 +24,13 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class CaregiverNoteRepository
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     public function create(int $patientId, string $note, string $noteTime): int
     {
         $this->db->execute(
             'INSERT INTO hc_caregiver_notes (patient_id, note, note_time) VALUES (?, ?, ?)',
-            [$patientId, $note, $noteTime]
+            [$patientId, $note, $noteTime],
         );
 
         return $this->db->lastInsertId();
@@ -42,7 +40,7 @@ final class CaregiverNoteRepository
     {
         return $this->db->execute(
             'UPDATE hc_caregiver_notes SET note = ?, note_time = ? WHERE id = ?',
-            [$note, $noteTime, $id]
+            [$note, $noteTime, $id],
         );
     }
 
@@ -50,7 +48,7 @@ final class CaregiverNoteRepository
     {
         return $this->db->execute(
             'DELETE FROM hc_caregiver_notes WHERE id = ?',
-            [$id]
+            [$id],
         );
     }
 
@@ -62,7 +60,7 @@ final class CaregiverNoteRepository
         $rows = $this->db->query(
             'SELECT id, patient_id, note, note_time, created_at
              FROM hc_caregiver_notes WHERE id = ?',
-            [$id]
+            [$id],
         );
 
         return $rows === [] ? null : self::hydrate($rows[0]);
@@ -82,7 +80,7 @@ final class CaregiverNoteRepository
              WHERE patient_id = ?
              ORDER BY note_time DESC, id DESC
              LIMIT ? OFFSET ?',
-            [$patientId, $limit, $offset]
+            [$patientId, $limit, $offset],
         );
 
         return array_map(self::hydrate(...), $rows);
@@ -113,7 +111,7 @@ final class CaregiverNoteRepository
             'SELECT id, patient_id, note, note_time, created_at
              FROM hc_caregiver_notes' . $sql
             . ' ORDER BY note_time DESC, id DESC LIMIT ? OFFSET ?',
-            [...$params, $limit, $offset]
+            [...$params, $limit, $offset],
         );
 
         return array_map(self::hydrate(...), $rows);
@@ -132,7 +130,7 @@ final class CaregiverNoteRepository
 
         $rows = $this->db->query(
             'SELECT COUNT(*) AS n FROM hc_caregiver_notes' . $sql,
-            $params
+            $params,
         );
 
         return $rows === [] ? 0 : (int) $rows[0]['n'];
@@ -152,15 +150,15 @@ final class CaregiverNoteRepository
         $rows = $this->db->query(
             'SELECT note_time, note FROM hc_caregiver_notes
              WHERE patient_id = ? AND note_time >= ? AND note_time <= ?',
-            [$patientId, $from, $to]
+            [$patientId, $from, $to],
         );
 
         return array_map(
-            static fn (array $row): array => [
+            static fn(array $row): array => [
                 'note_time' => $row['note_time'] === null ? null : (string) $row['note_time'],
                 'note'      => (string) $row['note'],
             ],
-            $rows
+            $rows,
         );
     }
 

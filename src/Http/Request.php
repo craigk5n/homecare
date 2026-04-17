@@ -44,8 +44,7 @@ final class Request
         private readonly array $get = [],
         private readonly array $post = [],
         private readonly array $server = [],
-    ) {
-    }
+    ) {}
 
     public static function fromGlobals(): self
     {
@@ -164,14 +163,14 @@ final class Request
         // smuggle a tag past the filter by encoding the leading `<`.
         $decoded = (string) preg_replace_callback(
             '#(\\\\x[0-9A-Fa-f]{2})#',
-            static fn (array $m): string => chr((int) hexdec(substr($m[1], 2))),
-            $value
+            static fn(array $m): string => chr((int) hexdec(substr($m[1], 2))),
+            $value,
         );
 
         foreach (self::BANNED_TAGS as $tag) {
             if (preg_match('/<\s*' . $tag . '/i', $decoded) === 1) {
                 throw new InvalidRequestException(
-                    "Invalid data format for {$key}: banned HTML tag <{$tag}>"
+                    "Invalid data format for {$key}: banned HTML tag <{$tag}>",
                 );
             }
         }

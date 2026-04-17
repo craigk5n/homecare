@@ -31,8 +31,7 @@ final class AttachmentService
     public function __construct(
         private readonly AttachmentRepositoryInterface $repo,
         private readonly string $storageRoot,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array{name:string, tmp_name:string, size:int, error:int} $uploadedFile $_FILES entry
@@ -58,7 +57,7 @@ final class AttachmentService
         $mime = $this->sniffMime($uploadedFile['tmp_name']);
         if (!in_array($mime, self::ALLOWED_MIMES, true)) {
             throw new InvalidArgumentException(
-                'File type not allowed: ' . $mime . '. Accepted: JPEG, PNG, HEIC, PDF.'
+                'File type not allowed: ' . $mime . '. Accepted: JPEG, PNG, HEIC, PDF.',
             );
         }
 
@@ -249,7 +248,7 @@ final class AttachmentService
     {
         if (!in_array($ownerType, self::VALID_OWNER_TYPES, true)) {
             throw new InvalidArgumentException(
-                "Invalid owner_type '$ownerType'. Must be one of: " . implode(', ', self::VALID_OWNER_TYPES)
+                "Invalid owner_type '$ownerType'. Must be one of: " . implode(', ', self::VALID_OWNER_TYPES),
             );
         }
     }

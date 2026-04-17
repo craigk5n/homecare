@@ -69,7 +69,7 @@ final class SqliteDatabase implements DatabaseInterface
             throw new RuntimeException(
                 'SQLite execute failed: ' . $e->getMessage() . ' -- SQL: ' . $sql,
                 0,
-                $e
+                $e,
             );
         }
     }

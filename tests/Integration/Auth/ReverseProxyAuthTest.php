@@ -26,25 +26,25 @@ final class ReverseProxyAuthTest extends DatabaseTestCase
         // Seed the config rows.
         $db->execute(
             "INSERT INTO hc_config (setting, value) VALUES ('auth_mode', 'reverse_proxy')",
-            []
+            [],
         );
         $db->execute(
             "INSERT INTO hc_config (setting, value) VALUES ('reverse_proxy_header', 'X-Forwarded-User')",
-            []
+            [],
         );
 
         // Seed a test user.
         $db->execute(
             "INSERT INTO hc_user (login, passwd, firstname, lastname, email, is_admin, role, enabled)
              VALUES ('alice', 'unused', 'Alice', 'Admin', 'alice@example.com', 'N', 'caregiver', 'Y')",
-            []
+            [],
         );
 
         // Seed a disabled user.
         $db->execute(
             "INSERT INTO hc_user (login, passwd, firstname, lastname, email, is_admin, role, enabled)
              VALUES ('disabled_bob', 'unused', 'Bob', 'Disabled', 'bob@example.com', 'N', 'viewer', 'N')",
-            []
+            [],
         );
 
         $this->config = new ReverseProxyConfig($db);

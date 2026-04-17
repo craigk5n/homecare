@@ -25,7 +25,7 @@ final class InventoryApiTest extends DatabaseTestCase
         $this->api = new InventoryApi(
             $db,
             new InventoryRepository($db),
-            static fn (): string => '2026-04-14',
+            static fn(): string => '2026-04-14',
         );
 
         $this->patientId = (new PatientFactory($db))->create()['id'];

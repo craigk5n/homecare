@@ -51,7 +51,7 @@ final class CadenceCheckTest extends TestCase
             ['taken_time' => '2026-04-16 08:00:00'],
             ['taken_time' => '2026-04-16 20:00:00'],
             ['taken_time' => '2026-04-17 08:00:00'],
-            ['taken_time' => '2026-04-17 20:00:00']
+            ['taken_time' => '2026-04-17 20:00:00'],
         ];
         $this->scheduleRepo->method('getScheduleById')->with($scheduleId)->willReturn($schedule);
         $this->intakeRepo->method('getIntakesSince')->with($scheduleId, '2026-04-10')->willReturn($intakes);
@@ -73,7 +73,7 @@ final class CadenceCheckTest extends TestCase
             ['taken_time' => '2026-04-16 09:00:00'],
             ['taken_time' => '2026-04-16 21:00:00'],
             ['taken_time' => '2026-04-17 09:00:00'],
-            ['taken_time' => '2026-04-17 21:00:00']
+            ['taken_time' => '2026-04-17 21:00:00'],
         ];
         $this->scheduleRepo->method('getScheduleById')->with($scheduleId)->willReturn($schedule);
         $this->intakeRepo->method('getIntakesSince')->with($scheduleId, '2026-04-10')->willReturn($intakes);
@@ -109,7 +109,7 @@ final class CadenceCheckTest extends TestCase
             ['taken_time' => '2026-04-15 08:00:00'],
             ['taken_time' => '2026-04-14 20:00:00'],
             ['taken_time' => '2026-04-14 08:00:00'],
-            ['taken_time' => '2026-04-13 20:00:00']
+            ['taken_time' => '2026-04-13 20:00:00'],
         ];
         $this->scheduleRepo->method('getScheduleById')->with($scheduleId)->willReturn($schedule);
         $this->intakeRepo->method('getIntakesSince')->with($scheduleId, '2026-04-10')->willReturn($intakes);
@@ -126,7 +126,7 @@ final class CadenceCheckTest extends TestCase
         $scheduleId = 1;
         $this->scheduleRepo->method('getScheduleById')->with($scheduleId)->willReturn(['frequency' => '12h', 'start_date' => '2026-04-10']);
         $this->intakeRepo->method('getIntakesSince')->willReturn([
-            ['taken_time' => '2026-04-17 20:00:00']
+            ['taken_time' => '2026-04-17 20:00:00'],
         ]);
 
         $warning = $this->check->getWarningText($scheduleId);
@@ -144,7 +144,7 @@ final class CadenceCheckTest extends TestCase
             ['taken_time' => '2026-04-16 09:00:00'],
             ['taken_time' => '2026-04-16 21:00:00'],
             ['taken_time' => '2026-04-17 09:00:00'],
-            ['taken_time' => '2026-04-17 21:00:00']
+            ['taken_time' => '2026-04-17 21:00:00'],
         ];
         $this->scheduleRepo->method('getScheduleById')->with($scheduleId)->willReturn($schedule);
         $this->intakeRepo->method('getIntakesSince')->with($scheduleId, '2026-04-10')->willReturn($intakes);
@@ -155,5 +155,3 @@ final class CadenceCheckTest extends TestCase
         $this->assertStringContainsString('Recent doses average every', $warning);
     }
 }
-
-

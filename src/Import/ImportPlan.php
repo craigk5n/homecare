@@ -20,8 +20,7 @@ final readonly class ImportPlan
     public function __construct(
         public array $rows,
         public array $fileErrors = [],
-    ) {
-    }
+    ) {}
 
     public function isValid(): bool
     {
@@ -49,7 +48,7 @@ final readonly class ImportPlan
     {
         return array_values(array_filter(
             $this->rows,
-            static fn (ParsedRow $r): bool => !$r->isValid(),
+            static fn(ParsedRow $r): bool => !$r->isValid(),
         ));
     }
 }

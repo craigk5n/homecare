@@ -21,7 +21,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: null,
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
     }
 
@@ -34,7 +34,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: null,
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
     }
 
@@ -46,7 +46,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: null,
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
     }
 
@@ -58,7 +58,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: null,
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
     }
 
@@ -71,7 +71,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: '2026-04-14 06:00:00',
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
     }
 
@@ -84,7 +84,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: '2026-04-13 10:00:00',
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
     }
 
@@ -98,7 +98,7 @@ final class SupplyAlertServiceTest extends TestCase
                 lastSentAt: '2026-04-14 10:00:00',
                 now: '2026-04-14 12:00:00',
                 throttleSeconds: 3600,
-            )
+            ),
         );
         // 2 hours ago with a 3-hour throttle: suppressed.
         $this->assertFalse(
@@ -108,7 +108,7 @@ final class SupplyAlertServiceTest extends TestCase
                 lastSentAt: '2026-04-14 10:00:00',
                 now: '2026-04-14 12:00:00',
                 throttleSeconds: 3 * 3600,
-            )
+            ),
         );
     }
 
@@ -121,7 +121,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: 'not-a-date',
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
     }
 
@@ -135,7 +135,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: '2026-04-13 12:00:00',
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
         // One second under 24h: suppressed.
         $this->assertFalse(
@@ -144,7 +144,7 @@ final class SupplyAlertServiceTest extends TestCase
                 thresholdDays: 7,
                 lastSentAt: '2026-04-13 12:00:01',
                 now: '2026-04-14 12:00:00',
-            )
+            ),
         );
     }
 }

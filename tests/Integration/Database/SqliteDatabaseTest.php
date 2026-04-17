@@ -15,9 +15,9 @@ final class SqliteDatabaseTest extends DatabaseTestCase
     public function testSchemaCreatesAllHomeCareTables(): void
     {
         $rows = $this->getDb()->query(
-            "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+            "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
         );
-        $tables = array_map(static fn (array $row): string => (string) $row['name'], $rows);
+        $tables = array_map(static fn(array $row): string => (string) $row['name'], $rows);
 
         foreach (
             ['hc_caregiver_notes', 'hc_config', 'hc_medicine_intake',
@@ -34,7 +34,7 @@ final class SqliteDatabaseTest extends DatabaseTestCase
 
         $inserted = $db->execute(
             'INSERT INTO hc_patients (name, is_active) VALUES (?, ?)',
-            ['Daisy', 1]
+            ['Daisy', 1],
         );
         $this->assertTrue($inserted, 'insert should succeed');
 
@@ -76,13 +76,16 @@ final class SqliteDatabaseTest extends DatabaseTestCase
         $db->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$patientId, $medId, '2026-04-01', '8h', 1.0]
+            [$patientId, $medId, '2026-04-01', '8h', 1.0],
         );
 
         $this->assertCount(1, $db->query('SELECT id FROM hc_medicine_schedules'));
 
         $db->execute('DELETE FROM hc_patients WHERE id = ?', [$patientId]);
-        $this->assertCount(0, $db->query('SELECT id FROM hc_medicine_schedules'),
-            'schedule should cascade away when its patient is removed');
+        $this->assertCount(
+            0,
+            $db->query('SELECT id FROM hc_medicine_schedules'),
+            'schedule should cascade away when its patient is removed',
+        );
     }
 }

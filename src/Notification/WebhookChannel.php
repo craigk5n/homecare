@@ -75,9 +75,9 @@ final class WebhookChannel implements NotificationChannel
                 sleep($seconds);
             }
         };
-        $this->clock = $clock ?? static fn (): int => time();
+        $this->clock = $clock ?? static fn(): int => time();
         $this->idFactory = $idFactory
-            ?? static fn (): string => 'hc-webhook-' . bin2hex(random_bytes(8));
+            ?? static fn(): string => 'hc-webhook-' . bin2hex(random_bytes(8));
     }
 
     public function name(): string

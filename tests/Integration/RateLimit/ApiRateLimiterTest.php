@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace HomeCare\Tests\Integration\RateLimit;
 
-use HomeCare\Database\DatabaseInterface;
 use HomeCare\RateLimit\ApiRateLimiter;
 use HomeCare\Tests\Integration\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -74,11 +73,11 @@ final class ApiRateLimiterTest extends DatabaseTestCase
 
     // Test config - make public or use reflection if needed
     // For now, skip private method test
-    
+
 
     // Skip
-    
+
 
     // Skip
-    
+
 }

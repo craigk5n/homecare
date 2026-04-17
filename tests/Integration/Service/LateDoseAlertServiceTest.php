@@ -24,13 +24,13 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
             'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, NULL, ?, ?)',
-            [$patientId, $medicineId, '2026-01-01', $frequency, 1.0]
+            [$patientId, $medicineId, '2026-01-01', $frequency, 1.0],
         );
         $scheduleId = $db->lastInsertId();
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time)
              VALUES (?, ?)',
-            [$scheduleId, $lastIntakeAt]
+            [$scheduleId, $lastIntakeAt],
         );
 
         return $scheduleId;
@@ -45,8 +45,8 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
         $db->execute('INSERT INTO hc_patients (name) VALUES (?)', ['Daisy']);
         $patientId = $db->lastInsertId();
         $db->execute(
-            "INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)",
-            ['Tobra', '2 drops']
+            'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
+            ['Tobra', '2 drops'],
         );
         $medicineId = $db->lastInsertId();
 
@@ -58,7 +58,7 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
         return new LateDoseAlertService(
             $this->getDb(),
             new LateDoseAlertLog($this->getDb()),
-            static fn (): string => $now,
+            static fn(): string => $now,
         );
     }
 
@@ -110,7 +110,7 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
         // Caregiver logs the dose late at 16:00.
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$id, '2026-04-16 16:00:00']
+            [$id, '2026-04-16 16:00:00'],
         );
 
         // Next cron tick: it's now 2026-04-17 01:30. The new due
@@ -143,7 +143,7 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
             'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$p, $m, '2026-01-01', '8h', 1.0]
+            [$p, $m, '2026-01-01', '8h', 1.0],
         );
 
         $svc = $this->service(now: '2026-04-16 18:00:00');
@@ -159,12 +159,12 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
             'INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?, ?)',
-            [$p, $m, '2024-01-01', '2024-06-01', '8h', 1.0]
+            [$p, $m, '2024-01-01', '2024-06-01', '8h', 1.0],
         );
         $sid = $db->lastInsertId();
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$sid, '2024-05-01 08:00:00']
+            [$sid, '2024-05-01 08:00:00'],
         );
 
         $svc = $this->service(now: '2026-04-16 18:00:00');
@@ -183,12 +183,12 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
             "INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose, is_prn)
              VALUES (?, ?, ?, NULL, ?, 'Y')",
-            [$p, $m, '2026-01-01', 0.5]
+            [$p, $m, '2026-01-01', 0.5],
         );
         $sid = $db->lastInsertId();
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$sid, '2026-04-01 08:00:00']
+            [$sid, '2026-04-01 08:00:00'],
         );
 
         $svc = $this->service(now: '2026-04-16 18:00:00');
@@ -208,12 +208,12 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
             "INSERT INTO hc_medicine_schedules
                 (patient_id, medicine_id, start_date, frequency, unit_per_dose, cycle_on_days, cycle_off_days)
              VALUES (?, ?, '2026-04-14', '8h', 1.0, 3, 4)",
-            [$p, $m]
+            [$p, $m],
         );
         $sid = $db->lastInsertId();
         $db->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$sid, '2026-04-16 08:00:00']
+            [$sid, '2026-04-16 08:00:00'],
         );
 
         $svc = $this->service(now: '2026-04-18 18:00:00');
@@ -232,7 +232,7 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
         $db->execute(
             "INSERT INTO hc_schedule_pauses (schedule_id, start_date, end_date, reason)
              VALUES (?, '2026-04-16', NULL, 'Vet visit')",
-            [$id]
+            [$id],
         );
 
         $svc = $this->service(now: '2026-04-16 18:00:00');

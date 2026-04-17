@@ -36,9 +36,9 @@ final class AuditLogger
         ?callable $ipProvider = null,
         ?callable $clock = null,
     ) {
-        $this->loginProvider = $loginProvider ?? static fn (): ?string => null;
-        $this->ipProvider = $ipProvider ?? static fn (): ?string => null;
-        $this->clock = $clock ?? static fn (): string => date('Y-m-d H:i:s');
+        $this->loginProvider = $loginProvider ?? static fn(): ?string => null;
+        $this->ipProvider = $ipProvider ?? static fn(): ?string => null;
+        $this->clock = $clock ?? static fn(): string => date('Y-m-d H:i:s');
     }
 
     /**
@@ -59,7 +59,7 @@ final class AuditLogger
         if ($details !== []) {
             $encoded = json_encode(
                 $details,
-                JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR
+                JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR,
             );
             $json = $encoded === false ? null : $encoded;
         }
@@ -77,7 +77,7 @@ final class AuditLogger
                     $json,
                     $this->currentIp(),
                     $this->currentTimestamp(),
-                ]
+                ],
             );
         } catch (\Throwable $e) {
             // Never fail the request because audit logging broke. Surface

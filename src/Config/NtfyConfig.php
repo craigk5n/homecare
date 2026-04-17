@@ -25,9 +25,7 @@ final class NtfyConfig
     public const DEFAULT_TOPIC = '';
     public const DEFAULT_ENABLED = false;
 
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     public function getUrl(): string
     {
@@ -92,7 +90,7 @@ final class NtfyConfig
     {
         $rows = $this->db->query(
             'SELECT value FROM hc_config WHERE setting = ?',
-            [$key]
+            [$key],
         );
         if ($rows === []) {
             return null;
@@ -106,17 +104,17 @@ final class NtfyConfig
     {
         $existing = $this->db->query(
             'SELECT setting FROM hc_config WHERE setting = ?',
-            [$key]
+            [$key],
         );
         if ($existing === []) {
             $this->db->execute(
                 'INSERT INTO hc_config (setting, value) VALUES (?, ?)',
-                [$key, $value]
+                [$key, $value],
             );
         } else {
             $this->db->execute(
                 'UPDATE hc_config SET value = ? WHERE setting = ?',
-                [$value, $key]
+                [$value, $key],
             );
         }
     }

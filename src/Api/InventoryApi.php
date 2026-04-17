@@ -25,7 +25,7 @@ final class InventoryApi
         private readonly InventoryRepositoryInterface $inventory,
         ?callable $clock = null,
     ) {
-        $this->clock = $clock ?? static fn (): string => date('Y-m-d');
+        $this->clock = $clock ?? static fn(): string => date('Y-m-d');
     }
 
     /**
@@ -54,12 +54,12 @@ final class InventoryApi
         // exclude them from the projected-days math -- the projection is
         // "how long will stock last at scheduled rate of consumption."
         $schedRows = $this->db->query(
-            "SELECT id, patient_id, frequency, unit_per_dose, is_prn
+            'SELECT id, patient_id, frequency, unit_per_dose, is_prn
              FROM hc_medicine_schedules
              WHERE medicine_id = ?
                AND start_date <= ?
-               AND (end_date IS NULL OR end_date >= ?)",
-            [$medicineId, $today, $today]
+               AND (end_date IS NULL OR end_date >= ?)',
+            [$medicineId, $today, $today],
         );
 
         $totalDaily = 0.0;

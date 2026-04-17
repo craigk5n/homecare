@@ -13,6 +13,4 @@ use RuntimeException;
  * `die_miserable_death()` directly, which we move up to the caller so
  * the HTTP abstraction stays side-effect-free.
  */
-final class InvalidRequestException extends RuntimeException
-{
-}
+final class InvalidRequestException extends RuntimeException {}

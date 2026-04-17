@@ -62,9 +62,9 @@ final class EmailExportService
         ?callable $audit = null,
     ) {
         $this->mailer = $mailer;
-        $this->clock = $clock ?? static fn (): string => date('Y-m-d H:i:s');
+        $this->clock = $clock ?? static fn(): string => date('Y-m-d H:i:s');
         $this->audit = $audit
-            ?? static fn (string $action, string $entityType, ?int $entityId, array $details): null => null;
+            ?? static fn(string $action, string $entityType, ?int $entityId, array $details): null => null;
     }
 
     /**
@@ -89,15 +89,15 @@ final class EmailExportService
         $size = strlen($bytes);
 
         return $this->dispatch(
-            login:         $login,
-            recipient:     $recipientEmail,
-            type:          self::TYPE_CSV,
-            filename:      $filename,
-            contentType:   'text/csv; charset=utf-8',
-            attachment:    $bytes,
-            subject:       "[HomeCare] Intake export — {$patientName}",
-            body:          $this->csvBody($patientName, $startDate, $endDate, count($rows)),
-            auditMeta:     [
+            login: $login,
+            recipient: $recipientEmail,
+            type: self::TYPE_CSV,
+            filename: $filename,
+            contentType: 'text/csv; charset=utf-8',
+            attachment: $bytes,
+            subject: "[HomeCare] Intake export — {$patientName}",
+            body: $this->csvBody($patientName, $startDate, $endDate, count($rows)),
+            auditMeta: [
                 'type'       => self::TYPE_CSV,
                 'patient_id' => $patientId,
                 'start_date' => $startDate,
@@ -129,15 +129,15 @@ final class EmailExportService
         $size = strlen($bytes);
 
         return $this->dispatch(
-            login:         $login,
-            recipient:     $recipientEmail,
-            type:          self::TYPE_FHIR,
-            filename:      $filename,
-            contentType:   'application/fhir+json; charset=utf-8',
-            attachment:    $bytes,
-            subject:       "[HomeCare] Intake export (FHIR) — {$patientName}",
-            body:          $this->fhirBody($patientName, $startDate, $endDate, count($rows)),
-            auditMeta:     [
+            login: $login,
+            recipient: $recipientEmail,
+            type: self::TYPE_FHIR,
+            filename: $filename,
+            contentType: 'application/fhir+json; charset=utf-8',
+            attachment: $bytes,
+            subject: "[HomeCare] Intake export (FHIR) — {$patientName}",
+            body: $this->fhirBody($patientName, $startDate, $endDate, count($rows)),
+            auditMeta: [
                 'type'       => self::TYPE_FHIR,
                 'patient_id' => $patientId,
                 'start_date' => $startDate,
@@ -174,15 +174,15 @@ final class EmailExportService
         $size = strlen($body);
 
         return $this->dispatch(
-            login:         $login,
-            recipient:     $recipientEmail,
-            type:          self::TYPE_MEDICATION_SUMMARY,
-            filename:      null,
-            contentType:   null,
-            attachment:    null,
-            subject:       "[HomeCare] Medication summary — {$patientName}",
-            body:          $body,
-            auditMeta:     [
+            login: $login,
+            recipient: $recipientEmail,
+            type: self::TYPE_MEDICATION_SUMMARY,
+            filename: null,
+            contentType: null,
+            attachment: null,
+            subject: "[HomeCare] Medication summary — {$patientName}",
+            body: $body,
+            auditMeta: [
                 'type'       => self::TYPE_MEDICATION_SUMMARY,
                 'patient_id' => $patientId,
                 'start_date' => null,
@@ -233,7 +233,7 @@ final class EmailExportService
             $email = (new Email())
                 ->from(new Address(
                     $this->emailConfig->getFromAddress(),
-                    $this->emailConfig->getFromName()
+                    $this->emailConfig->getFromName(),
                 ))
                 ->to($recipient)
                 ->subject($subject)
@@ -268,7 +268,7 @@ final class EmailExportService
             "SELECT COUNT(*) AS n FROM hc_audit_log
              WHERE user_login = ? AND action = 'export.emailed'
                AND created_at >= ?",
-            [$login, $oneHourAgo]
+            [$login, $oneHourAgo],
         );
 
         return $rows === [] ? 0 : (int) ($rows[0]['n'] ?? 0);
@@ -322,8 +322,8 @@ final class EmailExportService
     private function renderSummaryBody(array $summary): string
     {
         $out = ["Medication summary — {$summary['patient']['name']}",
-                "Generated on: {$summary['today']}",
-                ''];
+            "Generated on: {$summary['today']}",
+            ''];
 
         $out[] = 'Active medications:';
         if ($summary['active'] === []) {

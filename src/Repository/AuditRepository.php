@@ -37,9 +37,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class AuditRepository
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @param AuditFilters $filters
@@ -112,7 +110,7 @@ final class AuditRepository
         $sql = "SELECT DISTINCT {$column} FROM hc_audit_log WHERE {$column} IS NOT NULL ORDER BY {$column}";
         $rows = $this->db->query($sql);
 
-        return array_map(static fn (array $r): string => (string) $r[$column], $rows);
+        return array_map(static fn(array $r): string => (string) $r[$column], $rows);
     }
 
     /**

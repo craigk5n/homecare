@@ -83,7 +83,7 @@ final class JournalImportTest extends DatabaseTestCase
         $this->notes->create(
             $this->patientId,
             'Ate 5 kibble, turkey and some potatoes.',
-            '2026-04-15 13:00:00'
+            '2026-04-15 13:00:00',
         );
 
         $plan = $this->parser->parse(self::sampleJournal());
@@ -120,7 +120,7 @@ TXT;
 
     public function testCommitThrowsOnInvalidPlan(): void
     {
-        $plan = $this->parser->parse("7:45 AM orphan before any header");
+        $plan = $this->parser->parse('7:45 AM orphan before any header');
         $this->assertFalse($plan->isValid());
 
         $this->expectException(RuntimeException::class);
@@ -138,7 +138,7 @@ TXT;
 
         // Sabotage the table mid-commit so inserts blow up.
         $this->getSqliteDb()->pdo()->exec(
-            'ALTER TABLE hc_caregiver_notes RENAME COLUMN note TO notebody'
+            'ALTER TABLE hc_caregiver_notes RENAME COLUMN note TO notebody',
         );
 
         try {
@@ -146,7 +146,7 @@ TXT;
             $this->fail('commit should have thrown');
         } catch (\Throwable) {
             $this->getSqliteDb()->pdo()->exec(
-                'ALTER TABLE hc_caregiver_notes RENAME COLUMN notebody TO note'
+                'ALTER TABLE hc_caregiver_notes RENAME COLUMN notebody TO note',
             );
         }
 

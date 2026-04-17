@@ -14,9 +14,7 @@ use HomeCare\Repository\PatientRepository;
  */
 final class PatientsApi
 {
-    public function __construct(private readonly PatientRepository $patients)
-    {
-    }
+    public function __construct(private readonly PatientRepository $patients) {}
 
     /**
      * @param array<string,mixed> $query Typically `$_GET`.

@@ -39,8 +39,7 @@ final class InventoryService
         private readonly ScheduleRepositoryInterface $schedules,
         private readonly ?PatientRepository $patients = null,
         private readonly ?StepRepository $steps = null,
-    ) {
-    }
+    ) {}
 
     /**
      * Project how much medication is left and how many days of supply remain.
@@ -59,7 +58,7 @@ final class InventoryService
         int $scheduleId,
         bool $assumePastIntake = false,
         ?string $startDate = null,
-        ?string $frequency = null
+        ?string $frequency = null,
     ): array {
         $report = [
             'remainingDays' => 0,
@@ -120,7 +119,7 @@ final class InventoryService
                 $startDate,
                 $schedule['end_date'] ?? null,
                 $frequency,
-                $report['unitPerDose']
+                $report['unitPerDose'],
             );
         }
 
@@ -167,7 +166,7 @@ final class InventoryService
         string $startDate,
         ?string $endDate,
         string $frequency,
-        float $unitPerDose
+        float $unitPerDose,
     ): float {
         $yesterday = (new \DateTimeImmutable())->modify('-1 day');
         $start = new \DateTimeImmutable($startDate);

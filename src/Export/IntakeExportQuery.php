@@ -27,9 +27,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class IntakeExportQuery
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * Fetch intake rows for $patientId between [$startDate, $endDate]
@@ -61,11 +59,11 @@ final class IntakeExportQuery
                AND mi.taken_time >= ?
                AND mi.taken_time <= ?
              ORDER BY mi.taken_time ASC, mi.id ASC',
-            [$patientId, $startDate . ' 00:00:00', $endDate . ' 23:59:59']
+            [$patientId, $startDate . ' 00:00:00', $endDate . ' 23:59:59'],
         );
 
         return array_map(
-            static fn (array $r): array => [
+            static fn(array $r): array => [
                 'intake_id' => (int) $r['intake_id'],
                 'schedule_id' => (int) $r['schedule_id'],
                 'patient_id' => (int) $r['patient_id'],
@@ -78,7 +76,7 @@ final class IntakeExportQuery
                 'taken_time' => (string) $r['taken_time'],
                 'note' => $r['note'] === null ? null : (string) $r['note'],
             ],
-            $rows
+            $rows,
         );
     }
 }

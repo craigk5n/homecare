@@ -35,7 +35,7 @@ final class LateDoseAlertService
         private readonly LateDoseAlertLogInterface $log,
         ?callable $clock = null,
     ) {
-        $this->clock = $clock ?? static fn (): string => date('Y-m-d H:i:s');
+        $this->clock = $clock ?? static fn(): string => date('Y-m-d H:i:s');
     }
 
     /**
@@ -136,7 +136,7 @@ final class LateDoseAlertService
                       AND (sp.end_date IS NULL OR sp.end_date >= ?)
                )
              ORDER BY ms.id ASC",
-            [$today, $today, $today, $today]
+            [$today, $today, $today, $today],
         );
 
         $alerts = [];
@@ -179,11 +179,11 @@ final class LateDoseAlertService
             $minutesLate = (int) floor(($nowTs - $dueTs) / 60);
 
             $alerts[] = new LateDoseAlert(
-                scheduleId:   $scheduleId,
+                scheduleId: $scheduleId,
                 medicineName: (string) $row['medicine_name'],
-                patientName:  (string) $row['patient_name'],
-                dueAt:        date('Y-m-d H:i:s', $dueTs),
-                minutesLate:  $minutesLate,
+                patientName: (string) $row['patient_name'],
+                dueAt: date('Y-m-d H:i:s', $dueTs),
+                minutesLate: $minutesLate,
             );
         }
 

@@ -24,7 +24,7 @@ final class ScheduleApiTest extends DatabaseTestCase
     {
         parent::setUp();
         $db = $this->getDb();
-        $this->api = new SchedulesApi($db, static fn (): string => '2026-04-14');
+        $this->api = new SchedulesApi($db, static fn(): string => '2026-04-14');
 
         $this->patientId = (new PatientFactory($db))->create(['name' => 'Daisy'])['id'];
         $this->medicineId = (new MedicineFactory($db))

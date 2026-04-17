@@ -47,9 +47,7 @@ use InvalidArgumentException;
  */
 final class ScheduleRepository implements ScheduleRepositoryInterface
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * @return Schedule|null
@@ -74,7 +72,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
             . '   AND start_date <= ?'
             . '   AND (end_date IS NULL OR end_date >= ?)'
             . ' ORDER BY id ASC',
-            [$patientId, $today, $today]
+            [$patientId, $today, $today],
         );
 
         return array_map(self::hydrate(...), $rows);
@@ -84,7 +82,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
     {
         return $this->db->execute(
             'UPDATE hc_medicine_schedules SET end_date = ? WHERE id = ?',
-            [$endDate, $id]
+            [$endDate, $id],
         );
     }
 
@@ -105,7 +103,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
         $frequency = $data['frequency'] ?? null;
         if (!$isPrn && ($frequency === null || $frequency === '')) {
             throw new InvalidArgumentException(
-                "createSchedule: 'frequency' is required unless is_prn is true"
+                "createSchedule: 'frequency' is required unless is_prn is true",
             );
         }
         if ($isPrn) {
@@ -133,7 +131,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
                 $cycleOn,
                 $cycleOff,
                 $wallClock,
-            ]
+            ],
         );
 
         return $this->db->lastInsertId();

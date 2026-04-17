@@ -17,8 +17,7 @@ final class CurlHttpClient implements HttpClient
 {
     public function __construct(
         private readonly int $timeoutSeconds = 5,
-    ) {
-    }
+    ) {}
 
     public function post(string $url, string $body, array $headers): bool
     {

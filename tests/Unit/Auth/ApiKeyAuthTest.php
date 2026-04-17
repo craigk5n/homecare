@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace HomeCare\Tests\Unit\Auth;
 
 use HomeCare\Auth\ApiKeyAuth;
-use HomeCare\Auth\AuthResult;
 use HomeCare\Repository\UserRepositoryInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;

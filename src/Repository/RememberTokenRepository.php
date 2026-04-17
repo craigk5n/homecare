@@ -14,9 +14,7 @@ use HomeCare\Database\DatabaseInterface;
  */
 final class RememberTokenRepository
 {
-    public function __construct(private readonly DatabaseInterface $db)
-    {
-    }
+    public function __construct(private readonly DatabaseInterface $db) {}
 
     /**
      * Store a new token for a device. Does not invalidate other devices.
@@ -31,7 +29,7 @@ final class RememberTokenRepository
         $this->db->execute(
             'INSERT INTO hc_remember_tokens (user_login, token_hash, expires_at, device_name, last_ip)
              VALUES (?, ?, ?, ?, ?)',
-            [$login, $tokenHash, $expiresAt, $deviceName, $ip]
+            [$login, $tokenHash, $expiresAt, $deviceName, $ip],
         );
 
         return $this->db->lastInsertId();
@@ -50,7 +48,7 @@ final class RememberTokenRepository
 
         $rows = $this->db->query(
             'SELECT id, user_login, expires_at FROM hc_remember_tokens WHERE token_hash = ?',
-            [$hash]
+            [$hash],
         );
 
         if ($rows === []) {
@@ -71,7 +69,7 @@ final class RememberTokenRepository
     {
         return $this->db->execute(
             'DELETE FROM hc_remember_tokens WHERE token_hash = ?',
-            [$hash]
+            [$hash],
         );
     }
 
@@ -82,7 +80,7 @@ final class RememberTokenRepository
     {
         return $this->db->execute(
             'DELETE FROM hc_remember_tokens WHERE user_login = ?',
-            [$login]
+            [$login],
         );
     }
 
@@ -92,7 +90,7 @@ final class RememberTokenRepository
     public function deleteExpired(): int
     {
         $this->db->execute(
-            "DELETE FROM hc_remember_tokens WHERE expires_at < datetime('now')"
+            "DELETE FROM hc_remember_tokens WHERE expires_at < datetime('now')",
         );
 
         return 0;
@@ -105,7 +103,7 @@ final class RememberTokenRepository
     {
         return $this->db->execute(
             "UPDATE hc_remember_tokens SET last_used_at = datetime('now'), last_ip = ? WHERE id = ?",
-            [$ip, $id]
+            [$ip, $id],
         );
     }
 }

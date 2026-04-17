@@ -17,6 +17,5 @@ final readonly class AdherenceDigestRow
         public string $medicineName,
         public float $sevenDayPct,
         public float $thirtyDayPct,
-    ) {
-    }
+    ) {}
 }

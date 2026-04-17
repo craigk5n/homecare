@@ -1,11 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace HomeCare\Tests\Integration\Auth;
 
 use HomeCare\Auth\SignedUrl;
 use HomeCare\Tests\Integration\DatabaseTestCase;
-use PHPUnit\Framework\Attributes\DataProvider;
 
 final class SignedUrlTest extends DatabaseTestCase
 {

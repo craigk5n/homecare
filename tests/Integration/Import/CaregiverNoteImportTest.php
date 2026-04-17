@@ -69,7 +69,7 @@ CSV;
         $this->assertFalse($plan->isValid());
         $this->assertContains(
             "missing required column 'note'",
-            $plan->fileErrors
+            $plan->fileErrors,
         );
     }
 
@@ -82,7 +82,7 @@ CSV;
         $this->assertFalse($plan->isValid());
         $this->assertSame(
             ["missing patient column: need one of 'patient_id' or 'patient_name'"],
-            $plan->fileErrors
+            $plan->fileErrors,
         );
     }
 
@@ -134,8 +134,8 @@ CSV;
         $this->assertFalse($plan->isValid());
         $this->assertCount(1, $plan->invalidRows());
         $this->assertStringContainsString(
-            "unrecognised note_time",
-            $plan->invalidRows()[0]->errors[0]
+            'unrecognised note_time',
+            $plan->invalidRows()[0]->errors[0],
         );
     }
 
@@ -192,7 +192,7 @@ CSV;
         // the target table so the 2nd INSERT fails — proves rollback works.
         $csv = "note_time,note,patient_name\n"
              . "2026-04-10,first,Daisy\n"
-             . "2026-04-11,second,Daisy";
+             . '2026-04-11,second,Daisy';
         $plan = $this->importer->parse($csv);
         $this->assertTrue($plan->isValid());
 
@@ -208,7 +208,7 @@ CSV;
         } catch (\Throwable) {
             // Expected. Reset schema so the assertion below can read.
             $this->getSqliteDb()->pdo()->exec(
-                'ALTER TABLE hc_caregiver_notes RENAME COLUMN notebody TO note'
+                'ALTER TABLE hc_caregiver_notes RENAME COLUMN notebody TO note',
             );
         }
 

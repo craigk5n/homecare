@@ -51,7 +51,7 @@ final class CsvImportServiceTest extends DatabaseTestCase
 
         $rows = $this->getDb()->query(
             'SELECT * FROM hc_medicine_intake WHERE schedule_id = ?',
-            [$this->scheduleId]
+            [$this->scheduleId],
         );
         $this->assertCount(1, $rows);
         $this->assertSame('2026-04-01 08:00:00', $rows[0]['taken_time']);
@@ -61,7 +61,7 @@ final class CsvImportServiceTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
-            [$this->scheduleId, '2026-04-01 08:00:00']
+            [$this->scheduleId, '2026-04-01 08:00:00'],
         );
 
         $csv = "Date,Time,Medication,Dosage,Frequency,UnitPerDose,Notes\n"
@@ -133,7 +133,7 @@ final class CsvImportServiceTest extends DatabaseTestCase
         // End the existing schedule so the new one doesn't overlap
         $this->getDb()->execute(
             'UPDATE hc_medicine_schedules SET end_date = ? WHERE id = ?',
-            ['2026-03-31', $this->scheduleId]
+            ['2026-03-31', $this->scheduleId],
         );
 
         $csv = "PatientName,Medication,Dosage,Frequency,UnitPerDose,StartDate,EndDate\n"
@@ -151,7 +151,7 @@ final class CsvImportServiceTest extends DatabaseTestCase
         // End the existing schedule so we don't overlap
         $this->getDb()->execute(
             'UPDATE hc_medicine_schedules SET end_date = ? WHERE id = ?',
-            ['2026-03-31', $this->scheduleId]
+            ['2026-03-31', $this->scheduleId],
         );
 
         $csv = "PatientName,Medication,Dosage,Frequency,UnitPerDose,StartDate,EndDate\n"
@@ -164,7 +164,7 @@ final class CsvImportServiceTest extends DatabaseTestCase
 
         $rows = $this->getDb()->query(
             'SELECT * FROM hc_medicine_schedules WHERE patient_id = ? AND start_date = ?',
-            [$this->patientId, '2026-05-01']
+            [$this->patientId, '2026-05-01'],
         );
         $this->assertCount(1, $rows);
     }
@@ -215,22 +215,22 @@ final class CsvImportServiceTest extends DatabaseTestCase
         // Seed some intakes
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time, note) VALUES (?, ?, ?)',
-            [$this->scheduleId, '2026-04-10 08:00:00', 'Morning']
+            [$this->scheduleId, '2026-04-10 08:00:00', 'Morning'],
         );
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_intake (schedule_id, taken_time, note) VALUES (?, ?, ?)',
-            [$this->scheduleId, '2026-04-10 16:00:00', 'Afternoon']
+            [$this->scheduleId, '2026-04-10 16:00:00', 'Afternoon'],
         );
 
         // Export
         $exportRows = $this->getDb()->query(
-            "SELECT mi.taken_time, m.name AS medication, m.dosage, ms.frequency, ms.unit_per_dose, mi.note
+            'SELECT mi.taken_time, m.name AS medication, m.dosage, ms.frequency, ms.unit_per_dose, mi.note
              FROM hc_medicine_intake mi
              JOIN hc_medicine_schedules ms ON mi.schedule_id = ms.id
              JOIN hc_medicines m ON ms.medicine_id = m.id
              WHERE ms.patient_id = ?
-             ORDER BY mi.taken_time",
-            [$this->patientId]
+             ORDER BY mi.taken_time',
+            [$this->patientId],
         );
 
         $csv = "Date,Time,Medication,Dosage,Frequency,UnitPerDose,Notes\n";
@@ -255,7 +255,7 @@ final class CsvImportServiceTest extends DatabaseTestCase
         // Verify
         $reimported = $this->getDb()->query(
             'SELECT taken_time, note FROM hc_medicine_intake WHERE schedule_id = ? ORDER BY taken_time',
-            [$this->scheduleId]
+            [$this->scheduleId],
         );
         $this->assertCount(2, $reimported);
         $this->assertSame('2026-04-10 08:00:00', $reimported[0]['taken_time']);
@@ -277,7 +277,7 @@ final class CsvImportServiceTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_medicines (name, dosage) VALUES (?, ?)',
-            [$name, $dosage]
+            [$name, $dosage],
         );
 
         return $this->getDb()->lastInsertId();
@@ -288,7 +288,7 @@ final class CsvImportServiceTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_medicine_schedules (patient_id, medicine_id, start_date, frequency, unit_per_dose)
              VALUES (?, ?, ?, ?, ?)',
-            [$patientId, $medicineId, $startDate, $frequency, 1.0]
+            [$patientId, $medicineId, $startDate, $frequency, 1.0],
         );
 
         return $this->getDb()->lastInsertId();

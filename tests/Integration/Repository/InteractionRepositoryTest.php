@@ -111,7 +111,7 @@ final class InteractionRepositoryTest extends DatabaseTestCase
 
         $results = $this->repo->findBetween(
             ['aspirin'],
-            ['warfarin', 'ibuprofen']
+            ['warfarin', 'ibuprofen'],
         );
 
         $this->assertCount(2, $results);
@@ -126,7 +126,7 @@ final class InteractionRepositoryTest extends DatabaseTestCase
         $this->getDb()->execute(
             'INSERT INTO hc_drug_interactions (ingredient_a, ingredient_b, severity, description)
              VALUES (?, ?, ?, ?)',
-            [$ordered[0], $ordered[1], $severity, $description]
+            [$ordered[0], $ordered[1], $severity, $description],
         );
     }
 }

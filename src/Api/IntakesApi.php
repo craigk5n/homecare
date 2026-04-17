@@ -30,7 +30,7 @@ final class IntakesApi
         private readonly IntakeRepositoryInterface $intakes,
         ?callable $clock = null,
     ) {
-        $this->clock = $clock ?? static fn (): int => time();
+        $this->clock = $clock ?? static fn(): int => time();
     }
 
     /**

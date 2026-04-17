@@ -13,20 +13,20 @@ final class SessionCookieParamsTest extends TestCase
     {
         $p = SessionCookieParams::forRequest([]);
 
-        $this->assertSame(0,      $p['lifetime']);
-        $this->assertSame('/',    $p['path']);
+        $this->assertSame(0, $p['lifetime']);
+        $this->assertSame('/', $p['path']);
         $this->assertFalse($p['secure']);
         $this->assertTrue($p['httponly']);
-        $this->assertSame('Lax',  $p['samesite']);
+        $this->assertSame('Lax', $p['samesite']);
     }
 
     public function testSecureTrueWhenHttpsOn(): void
     {
         $this->assertTrue(
-            SessionCookieParams::forRequest(['HTTPS' => 'on'])['secure']
+            SessionCookieParams::forRequest(['HTTPS' => 'on'])['secure'],
         );
         $this->assertTrue(
-            SessionCookieParams::forRequest(['HTTPS' => '1'])['secure']
+            SessionCookieParams::forRequest(['HTTPS' => '1'])['secure'],
         );
     }
 
@@ -34,13 +34,13 @@ final class SessionCookieParamsTest extends TestCase
     {
         // IIS emits 'off' literally for non-HTTPS requests.
         $this->assertFalse(
-            SessionCookieParams::forRequest(['HTTPS' => 'off'])['secure']
+            SessionCookieParams::forRequest(['HTTPS' => 'off'])['secure'],
         );
         $this->assertFalse(
-            SessionCookieParams::forRequest(['HTTPS' => 'OFF'])['secure']
+            SessionCookieParams::forRequest(['HTTPS' => 'OFF'])['secure'],
         );
         $this->assertFalse(
-            SessionCookieParams::forRequest(['HTTPS' => ''])['secure']
+            SessionCookieParams::forRequest(['HTTPS' => ''])['secure'],
         );
     }
 

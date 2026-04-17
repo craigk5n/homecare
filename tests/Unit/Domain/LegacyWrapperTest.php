@@ -32,7 +32,7 @@ final class LegacyWrapperTest extends TestCase
     {
         $this->assertSame(
             '2026-04-13 18:00',
-            calculateNextDueDate('2026-04-13 10:00:00', '8h')
+            calculateNextDueDate('2026-04-13 10:00:00', '8h'),
         );
     }
 

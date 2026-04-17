@@ -57,8 +57,8 @@ final class TranslationCoverageTest extends TestCase
                 "%s.txt is missing %d key(s) from English-US.txt:\n  %s",
                 $language,
                 count($missing),
-                implode("\n  ", $missing)
-            )
+                implode("\n  ", $missing),
+            ),
         );
     }
 

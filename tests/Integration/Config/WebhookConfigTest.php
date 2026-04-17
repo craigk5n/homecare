@@ -19,7 +19,7 @@ final class WebhookConfigTest extends TestCase
         parent::setUp();
         $this->db = new SqliteDatabase();
         $this->db->pdo()->exec(
-            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))'
+            'CREATE TABLE hc_config (setting VARCHAR(50) PRIMARY KEY, value VARCHAR(128))',
         );
         $this->config = new WebhookConfig($this->db);
     }
@@ -61,8 +61,11 @@ final class WebhookConfigTest extends TestCase
     public function testTimeoutRejectsZeroAndNegative(): void
     {
         $this->config->setTimeoutSeconds(0);
-        $this->assertSame(1, $this->config->getTimeoutSeconds(),
-            'setter clamps to >=1');
+        $this->assertSame(
+            1,
+            $this->config->getTimeoutSeconds(),
+            'setter clamps to >=1',
+        );
 
         $this->config->setTimeoutSeconds(-5);
         $this->assertSame(1, $this->config->getTimeoutSeconds());
@@ -71,7 +74,7 @@ final class WebhookConfigTest extends TestCase
     public function testEnabledFlagIsStrictY(): void
     {
         $this->db->execute(
-            "INSERT INTO hc_config (setting, value) VALUES ('webhook_enabled', 'yes')"
+            "INSERT INTO hc_config (setting, value) VALUES ('webhook_enabled', 'yes')",
         );
         $this->assertFalse($this->config->isEnabled());
     }

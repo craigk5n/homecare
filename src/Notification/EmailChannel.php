@@ -68,7 +68,7 @@ final class EmailChannel implements NotificationChannel
             $email = (new Email())
                 ->from(new Address(
                     $this->config->getFromAddress(),
-                    $this->config->getFromName()
+                    $this->config->getFromName(),
                 ))
                 ->to($message->recipient)
                 ->subject($this->subject($message))

@@ -138,11 +138,11 @@ final class ManifestTest extends TestCase
         // the offline shell does nothing.
         $this->assertMatchesRegularExpression(
             '/addEventListener\(\s*[\'"]install[\'"]/',
-            $contents
+            $contents,
         );
         $this->assertMatchesRegularExpression(
             '/addEventListener\(\s*[\'"]fetch[\'"]/',
-            $contents
+            $contents,
         );
     }
 

@@ -29,7 +29,7 @@ final class AuthServiceIntegrationTest extends DatabaseTestCase
         $this->getDb()->execute(
             "INSERT INTO hc_user (login, passwd, is_admin, role, enabled)
              VALUES (?, ?, 'N', 'caregiver', 'Y')",
-            ['alice', $this->hasher->hash('correct-horse')]
+            ['alice', $this->hasher->hash('correct-horse')],
         );
     }
 
@@ -82,7 +82,7 @@ final class AuthServiceIntegrationTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             "UPDATE hc_user SET enabled = 'N' WHERE login = ?",
-            ['alice']
+            ['alice'],
         );
 
         $result = $this->auth->attemptLogin('alice', 'correct-horse');

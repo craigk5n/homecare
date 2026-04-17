@@ -22,8 +22,7 @@ final readonly class ParsedRow
         public ?string $noteTime,
         public ?string $note,
         public array $errors = [],
-    ) {
-    }
+    ) {}
 
     public function isValid(): bool
     {

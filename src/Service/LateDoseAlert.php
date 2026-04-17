@@ -22,8 +22,7 @@ final readonly class LateDoseAlert
         /** Y-m-d H:i:s when the dose was expected. */
         public string $dueAt,
         public int $minutesLate,
-    ) {
-    }
+    ) {}
 
     /**
      * Short user-facing line for the alert body. Paired with the

@@ -57,7 +57,7 @@ final class NtfyConfigTest extends DatabaseTestCase
 
         $this->assertSame('https://third/', $this->config->getUrl());
         $rows = $this->getDb()->query(
-            "SELECT COUNT(*) AS n FROM hc_config WHERE setting = 'ntfy_url'"
+            "SELECT COUNT(*) AS n FROM hc_config WHERE setting = 'ntfy_url'",
         );
         $this->assertSame(1, (int) $rows[0]['n'], 'no duplicate rows on re-save');
     }
@@ -66,7 +66,7 @@ final class NtfyConfigTest extends DatabaseTestCase
     {
         // Stray values shouldn't accidentally enable push.
         $this->getDb()->execute(
-            "INSERT INTO hc_config (setting, value) VALUES ('ntfy_enabled', 'y')"
+            "INSERT INTO hc_config (setting, value) VALUES ('ntfy_enabled', 'y')",
         );
         $this->assertFalse($this->config->isEnabled(), 'lowercase y does not count');
 

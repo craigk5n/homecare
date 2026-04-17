@@ -39,8 +39,7 @@ final class AuthResult
          * email without re-firing on every subsequent attempt.
          */
         public readonly bool $justLockedOut = false,
-    ) {
-    }
+    ) {}
 
     /**
      * @param UserRecord $user
