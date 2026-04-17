@@ -75,14 +75,33 @@ CREATE TABLE `hc_patients` (
   `is_active` BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+/* Standardised drug lookup populated from RxNorm RRF dumps (HC-110).
+   Caregivers pick from this catalog when adding medications; the selected
+   entry pre-fills name, strength, and dosage form. Free-text entries
+   remain supported (hc_medicines.drug_catalog_id is nullable). */
+CREATE TABLE hc_drug_catalog (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  rxnorm_id INT NULL,
+  name VARCHAR(255) NOT NULL,
+  strength VARCHAR(128) NULL,
+  dosage_form VARCHAR(128) NULL,
+  ingredient_names TEXT NULL,
+  generic CHAR(1) NOT NULL DEFAULT 'N',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY idx_drug_catalog_rxnorm (rxnorm_id),
+  KEY idx_drug_catalog_name (name)
+);
+
 /* Product catalog: the physical item you buy (name + strength/form).
    Prescription details (frequency, unit_per_dose) live on hc_medicine_schedules. */
 CREATE TABLE `hc_medicines` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(255) NOT NULL,
   `dosage` VARCHAR(255) NOT NULL,
+  `drug_catalog_id` INT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`drug_catalog_id`) REFERENCES `hc_drug_catalog`(`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `hc_medicine_inventory` (

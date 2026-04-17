@@ -71,16 +71,30 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
   echo "<input type=\"hidden\" name=\"schedule_id\" value=\"$schedule_id\">\n";
 }
 
-// Medication selection
-echo "<div class='form-group'>\n";
-echo "<label for='medicine_id'>Select Medication:</label>\n";
-echo "<select name='medicine_id' id='medicine_id' class='form-control' required>\n";
+// Medication selection — autocomplete from drug catalog + existing medicines
+$allMeds = [];
 while ($medicine = dbi_fetch_row($medicationsResult)) {
-    echo '<option ' . ($medicine[0] == $medicine_id ? " selected " : "" ) . 'value="' . htmlspecialchars($medicine[0]) . '">' .
-        htmlspecialchars($medicine[1]) . "</option>\n";
+    $allMeds[] = ['id' => $medicine[0], 'name' => $medicine[1]];
 }
-echo "</select>\n";
+$selectedMedName = '';
+foreach ($allMeds as $m) {
+    if ($m['id'] == $medicine_id) {
+        $selectedMedName = $m['name'];
+    }
+}
+echo "<div class='form-group'>\n";
+echo "<label for='medicine_search'>Medication:</label>\n";
+echo "<input type='text' id='medicine_search' class='form-control' autocomplete='off' placeholder='Type to search...'";
+if ($selectedMedName !== '') {
+    echo " value='" . htmlspecialchars($selectedMedName, ENT_QUOTES, 'UTF-8') . "'";
+}
+echo " required>\n";
+echo "<input type='hidden' name='medicine_id' id='medicine_id' value='" . htmlspecialchars((string) $medicine_id) . "'>\n";
+echo "<div id='med-suggestions' class='list-group' style='position:absolute;z-index:1000;max-height:300px;overflow-y:auto;display:none'></div>\n";
+echo "<small class='form-text text-muted'><a href='#' id='cant-find-med'>I don't see my medication</a> &mdash; <a href='edit_medication.php'>add a new one</a></small>\n";
 echo "</div>\n";
+// Pass existing medications to JS for local filtering
+echo "<script>var HC_MEDICINES = " . json_encode($allMeds, JSON_HEX_TAG | JSON_HEX_AMP) . ";</script>\n";
 
 // Schedule dates and frequency
 echo "<div class='form-group'>\n";
@@ -240,6 +254,167 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
 }
 echo "</form>\n";
 echo "</div>\n";
+
+// Medication autocomplete: searches drug catalog via API and falls back
+// to filtering the local HC_MEDICINES array for existing medicines.
+echo <<<'HTML'
+<script>
+(function() {
+    var search = document.getElementById('medicine_search');
+    var hiddenId = document.getElementById('medicine_id');
+    var suggestions = document.getElementById('med-suggestions');
+    var cantFind = document.getElementById('cant-find-med');
+    if (!search || !suggestions || !hiddenId) return;
+
+    var debounce = null;
+    var localMeds = window.HC_MEDICINES || [];
+
+    function filterLocal(q) {
+        q = q.toLowerCase();
+        return localMeds.filter(function(m) {
+            return m.name.toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 10);
+    }
+
+    function render(items, type) {
+        suggestions.innerHTML = '';
+        items.forEach(function(item) {
+            var a = document.createElement('a');
+            a.href = '#';
+            a.className = 'list-group-item list-group-item-action';
+            if (type === 'catalog') {
+                var label = item.name;
+                if (item.strength) label += ' [' + item.strength + ']';
+                if (item.dosage_form) label += ' — ' + item.dosage_form;
+                a.textContent = label;
+                a.dataset.catalogId = item.id;
+            } else {
+                a.textContent = item.name;
+                a.dataset.medicineId = item.id;
+            }
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (type === 'local') {
+                    search.value = item.name;
+                    hiddenId.value = item.id;
+                } else {
+                    search.value = item.name;
+                    // For catalog items, check if we already have this medicine locally
+                    var match = localMeds.find(function(m) {
+                        return m.name.toLowerCase() === item.name.toLowerCase();
+                    });
+                    if (match) {
+                        hiddenId.value = match.id;
+                    } else {
+                        hiddenId.value = '';
+                        search.value = item.name;
+                    }
+                }
+                suggestions.style.display = 'none';
+            });
+            suggestions.appendChild(a);
+        });
+        if (items.length > 0) suggestions.style.display = 'block';
+    }
+
+    search.addEventListener('input', function() {
+        hiddenId.value = '';
+        clearTimeout(debounce);
+        var q = search.value.trim();
+        if (q.length < 2) { suggestions.style.display = 'none'; return; }
+
+        // Show local matches immediately
+        var local = filterLocal(q);
+        if (local.length > 0) render(local, 'local');
+
+        // Also search the drug catalog (debounced)
+        debounce = setTimeout(function() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'api/v1/drugs.php?q=' + encodeURIComponent(q));
+            xhr.setRequestHeader('Authorization', 'Bearer ' + (window.HC_API_KEY || ''));
+            xhr.onload = function() {
+                if (xhr.status !== 200) return;
+                try {
+                    var resp = JSON.parse(xhr.responseText);
+                    if (resp.status === 'ok' && resp.data && resp.data.length > 0) {
+                        // Merge: local matches first, then catalog
+                        var seen = {};
+                        var merged = [];
+                        local.forEach(function(m) { seen[m.name.toLowerCase()] = true; merged.push({item:m, type:'local'}); });
+                        resp.data.forEach(function(c) {
+                            if (!seen[c.name.toLowerCase()]) {
+                                merged.push({item:c, type:'catalog'});
+                            }
+                        });
+                        suggestions.innerHTML = '';
+                        merged.slice(0, 15).forEach(function(entry) {
+                            var a = document.createElement('a');
+                            a.href = '#';
+                            a.className = 'list-group-item list-group-item-action';
+                            if (entry.type === 'catalog') {
+                                var label = entry.item.name;
+                                if (entry.item.strength) label += ' [' + entry.item.strength + ']';
+                                if (entry.item.dosage_form) label += ' — ' + entry.item.dosage_form;
+                                a.textContent = label;
+                                a.innerHTML += ' <span class="badge badge-secondary">catalog</span>';
+                            } else {
+                                a.textContent = entry.item.name;
+                            }
+                            a.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                if (entry.type === 'local') {
+                                    search.value = entry.item.name;
+                                    hiddenId.value = entry.item.id;
+                                } else {
+                                    search.value = entry.item.name;
+                                    var match = localMeds.find(function(m) {
+                                        return m.name.toLowerCase() === entry.item.name.toLowerCase();
+                                    });
+                                    hiddenId.value = match ? match.id : '';
+                                }
+                                suggestions.style.display = 'none';
+                            });
+                            suggestions.appendChild(a);
+                        });
+                        if (merged.length > 0) suggestions.style.display = 'block';
+                    }
+                } catch(e) {}
+            };
+            xhr.send();
+        }, 250);
+    });
+
+    // Form validation: ensure a medicine is selected
+    search.closest('form').addEventListener('submit', function(e) {
+        if (!hiddenId.value) {
+            // Try exact match against local medicines
+            var val = search.value.trim().toLowerCase();
+            var match = localMeds.find(function(m) { return m.name.toLowerCase() === val; });
+            if (match) {
+                hiddenId.value = match.id;
+            } else {
+                e.preventDefault();
+                alert('Please select a medication from the list, or add a new one first.');
+                search.focus();
+            }
+        }
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!suggestions.contains(e.target) && e.target !== search) {
+            suggestions.style.display = 'none';
+        }
+    });
+
+    if (cantFind) {
+        cantFind.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.location.href = 'edit_medication.php';
+        });
+    }
+})();
+</script>
+HTML;
 
 echo print_trailer();
 ?>

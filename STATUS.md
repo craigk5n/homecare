@@ -2673,7 +2673,7 @@ pharmacist.
 
 ### HC-110: Drug database autocomplete (RxNorm)
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-004
@@ -2683,23 +2683,23 @@ list rather than typing free-text names. Feeds directly into future
 interaction-checking and barcode lookup.
 
 **Acceptance Criteria**:
-- [ ] Migration: `hc_drug_catalog (id, rxnorm_id, name, strength,
+- [x] Migration: `hc_drug_catalog (id, rxnorm_id, name, strength,
       dosage_form, ingredient_names TEXT, generic CHAR(1))` plus
       indexes on `name` and `rxnorm_id`
-- [ ] `hc_medicines.drug_catalog_id INT NULL FK` (nullable — free-
+- [x] `hc_medicines.drug_catalog_id INT NULL FK` (nullable — free-
       text entries still allowed)
-- [ ] CLI `bin/import_rxnorm.php`: downloads or reads a local
+- [x] CLI `bin/import_rxnorm.php`: downloads or reads a local
       RxNorm RRF dump, loads `RXNCONSO` → `hc_drug_catalog`;
       idempotent (upserts on `rxnorm_id`)
-- [ ] Medication entry / edit pages: autocomplete field driven by
+- [x] Medication entry / edit pages: autocomplete field driven by
       `api/v1/drugs.php?q=...` (debounced, 250 ms, min 2 chars)
-- [ ] Selecting a catalogue entry pre-fills name, strength, and
+- [x] Selecting a catalogue entry pre-fills name, strength, and
       dosage form; operator can still override
-- [ ] "I don't see my medication" fallback keeps free-text entry
-- [ ] Veterinary-friendly: RxNorm covers human drugs; vet entries
+- [x] "I don't see my medication" fallback keeps free-text entry
+- [x] Veterinary-friendly: RxNorm covers human drugs; vet entries
       can be added manually with `rxnorm_id=NULL` and a `notes`
       column — documented in the import script
-- [ ] Unit test: catalogue search; integration test: full picker
+- [x] Unit test: catalogue search; integration test: full picker
       flow populates the schedule form
 
 ---

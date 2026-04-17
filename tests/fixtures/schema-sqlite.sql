@@ -59,12 +59,27 @@ CREATE TABLE `hc_patients` (
   `is_active` INTEGER NOT NULL DEFAULT 1
 );
 
+CREATE TABLE hc_drug_catalog (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  rxnorm_id INT NULL,
+  name VARCHAR(255) NOT NULL,
+  strength VARCHAR(128) NULL,
+  dosage_form VARCHAR(128) NULL,
+  ingredient_names TEXT NULL,
+  generic CHAR(1) NOT NULL DEFAULT 'N',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX idx_drug_catalog_rxnorm ON hc_drug_catalog (rxnorm_id);
+CREATE INDEX idx_drug_catalog_name ON hc_drug_catalog (name);
+
 CREATE TABLE `hc_medicines` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `name` VARCHAR(255) NOT NULL,
   `dosage` VARCHAR(255) NOT NULL,
+  `drug_catalog_id` INTEGER NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`drug_catalog_id`) REFERENCES `hc_drug_catalog`(`id`) ON DELETE SET NULL
 );
 
 CREATE TABLE `hc_medicine_inventory` (
