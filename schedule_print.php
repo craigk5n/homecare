@@ -40,7 +40,10 @@ foreach ($patients as $p) {
     $patientName = (string) $p['name'];
 
     $sql = "SELECT ms.id, m.name, m.dosage, ms.frequency, ms.unit_per_dose,
-                   ms.start_date, ms.end_date
+                   ms.start_date, ms.end_date,
+                   (SELECT GROUP_CONCAT(mi.taken_time ORDER BY mi.taken_time)
+                      FROM hc_medicine_intake mi
+                     WHERE mi.schedule_id = ms.id AND DATE(mi.taken_time) = ?) AS taken_today
               FROM hc_medicine_schedules ms
               JOIN hc_medicines m ON ms.medicine_id = m.id
              WHERE ms.patient_id = ?
@@ -50,11 +53,12 @@ foreach ($patients as $p) {
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
              ORDER BY m.name ASC";
 
-    $rows = dbi_get_cached_rows($sql, [$patientId, $date, $date]);
+    $rows = dbi_get_cached_rows($sql, [$date, $patientId, $date, $date]);
 
     // Compute today's expected dose times using the same logic as
     // schedule_daily.php: advance from the last recorded intake (or
-    // start_date) by frequency until we fill today's window.
+    // start_date) by frequency. Show ALL doses for the day — past
+    // ones marked as taken (checked), future ones as pending.
     $doses = [];
     $todayStart = new DateTime("$date 00:00:00");
     $todayEnd = new DateTime("$date 23:59:59");
@@ -67,6 +71,7 @@ foreach ($patients as $p) {
         $unitPerDose = (float) $row[4];
         $startDate = (string) $row[5];
         $endDate = $row[6] !== null ? new DateTime((string) $row[6]) : null;
+        $takenTimesToday = !empty($row[7]) ? explode(',', (string) $row[7]) : [];
 
         try {
             $freqSeconds = frequencyToSeconds($frequency);
@@ -74,7 +79,7 @@ foreach ($patients as $p) {
             continue;
         }
 
-        // Find most recent intake for this schedule.
+        // Find most recent intake (any day) for anchoring.
         $lastIntake = dbi_get_cached_rows(
             'SELECT taken_time FROM hc_medicine_intake WHERE schedule_id = ? ORDER BY taken_time DESC LIMIT 1',
             [$scheduleId],
@@ -83,14 +88,12 @@ foreach ($patients as $p) {
         $startDateTime = new DateTime($startDate);
 
         if (!empty($lastIntake)) {
-            // Advance from last intake by frequency until we reach today.
             $nextDose = new DateTime((string) $lastIntake[0][0]);
             $nextDose->modify("+{$freqSeconds} seconds");
             while ($nextDose < $todayStart) {
                 $nextDose->modify("+{$freqSeconds} seconds");
             }
         } else {
-            // No intakes yet — anchor from start_date's time-of-day.
             $nextDose = clone $todayStart;
             if ($frequency === '1d') {
                 $nextDose->setTime((int) $startDateTime->format('H'), (int) $startDateTime->format('i'));
@@ -113,6 +116,18 @@ foreach ($patients as $p) {
             if ($endDate !== null && $current > $endDate) {
                 break;
             }
+
+            // Check if this dose was taken (intake within 5 minutes of
+            // the expected time, matching schedule_daily.php).
+            $expectedTs = $current->getTimestamp();
+            $taken = false;
+            foreach ($takenTimesToday as $takenTime) {
+                if (abs($expectedTs - strtotime(trim($takenTime))) < 300) {
+                    $taken = true;
+                    break;
+                }
+            }
+
             $h = (int) $current->format('H');
             $m = (int) $current->format('i');
 
@@ -123,6 +138,7 @@ foreach ($patients as $p) {
                 'dosage' => $dosage,
                 'unit_per_dose' => $unitPerDose,
                 'frequency' => $frequency,
+                'taken' => $taken,
             ];
 
             $current->modify("+{$freqSeconds} seconds");
@@ -150,7 +166,10 @@ table { width: 100%; border-collapse: collapse; }
 th { background: #2c7a7b; color: #fff; font-size: 9pt; text-align: left; padding: 6px 8px; }
 td { padding: 8px 8px; border-bottom: 1px solid #e2e8f0; font-size: 10pt; vertical-align: middle; }
 tr:nth-child(even) td { background: #f7fafc; }
-.checkbox { width: 14px; height: 14px; border: 1.5px solid #999; display: inline-block; vertical-align: middle; }
+.checkbox { width: 14px; height: 14px; border: 1.5px solid #999; display: inline-block; vertical-align: middle; text-align: center; line-height: 14px; font-size: 11px; }
+.checkbox.done { background: #28a745; border-color: #28a745; color: #fff; }
+.taken-row td { color: #999; }
+.taken-row .time { color: #999; }
 .time { color: #2c7a7b; font-weight: bold; white-space: nowrap; }
 .dosage { color: #666; font-size: 9pt; }
 .footer { margin-top: 15px; font-size: 8pt; color: #999; text-align: center; }
@@ -173,8 +192,12 @@ foreach ($patientSchedules as $ps) {
                 . '<th style="width:10%;">Dose</th><th style="width:15%;">Frequency</th></tr>';
 
         foreach ($ps['doses'] as $dose) {
-            $html .= '<tr>';
-            $html .= '<td><span class="checkbox"></span></td>';
+            $rowClass = $dose['taken'] ? ' class="taken-row"' : '';
+            $checkboxClass = $dose['taken'] ? 'checkbox done' : 'checkbox';
+            $checkmark = $dose['taken'] ? '&#10003;' : '';
+
+            $html .= '<tr' . $rowClass . '>';
+            $html .= '<td><span class="' . $checkboxClass . '">' . $checkmark . '</span></td>';
             $html .= '<td class="time">' . htmlspecialchars($dose['time']) . '</td>';
             $html .= '<td>' . htmlspecialchars($dose['name']) . '</td>';
             $html .= '<td class="dosage">' . htmlspecialchars($dose['dosage']) . '</td>';
