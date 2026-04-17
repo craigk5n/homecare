@@ -370,6 +370,10 @@ function renderOverflowMenu($entry) {
     $items = '';
     if (!$entry['isCompleted']) {
         $items .= '<a class="dropdown-item" href="' . htmlspecialchars($entry['adjustUrl']) . '">Adjust dosage</a>';
+        // HC-122: manage dose steps (step/taper)
+        $stepsUrl = 'manage_steps.php?schedule_id=' . urlencode((string) $entry['scheduleId'])
+            . '&patient_id=' . urlencode((string) $entry['patientId']);
+        $items .= '<a class="dropdown-item" href="' . htmlspecialchars($stepsUrl) . '">Dose steps&hellip;</a>';
     }
     $items .= '<a class="dropdown-item" href="' . htmlspecialchars($entry['editUrl']) . '">Edit schedule</a>';
 

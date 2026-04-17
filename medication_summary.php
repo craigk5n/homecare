@@ -32,7 +32,7 @@ if ($patient_id <= 0) {
 $db = new DbiAdapter();
 $report = new MedicationSummaryReport(
     $db,
-    new InventoryService(new InventoryRepository($db), new ScheduleRepository($db), new \HomeCare\Repository\PatientRepository($db)),
+    new InventoryService(new InventoryRepository($db), new ScheduleRepository($db), new \HomeCare\Repository\PatientRepository($db), new \HomeCare\Repository\StepRepository($db)),
 );
 
 $summary = $report->build($patient_id, date('Y-m-d'));

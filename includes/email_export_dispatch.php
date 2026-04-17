@@ -70,6 +70,7 @@ if (!function_exists('hc108_email_and_exit')) {
                     new InventoryRepository($db),
                     new ScheduleRepository($db),
                     new \HomeCare\Repository\PatientRepository($db),
+                    new \HomeCare\Repository\StepRepository($db),
                 ),
             ),
             audit: static function (string $a, string $e, ?int $id, array $d): void {

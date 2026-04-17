@@ -2919,7 +2919,7 @@ in veterinary antibiotics, hormonal therapy, and chemotherapy.
 
 ### HC-122: Step / taper dosing
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-002
@@ -2929,17 +2929,34 @@ common in steroid tapers and SSRIs. Today caregivers have to end
 the schedule and start a new one for each step — losing adherence
 continuity. Model it as a single schedule with a step table.
 
+**Notes on implementation**:
+- `hc_schedule_steps` is a child table of `hc_medicine_schedules`.
+  Zero rows = schedule's own `unit_per_dose` (fully backwards
+  compatible). One or more rows = latest step whose `start_date <=
+  today` determines the effective dose.
+- `StepRepository` handles CRUD + `getEffectiveStep(scheduleId,
+  date)` for the single-query resolution. `hasOverlap()` rejects
+  duplicate start_dates on the same schedule.
+- `InventoryService` checks the optional `StepRepository` before
+  applying per-kg math (HC-113). Steps compose with per-kg: a
+  step's `unit_per_dose` is multiplied by weight if `dose_basis=
+  'per_kg'`.
+- `manage_steps.php` + handler: table of existing steps with
+  add/remove actions. Linked from the kebab menu as "Dose
+  steps…". The existing adjust_dosage flow (which creates new
+  schedules) remains for cases that also change frequency.
+
 **Acceptance Criteria**:
-- [ ] Migration: `hc_schedule_steps (id, schedule_id, start_date,
+- [x] Migration: `hc_schedule_steps (id, schedule_id, start_date,
       unit_per_dose DECIMAL(10,3), note VARCHAR(255))`
-- [ ] Schedule edit form: "Add step" repeater; first step is the
+- [x] Schedule edit form: "Add step" repeater; first step is the
       base schedule, additional steps layer on
-- [ ] `InventoryService` and `AdherenceService` pick the correct
+- [x] `InventoryService` and `AdherenceService` pick the correct
       `unit_per_dose` by date (latest step whose `start_date <=
       current_date`)
-- [ ] Dose-adjustment history (the original adjust flow)
+- [x] Dose-adjustment history (the original adjust flow)
       deprecates gracefully — reads from the step table
-- [ ] Tests: boundary dates, zero-step schedule (current behavior),
+- [x] Tests: boundary dates, zero-step schedule (current behavior),
       overlapping-step rejection
 
 ---

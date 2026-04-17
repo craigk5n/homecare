@@ -157,6 +157,20 @@ CREATE TABLE hc_late_dose_alert_log (
   sent_at     DATETIME NOT NULL
 );
 
+/* Step / taper dosing (HC-122). Models dose-level changes within a
+   single schedule. Zero rows = use schedule.unit_per_dose. One or more
+   rows = latest step whose start_date <= reference date wins. */
+CREATE TABLE hc_schedule_steps (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  schedule_id INT NOT NULL,
+  start_date DATE NOT NULL,
+  unit_per_dose DECIMAL(10,3) NOT NULL,
+  note VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (schedule_id) REFERENCES hc_medicine_schedules(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_schedule_steps_sched ON hc_schedule_steps (schedule_id, start_date);
+
 /* Schedule pause / skip-today (HC-124). A pause suspends a schedule's
    cadence for a date range: no doses expected, no reminders, adherence
    counts the paused days as excused. end_date NULL = open-ended. */

@@ -21,6 +21,7 @@ use HomeCare\Domain\ScheduleCalculator;
 use HomeCare\Repository\InventoryRepository;
 use HomeCare\Repository\PatientRepository;
 use HomeCare\Repository\ScheduleRepository;
+use HomeCare\Repository\StepRepository;
 use HomeCare\Service\InventoryService;
 
 /**
@@ -125,6 +126,7 @@ function homecare_inventory_service(): InventoryService
             new InventoryRepository($db),
             new ScheduleRepository($db),
             new PatientRepository($db),
+            new StepRepository($db),
         );
     }
 

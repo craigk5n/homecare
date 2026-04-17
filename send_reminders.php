@@ -135,7 +135,7 @@ if (!empty($cfg) && !empty($cfg[0][0])) {
 
 $supplyService = new SupplyAlertService(
     $db,
-    new InventoryService(new InventoryRepository($db), new ScheduleRepository($db), new \HomeCare\Repository\PatientRepository($db)),
+    new InventoryService(new InventoryRepository($db), new ScheduleRepository($db), new \HomeCare\Repository\PatientRepository($db), new \HomeCare\Repository\StepRepository($db)),
     new SupplyAlertLog($db),
 );
 

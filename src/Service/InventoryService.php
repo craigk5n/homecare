@@ -8,6 +8,7 @@ use HomeCare\Domain\ScheduleCalculator;
 use HomeCare\Repository\InventoryRepositoryInterface;
 use HomeCare\Repository\PatientRepository;
 use HomeCare\Repository\ScheduleRepositoryInterface;
+use HomeCare\Repository\StepRepository;
 
 /**
  * Stock-math service for the medication schedule.
@@ -37,6 +38,7 @@ final class InventoryService
         private readonly InventoryRepositoryInterface $inventory,
         private readonly ScheduleRepositoryInterface $schedules,
         private readonly ?PatientRepository $patients = null,
+        private readonly ?StepRepository $steps = null,
     ) {
     }
 
@@ -72,12 +74,21 @@ final class InventoryService
         $schedule = $this->schedules->getScheduleById($scheduleId);
         if ($schedule !== null) {
             $rawUpd = $schedule['unit_per_dose'];
+
+            // HC-122: step/taper dosing — if the schedule has steps, the
+            // effective unit_per_dose is the latest step whose start_date
+            // <= today. Zero steps = use the schedule's own value.
+            if ($this->steps !== null) {
+                $effectiveStep = $this->steps->getEffectiveStep($scheduleId, date('Y-m-d'));
+                if ($effectiveStep !== null) {
+                    $rawUpd = $effectiveStep['unit_per_dose'];
+                }
+            }
+
             $doseBasis = $schedule['dose_basis'];
 
-            // HC-113: per-kg dosing multiplies the schedule's unit_per_dose
-            // (interpreted as mg/kg) by the patient's weight. When the
-            // patient repo isn't injected or the patient has no weight on
-            // file, we fall back to the raw value and surface a warning.
+            // HC-113: per-kg dosing multiplies the resolved unit_per_dose
+            // (from step or schedule) by the patient's weight.
             if ($doseBasis === 'per_kg' && $this->patients !== null) {
                 $patient = $this->patients->getById($schedule['patient_id']);
                 $weightKg = $patient['weight_kg'] ?? null;
