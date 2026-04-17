@@ -114,6 +114,65 @@ foreach ($rows as $row) {
     }
 }
 
+// ── 1b. 7-day adherence per patient (sparkline data) ────────────────
+// For each patient, count expected vs actual intakes over the last 7 days.
+// This is a lightweight aggregate — not the full per-schedule breakdown.
+$sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
+$today = date('Y-m-d');
+
+$adherenceSql = "SELECT ms.patient_id,
+                        ms.frequency,
+                        ms.start_date,
+                        ms.end_date,
+                        (SELECT COUNT(*) FROM hc_medicine_intake mi
+                          WHERE mi.schedule_id = ms.id
+                            AND mi.taken_time >= ? AND mi.taken_time <= ?) AS actual
+                   FROM hc_medicine_schedules ms
+                  WHERE ms.patient_id IN (" . implode(',', array_map('intval', array_keys($patientStats))) . ")
+                    AND ms.is_prn = 'N'
+                    AND ms.frequency IS NOT NULL
+                    AND ms.start_date <= ?
+                    AND (ms.end_date IS NULL OR ms.end_date >= ?)";
+$adherenceRows = dbi_get_cached_rows($adherenceSql, [
+    $sevenDaysAgo . ' 00:00:00', $today . ' 23:59:59',
+    $today, $sevenDaysAgo,
+]);
+
+$patientAdherence = []; // patient_id => ['expected' => int, 'actual' => int]
+foreach ($adherenceRows as $ar) {
+    $pid = (int) $ar[0];
+    $freq = (string) $ar[1];
+    $actual = (int) $ar[4];
+
+    if (!isset($patientAdherence[$pid])) {
+        $patientAdherence[$pid] = ['expected' => 0, 'actual' => 0];
+    }
+
+    // Calculate how many days this schedule was active in the 7-day window.
+    $schedStart = (string) $ar[2];
+    $schedEnd = $ar[3] !== null ? (string) $ar[3] : $today;
+    $effectiveStart = max($sevenDaysAgo, $schedStart);
+    $effectiveEnd = min($today, $schedEnd);
+    $activeDays = max(0, (int) ((strtotime($effectiveEnd) - strtotime($effectiveStart)) / 86400) + 1);
+
+    try {
+        $dosesPerDay = 86400 / frequencyToSeconds($freq);
+    } catch (\InvalidArgumentException) {
+        continue;
+    }
+
+    $patientAdherence[$pid]['expected'] += (int) round($activeDays * $dosesPerDay);
+    $patientAdherence[$pid]['actual'] += $actual;
+}
+
+// Compute percentage per patient.
+$patientAdherencePct = [];
+foreach ($patientAdherence as $pid => $a) {
+    if ($a['expected'] > 0) {
+        $patientAdherencePct[$pid] = min(100.0, round(($a['actual'] / $a['expected']) * 100, 1));
+    }
+}
+
 // ── 2. Low-supply medicines ─────────────────────────────────────────
 $inventoryData = getInventoryDashboardData();
 $lowSupply = [];
@@ -236,10 +295,24 @@ $caughtUp = getGetValue('caught_up');
           ?>
             <div class="border-bottom px-3 py-3">
               <div class="d-flex justify-content-between align-items-center mb-1">
-                <a href="list_schedule.php?patient_id=<?php echo (int) $pid; ?>"
-                   class="font-weight-bold text-dark text-decoration-none">
-                  <?php echo htmlspecialchars($s['name']); ?>
-                </a>
+                <div>
+                  <a href="list_schedule.php?patient_id=<?php echo (int) $pid; ?>"
+                     class="font-weight-bold text-dark text-decoration-none">
+                    <?php echo htmlspecialchars($s['name']); ?>
+                  </a>
+                  <?php if (isset($patientAdherencePct[$pid])): ?>
+                    <?php
+                      $pct = $patientAdherencePct[$pid];
+                      $barColor = $pct >= 90 ? '#28a745' : ($pct >= 70 ? '#ffc107' : '#dc3545');
+                    ?>
+                    <span class="ml-2 d-inline-flex align-items-center" title="7-day adherence: <?php echo $pct; ?>%">
+                      <span style="display:inline-block;width:50px;height:8px;background:#e9ecef;border-radius:4px;overflow:hidden;vertical-align:middle;">
+                        <span style="display:block;height:100%;width:<?php echo $pct; ?>%;background:<?php echo $barColor; ?>;border-radius:4px;"></span>
+                      </span>
+                      <span class="small text-muted ml-1"><?php echo $pct; ?>%</span>
+                    </span>
+                  <?php endif; ?>
+                </div>
                 <span>
                   <?php if ($overdueCount > 0): ?>
                     <span class="badge badge-danger"><?php echo $overdueCount; ?> overdue</span>
