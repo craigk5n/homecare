@@ -1,0 +1,345 @@
+#!/usr/bin/env bash
+#
+# Unified CI/CD tool for HomeCare.
+#
+# Usage:
+#   bin/ci                     Run all local checks (unit tests, PHPStan, coverage)
+#   bin/ci test [--coverage]   PHPUnit tests (SQLite in-memory — no Docker needed)
+#   bin/ci analyse             PHPStan static analysis
+#   bin/ci e2e [--setup]       Playwright E2E tests (dev Docker on :8080)
+#   bin/ci all                 Full pipeline: local checks + CI docker (up, e2e, down)
+#
+# CI Environment (isolated from dev, port 18090):
+#   bin/ci ci-up               Start isolated CI containers, apply schema, seed admin
+#   bin/ci ci-down             Tear down CI containers and volumes
+#   bin/ci ci-e2e              E2E tests against CI environment
+#
+# Future (lower priority):
+#   bin/ci lint [--fix]        PHPCS coding standards (not yet configured)
+#   bin/ci psalm               Psalm taint analysis (not yet configured)
+#
+# Mirrors the GitHub Actions CI workflow for local execution.
+# All output is logged to ci-logs/<command>-<timestamp>.log
+#
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_DIR"
+
+# ── Logging ───────────────────────────────────────────────────────────
+LOG_DIR="${PROJECT_DIR}/ci-logs"
+mkdir -p "$LOG_DIR"
+
+setup_logging() {
+  local cmd_name="${1:-ci}"
+  LOG_FILE="${LOG_DIR}/${cmd_name}-$(date +%Y%m%d-%H%M%S).log"
+  export FORCE_COLOR=1
+  export TERM="${TERM:-xterm-256color}"
+  exec > >(tee >(sed $'s/\x1b\[[0-9;]*m//g' > "$LOG_FILE")) 2>&1
+}
+
+# ── Colour helpers ────────────────────────────────────────────────────
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
+
+RESULTS=()
+FAILED=0
+STARTED_AT=$(date +%s)
+
+header() {
+  echo ""
+  echo -e "${CYAN}${BOLD}── $1 ──${RESET}"
+}
+
+pass() { RESULTS+=("${GREEN}✓${RESET} $1"); }
+fail() { RESULTS+=("${RED}✗${RESET} $1"); FAILED=$((FAILED + 1)); }
+
+run_step() {
+  local name="$1"; shift
+  header "$name"
+  if "$@"; then
+    pass "$name"
+  else
+    fail "$name"
+  fi
+}
+
+summary() {
+  local elapsed=$(( $(date +%s) - STARTED_AT ))
+  echo ""
+  echo -e "${BOLD}── Summary ($((elapsed / 60))m $((elapsed % 60))s) ──${RESET}"
+  for r in "${RESULTS[@]}"; do
+    echo -e "  $r"
+  done
+  echo ""
+  if [[ $FAILED -gt 0 ]]; then
+    echo -e "  ${RED}${FAILED} job(s) failed.${RESET}"
+    exit 1
+  else
+    echo -e "  ${GREEN}All jobs passed!${RESET}"
+  fi
+}
+
+# ── CI environment helpers ────────────────────────────────────────────
+CI_PORT="${HC_CI_PORT:-18090}"
+
+ci_compose() {
+  docker compose -p homecare-ci -f docker-compose.ci.yml "$@"
+}
+
+ci_mysql() {
+  ci_compose exec -T db mysql -u homecare -phomecare_ci homecare_ci "$@"
+}
+
+# ── Coverage threshold check ─────────────────────────────────────────
+check_coverage() {
+  echo ""
+  echo "Checking coverage threshold (80% on src/)..."
+  php tools/check_coverage.php
+}
+
+# ── Subcommands ───────────────────────────────────────────────────────
+
+cmd_test() {
+  local coverage=false filter="" extra_args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --coverage) coverage=true; shift ;;
+      --filter=*) filter="${1#--filter=}"; shift ;;
+      --filter)   filter="$2"; shift 2 ;;
+      --)         shift; extra_args=("$@"); break ;;
+      *)          extra_args+=("$1"); shift ;;
+    esac
+  done
+
+  local cmd=(vendor/bin/phpunit)
+  if [[ "$coverage" == "true" ]]; then
+    cmd+=(--coverage-clover=coverage.xml --coverage-text)
+  fi
+  [[ -n "$filter" ]] && cmd+=(--filter="$filter")
+  [[ ${#extra_args[@]} -gt 0 ]] && cmd+=("${extra_args[@]}")
+
+  echo "Running: ${cmd[*]}"
+  "${cmd[@]}"
+
+  if [[ "$coverage" == "true" ]]; then
+    check_coverage
+  fi
+}
+
+cmd_analyse() {
+  echo "Running PHPStan..."
+  vendor/bin/phpstan analyse --no-progress "$@"
+}
+
+cmd_e2e() {
+  local setup=false port=8080 extra_args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --setup)  setup=true; shift ;;
+      --port=*) port="${1#--port=}"; shift ;;
+      --)       shift; extra_args=("$@"); break ;;
+      *)        extra_args+=("$1"); shift ;;
+    esac
+  done
+
+  # Auto-detect: if HomeCare isn't responding, run setup automatically.
+  if ! curl -sf "http://localhost:${port}/login.php" > /dev/null 2>&1; then
+    setup=true
+  fi
+
+  if [[ "$setup" == "true" ]]; then
+    echo "Starting Docker environment..."
+    docker compose up -d --build
+    wait_for_app "$port" 60
+    seed_admin "$port"
+    echo "E2E setup complete."
+  fi
+
+  echo "Running Playwright E2E tests..."
+  export PLAYWRIGHT_BASE_URL="http://localhost:${port}"
+  mkdir -p tests/Browser/.auth
+  npx playwright test --project=chromium "${extra_args[@]}"
+}
+
+# ── CI Environment commands (isolated from dev) ──────────────────────
+
+cmd_ci_up() {
+  header "Starting CI containers (port ${CI_PORT})"
+  ci_compose up -d --build
+  wait_for_app "$CI_PORT" 90
+
+  header "Verifying admin seed"
+  seed_admin "$CI_PORT"
+
+  echo ""
+  echo -e "${GREEN}CI environment ready at http://localhost:${CI_PORT}${RESET}"
+}
+
+cmd_ci_down() {
+  header "Tearing down CI environment"
+  ci_compose down -v --remove-orphans
+}
+
+cmd_ci_e2e() {
+  local extra_args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --) shift; extra_args=("$@"); break ;;
+      *)  extra_args+=("$1"); shift ;;
+    esac
+  done
+
+  if ! curl -sf "http://localhost:${CI_PORT}/login.php" > /dev/null 2>&1; then
+    echo "CI environment not running. Run 'bin/ci ci-up' first."
+    exit 1
+  fi
+
+  echo "Running E2E tests against CI environment (port ${CI_PORT})..."
+  export PLAYWRIGHT_BASE_URL="http://localhost:${CI_PORT}"
+  mkdir -p tests/Browser/.auth
+  npx playwright test --project=chromium "${extra_args[@]}"
+}
+
+cmd_all() {
+  run_step "PHPUnit (with coverage)" cmd_test --coverage
+  run_step "PHPStan"  cmd_analyse
+  run_step "CI Environment Up" cmd_ci_up
+  run_step "CI E2E Tests" cmd_ci_e2e
+  # Always tear down, even on failure.
+  header "CI Environment Down"
+  cmd_ci_down
+  summary
+}
+
+cmd_default() {
+  local coverage=false skip_e2e=true
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --coverage) coverage=true; shift ;;
+      --with-e2e) skip_e2e=false; shift ;;
+      *) echo "Unknown option: $1"; exit 1 ;;
+    esac
+  done
+
+  if [[ "$coverage" == "true" ]]; then
+    run_step "PHPUnit (with coverage)" cmd_test --coverage
+  else
+    run_step "PHPUnit" cmd_test
+  fi
+
+  run_step "PHPStan" cmd_analyse
+
+  if [[ "$skip_e2e" == "false" ]]; then
+    run_step "E2E Tests" cmd_e2e
+  fi
+
+  summary
+}
+
+# ── Shared helpers ───────────────────────────────────────────────────
+
+wait_for_app() {
+  local port="$1" max_wait="${2:-60}"
+  echo "Waiting for HomeCare at http://localhost:${port} (up to ${max_wait}s)..."
+  local start_ts=$(date +%s)
+  while true; do
+    if curl -sf "http://localhost:${port}/login.php" > /dev/null 2>&1; then
+      echo "HomeCare is up."
+      return 0
+    fi
+    local elapsed=$(( $(date +%s) - start_ts ))
+    if [[ "$elapsed" -ge "$max_wait" ]]; then
+      echo "FATAL: HomeCare did not become reachable within ${max_wait}s."
+      # Dump logs for debugging.
+      echo "--- Container logs ---"
+      if [[ "$port" == "$CI_PORT" ]]; then
+        ci_compose logs --tail=50 web 2>&1 || true
+      else
+        docker compose logs --tail=50 web 2>&1 || true
+      fi
+      return 1
+    fi
+    sleep 2
+  done
+}
+
+seed_admin() {
+  local port="$1"
+  # The entrypoint already runs migrations (including 004_seed_admin_user.sql).
+  # Verify the admin can actually log in.
+  echo "Verifying admin login..."
+  local http_code
+  http_code=$(curl -s -o /dev/null -w '%{http_code}' \
+    -d 'login=admin&password=admin' \
+    "http://localhost:${port}/login.php")
+
+  if [[ "$http_code" == "302" || "$http_code" == "303" ]]; then
+    echo "Admin login OK (HTTP ${http_code} redirect)."
+  else
+    echo "Warning: admin login returned HTTP ${http_code} (expected 302/303)."
+    echo "Attempting to seed admin user directly..."
+    if [[ "$port" == "$CI_PORT" ]]; then
+      ci_mysql < migrations/004_seed_admin_user.sql 2>/dev/null || echo "(seed may already exist)"
+    else
+      docker compose exec -T db sh -c \
+        'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
+        < migrations/004_seed_admin_user.sql 2>/dev/null || echo "(seed may already exist)"
+    fi
+  fi
+}
+
+# ── Dispatch ──────────────────────────────────────────────────────────
+CMD="${1:-}"
+shift 2>/dev/null || true
+
+if [[ "$CMD" != "help" && "$CMD" != "-h" && "$CMD" != "--help" ]]; then
+  setup_logging "${CMD:-default}"
+  echo "Log: ${LOG_FILE}"
+fi
+
+case "$CMD" in
+  test)     cmd_test "$@" ;;
+  analyse)  cmd_analyse "$@" ;;
+  e2e)      cmd_e2e "$@" ;;
+  all)      cmd_all "$@" ;;
+  ci-up)    cmd_ci_up "$@" ;;
+  ci-down)  cmd_ci_down "$@" ;;
+  ci-e2e)   cmd_ci_e2e "$@" ;;
+  help|-h|--help)
+    echo "Usage: bin/ci [command] [options]"
+    echo ""
+    echo "Local checks (no Docker needed):"
+    echo "  (default)     Run unit tests + PHPStan"
+    echo "  test          PHPUnit tests (--coverage, --filter=Name)"
+    echo "  analyse       PHPStan static analysis"
+    echo ""
+    echo "Full pipeline (uses isolated CI containers on :${CI_PORT}):"
+    echo "  all           Everything: test, analyse, ci-up, ci-e2e, ci-down"
+    echo ""
+    echo "Dev Docker (uses dev containers on :8080):"
+    echo "  e2e           Playwright E2E tests (--setup to start containers)"
+    echo ""
+    echo "CI Docker (isolated containers on :${CI_PORT}):"
+    echo "  ci-up         Start CI containers, apply schema + migrations, verify admin"
+    echo "  ci-down       Tear down CI containers and volumes"
+    echo "  ci-e2e        E2E tests against CI environment"
+    echo ""
+    echo "Options:"
+    echo "  --coverage    Include coverage check (80% threshold on src/)"
+    echo "  --with-e2e    Include E2E tests in default pipeline"
+    echo ""
+    echo "Environment variables:"
+    echo "  HC_CI_PORT    CI web port (default: 18090)"
+    echo ""
+    echo "Future (lower priority, not yet configured):"
+    echo "  lint          PHPCS / PHP-CS-Fixer coding standards"
+    echo "  psalm         Psalm taint analysis"
+    ;;
+  "")       cmd_default ;;
+  *)        cmd_default "$CMD" "$@" ;;
+esac

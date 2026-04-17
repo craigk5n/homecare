@@ -25,6 +25,9 @@
 data/attachments/
 !data/.htaccess
 
+# CI logs
+ci-logs/
+
 .phpunit.cache/
 .phpunit.result.cache
 includes/settings.php

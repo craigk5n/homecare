@@ -1,0 +1,54 @@
+# HomeCare CI stack — isolated from the dev docker-compose.yml.
+#
+# Usage (via bin/ci):
+#   docker compose -p homecare-ci -f docker-compose.ci.yml up -d --build
+#
+# Key differences from dev:
+#   - Separate project name (homecare-ci) so containers never collide
+#   - Ephemeral tmpfs database (no persistent volume — fresh every run)
+#   - Port 18090 by default (override with HC_CI_PORT)
+#   - Mode set to 'dev' so errors are visible in test output
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${HC_CI_PORT:-18090}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HC_DB_HOST: db
+      HC_DB_PORT: 3306
+      HC_DB_NAME: homecare_ci
+      HC_DB_USER: homecare
+      HC_DB_PASSWORD: homecare_ci
+      HC_DB_TYPE: mysqli
+      HC_TIMEZONE: America/New_York
+    restart: "no"
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpw_ci
+      MYSQL_DATABASE: homecare_ci
+      MYSQL_USER: homecare
+      MYSQL_PASSWORD: homecare_ci
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test:
+        - CMD
+        - mysqladmin
+        - ping
+        - -h
+        - localhost
+        - -u
+        - root
+        - -prootpw_ci
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: "no"
