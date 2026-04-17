@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace HomeCare\Notification;
 
 use HomeCare\Config\WebhookConfig;
+use HomeCare\Repository\WebhookLogRepository;
 
 /**
  * Generic webhook implementation of {@see NotificationChannel}.
@@ -69,6 +70,7 @@ final class WebhookChannel implements NotificationChannel
         ?callable $sleeper = null,
         ?callable $clock = null,
         ?callable $idFactory = null,
+        private readonly ?WebhookLogRepository $log = null,
     ) {
         $this->sleeper = $sleeper ?? static function (int $seconds): void {
             if ($seconds > 0) {
@@ -116,18 +118,56 @@ final class WebhookChannel implements NotificationChannel
         ];
 
         $url = $this->config->getUrl();
+        $messageId = $payload['message_id'];
         $totalAttempts = self::RETRY_ATTEMPTS + 1;
 
         for ($attempt = 0; $attempt < $totalAttempts; $attempt++) {
             if ($attempt > 0) {
                 $this->sleep(self::BACKOFF_SECONDS[$attempt - 1]);
             }
-            if ($this->http->post($url, $body, $headers)) {
+
+            $startMs = (int) (microtime(true) * 1000);
+            $ok = $this->http->post($url, $body, $headers);
+            $elapsedMs = (int) (microtime(true) * 1000) - $startMs;
+
+            $this->logAttempt($messageId, $url, $body, $ok, $attempt + 1, $totalAttempts, $elapsedMs);
+
+            if ($ok) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function logAttempt(
+        string $messageId,
+        string $url,
+        string $body,
+        bool $success,
+        int $attempt,
+        int $maxAttempts,
+        int $elapsedMs,
+    ): void {
+        if ($this->log === null) {
+            return;
+        }
+        try {
+            $this->log->insert([
+                'message_id' => $messageId,
+                'url' => $url,
+                'request_body' => $body,
+                'http_status' => null,
+                'response_body' => null,
+                'error_message' => $success ? null : 'Transport or HTTP error',
+                'attempt' => $attempt,
+                'max_attempts' => $maxAttempts,
+                'elapsed_ms' => $elapsedMs,
+                'success' => $success,
+            ]);
+        } catch (\Throwable) {
+            // Never let logging break the dispatch.
+        }
     }
 
     private function now(): int

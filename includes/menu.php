@@ -142,6 +142,7 @@ $hasPatient = $activePatientId > 0 && $activePatient !== null;
                 print_menu_item(translate('Notifications (ntfy)'), 'settings.php#notifications');
                 print_menu_item(translate('Email (SMTP)'), 'settings.php#email');
                 print_menu_item(translate('Audit Log'), 'audit_log.php');
+                print_menu_item(translate('Webhook Log'), 'webhook_log.php');
               }
             ?>
           </div>

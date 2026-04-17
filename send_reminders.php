@@ -40,6 +40,7 @@ $channels->register(new WebhookChannel(
     config: $webhookConfig,
     secret: SignedUrl::getSecret(),
     http: new CurlHttpClient($webhookConfig->getTimeoutSeconds()),
+    log: new \HomeCare\Repository\WebhookLogRepository($db),
 ));
 // HC-103: resolver wires per-user preference → registry default when
 // we have user context.
