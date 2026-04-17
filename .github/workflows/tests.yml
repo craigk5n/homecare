@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   test:
-    name: PHPStan max + PHPUnit
+    name: Lint + Analyse + Test (PHP ${{ matrix.php-version }})
     strategy:
       matrix:
         php-version: [8.2, 8.3, 8.4]
@@ -47,15 +47,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-php82-composer-${{ hashFiles('**/composer.json') }}
+          key: ${{ runner.os }}-php${{ matrix.php-version }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
-            ${{ runner.os }}-php82-composer-
+            ${{ runner.os }}-php${{ matrix.php-version }}-composer-
 
       - name: Install dependencies (with dev tools — phpunit, phpstan)
         run: composer install --prefer-dist --no-progress --no-interaction
 
+      - name: 'PHP-CS-Fixer (PER-CS lint)'
+        if: matrix.php-version == '8.2'
+        run: composer lint
+
       - name: 'PHPStan (level: max)'
         run: composer analyse
+
+      - name: 'Psalm (taint analysis)'
+        if: matrix.php-version == '8.2'
+        run: composer psalm
 
       - name: PHPUnit (full suite)
         if: matrix.php-version != '8.2'
