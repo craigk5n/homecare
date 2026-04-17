@@ -57,6 +57,8 @@ print_header();
   <div class="container-fluid d-flex justify-content-between align-items-center flex-wrap">
     <h5 class="page-title mb-0">Audit Log</h5>
     <div class="page-actions">
+      <a href="export_audit_csv.php?<?php echo ltrim(audit_filter_qs(), '&'); ?>"
+         class="btn btn-sm btn-outline-primary mr-1">CSV</a>
       <button class="btn btn-sm btn-outline-secondary" data-print>Print</button>
     </div>
   </div>
