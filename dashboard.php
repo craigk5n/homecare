@@ -173,6 +173,28 @@ foreach ($patientAdherence as $pid => $a) {
     }
 }
 
+// ── 1c. Latest weight per patient (for weight badges) ───────────────
+$weightSql = "SELECT patient_id, weight_kg, recorded_at
+                FROM hc_weight_history
+               WHERE patient_id IN (" . implode(',', array_map('intval', array_keys($patientStats))) . ")
+               ORDER BY patient_id, recorded_at DESC, id DESC";
+$weightRows = dbi_get_cached_rows($weightSql, []);
+
+// Collect latest + previous weight per patient for trend arrow.
+$patientWeights = []; // pid => ['current' => float, 'previous' => float|null, 'date' => string]
+foreach ($weightRows as $wr) {
+    $pid = (int) $wr[0];
+    if (!isset($patientWeights[$pid])) {
+        $patientWeights[$pid] = [
+            'current' => (float) $wr[1],
+            'date' => (string) $wr[2],
+            'previous' => null,
+        ];
+    } elseif ($patientWeights[$pid]['previous'] === null) {
+        $patientWeights[$pid]['previous'] = (float) $wr[1];
+    }
+}
+
 // ── 2. Low-supply medicines ─────────────────────────────────────────
 $inventoryData = getInventoryDashboardData();
 $lowSupply = [];
@@ -311,6 +333,23 @@ $caughtUp = getGetValue('caught_up');
                       </span>
                       <span class="small text-muted ml-1"><?php echo $pct; ?>%</span>
                     </span>
+                  <?php endif; ?>
+                  <?php if (isset($patientWeights[$pid])):
+                    $pw = $patientWeights[$pid];
+                    $arrow = '';
+                    if ($pw['previous'] !== null) {
+                        $diff = $pw['current'] - $pw['previous'];
+                        if ($diff > 0.05) {
+                            $arrow = ' &#9650;'; // ▲
+                        } elseif ($diff < -0.05) {
+                            $arrow = ' &#9660;'; // ▼
+                        }
+                    }
+                  ?>
+                    <a href="report_weight.php?patient_id=<?php echo (int) $pid; ?>"
+                       class="ml-2 small text-muted text-decoration-none"
+                       title="<?php echo number_format($pw['current'], 2); ?> kg as of <?php echo htmlspecialchars($pw['date']); ?>"
+                       ><?php echo number_format($pw['current'], 1); ?>kg<?php echo $arrow; ?></a>
                   <?php endif; ?>
                 </div>
                 <span>
