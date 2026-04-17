@@ -68,6 +68,14 @@ if ($isEdit) {
 echo "</div>\n";
 
 echo "</form>\n";
+
+if ($isEdit) {
+    $att_owner_type = 'note';
+    $att_owner_id = $existing['id'];
+    $att_return_url = 'note_caregiver.php?id=' . $existing['id'];
+    include __DIR__ . '/includes/attachment_widget.php';
+}
+
 echo "</div>\n";
 
 $nonce = htmlspecialchars($GLOBALS['NONCE'] ?? '');

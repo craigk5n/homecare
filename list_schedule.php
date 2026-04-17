@@ -394,6 +394,9 @@ function renderOverflowMenu($entry) {
         $items .= '<a class="dropdown-item" href="' . htmlspecialchars($stepsUrl) . '">Dose steps&hellip;</a>';
     }
     $items .= '<a class="dropdown-item" href="' . htmlspecialchars($entry['editUrl']) . '">Edit schedule</a>';
+    $attachUrl = 'schedule_attachments.php?schedule_id=' . urlencode((string) $entry['scheduleId'])
+        . '&patient_id=' . urlencode((string) $entry['patientId']);
+    $items .= '<a class="dropdown-item" href="' . htmlspecialchars($attachUrl) . '">Attachments</a>';
 
     // HC-124: Pause / Skip today / Resume actions
     if (!$entry['isCompleted'] && empty($entry['isPrn'])) {

@@ -79,6 +79,15 @@ if ($isEdit) {
 echo "<button type='submit' class='btn btn-primary'>" . ($isEdit ? 'Update Patient' : 'Add Patient') . "</button>\n";
 echo " <a href='index.php' class='btn btn-secondary'>Cancel</a>\n";
 echo "</form>\n";
+
+if ($isEdit) {
+    echo "<hr>\n";
+    $att_owner_type = 'patient';
+    $att_owner_id = $patient_id;
+    $att_return_url = 'edit_patient.php?id=' . $patient_id;
+    include __DIR__ . '/includes/attachment_widget.php';
+}
+
 echo "</div>\n";
 
 echo print_trailer();

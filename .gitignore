@@ -21,6 +21,10 @@
 !/vendor/symfony
 !/vendor/thecodingmachine
 
+# Uploaded attachments (HC-130) — keep .htaccess, ignore content
+data/attachments/
+!data/.htaccess
+
 .phpunit.cache/
 .phpunit.result.cache
 includes/settings.php

@@ -83,6 +83,20 @@ CREATE TABLE hc_drug_interactions (
 );
 CREATE INDEX idx_drug_interactions_b ON hc_drug_interactions (ingredient_b);
 
+CREATE TABLE hc_attachments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_type VARCHAR(16) NOT NULL,
+  owner_id INT NOT NULL,
+  filename VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(64) NOT NULL,
+  size_bytes INT NOT NULL,
+  sha256 CHAR(64) NOT NULL,
+  storage_path VARCHAR(255) NOT NULL,
+  uploaded_by VARCHAR(25) NOT NULL,
+  uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_attachments_owner ON hc_attachments (owner_type, owner_id);
+
 CREATE TABLE `hc_medicines` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `name` VARCHAR(255) NOT NULL,

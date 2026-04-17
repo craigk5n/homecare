@@ -3064,7 +3064,7 @@ missing.
 
 ### HC-130: Photo / document attachments
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-011
@@ -3074,21 +3074,21 @@ bottles) and documents (PDFs of vet notes, lab results) to a
 patient, a schedule, or a caregiver note.
 
 **Acceptance Criteria**:
-- [ ] Migration: `hc_attachments (id, owner_type ENUM('patient',
+- [x] Migration: `hc_attachments (id, owner_type ENUM('patient',
       'schedule','note'), owner_id, filename, mime_type, size_bytes,
       sha256, storage_path, uploaded_by, uploaded_at)`
-- [ ] Server-side allow-list: `image/jpeg`, `image/png`, `image/heic`,
+- [x] Server-side allow-list: `image/jpeg`, `image/png`, `image/heic`,
       `application/pdf`; max 10 MB
-- [ ] Files stored under `data/attachments/<sha256[:2]>/<sha256>`
+- [x] Files stored under `data/attachments/<sha256[:2]>/<sha256>`
       outside the web root; served through
       `attachment.php?id=N` with role + ownership check
-- [ ] MIME sniffed server-side (don't trust client Content-Type)
-- [ ] Thumbnail generation for images via GD (lazy, cached on
+- [x] MIME sniffed server-side (don't trust client Content-Type)
+- [x] Thumbnail generation for images via GD (lazy, cached on
       first read)
-- [ ] UI: drag-and-drop zone on patient / schedule / note pages;
+- [x] UI: drag-and-drop zone on patient / schedule / note pages;
       list + download + delete inline
-- [ ] Audit rows: `attachment.uploaded`, `attachment.deleted`
-- [ ] Tests: upload + sniff + serve round-trip, MIME rejection,
+- [x] Audit rows: `attachment.uploaded`, `attachment.deleted`
+- [x] Tests: upload + sniff + serve round-trip, MIME rejection,
       role-based access (viewer can download, only owner/admin
       can delete), 10MB cap enforced
 

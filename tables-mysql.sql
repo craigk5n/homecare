@@ -106,6 +106,22 @@ CREATE TABLE hc_drug_interactions (
   KEY idx_drug_interactions_b (ingredient_b)
 );
 
+/* Photo / document attachments (HC-130). Files live on disk under
+   data/attachments/<sha256[:2]>/<sha256>; this table stores metadata. */
+CREATE TABLE hc_attachments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  owner_type VARCHAR(16) NOT NULL,
+  owner_id INT NOT NULL,
+  filename VARCHAR(255) NOT NULL,
+  mime_type VARCHAR(64) NOT NULL,
+  size_bytes INT NOT NULL,
+  sha256 CHAR(64) NOT NULL,
+  storage_path VARCHAR(255) NOT NULL,
+  uploaded_by VARCHAR(25) NOT NULL,
+  uploaded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_attachments_owner (owner_type, owner_id)
+);
+
 /* Product catalog: the physical item you buy (name + strength/form).
    Prescription details (frequency, unit_per_dose) live on hc_medicine_schedules. */
 CREATE TABLE `hc_medicines` (
