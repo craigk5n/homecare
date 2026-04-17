@@ -3096,7 +3096,7 @@ patient, a schedule, or a caregiver note.
 
 ### HC-131: CSV import for schedules + intakes
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-004
@@ -3106,21 +3106,21 @@ migration from another tracker, disaster-recovery from a backup,
 and periodic sandbox-to-prod promotions.
 
 **Acceptance Criteria**:
-- [ ] `import_schedules.php` (admin-only) accepts the same CSV
+- [x] `import_schedules.php` (admin-only) accepts the same CSV
       shape `export_intake_csv.php` emits, plus an optional
       `schedules.csv` for the schedule catalogue
-- [ ] Preview step identical to HC-084's pattern: row-level
+- [x] Preview step identical to HC-084's pattern: row-level
       validation, row count, commit only on confirm
-- [ ] Foreign-key resolution: patient by `patient_name` or id,
+- [x] Foreign-key resolution: patient by `patient_name` or id,
       medicine by `medicine_name` or id; creates the FK targets
       only if the operator ticks "create missing" (explicit
       opt-in)
-- [ ] Transaction per file
-- [ ] De-dup protection: intakes with the same (`schedule_id`,
+- [x] Transaction per file
+- [x] De-dup protection: intakes with the same (`schedule_id`,
       `taken_time`) are skipped with a row-level "already
       exists" note rather than erroring the whole import
-- [ ] Audit row: `data.imported` with row counts by entity
-- [ ] Integration test: export → wipe → import → verify
+- [x] Audit row: `data.imported` with row counts by entity
+- [x] Integration test: export → wipe → import → verify
       round-trip equality
 
 ---
