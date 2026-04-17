@@ -40,10 +40,9 @@ test.describe('HomeCare smoke', () => {
   test('admin can log in, sees index, and logs out', async ({ page }) => {
     await login(page);
 
-    // After login, with no seeded patients, the router lands on index.php
-    // with either the empty-state card ("No patients yet") or, if a
-    // patient gets seeded in a future fixture, on list_schedule.php.
-    await expect(page).toHaveURL(/\/(index\.php|list_schedule\.php)/);
+    // After login, the router lands on: dashboard.php (2+ patients),
+    // list_schedule.php (1 patient), or index.php (0 patients).
+    await expect(page).toHaveURL(/\/(index\.php|list_schedule\.php|dashboard\.php)/);
 
     // Page should at least render without a PHP fatal.
     const body = await page.locator('body').textContent();

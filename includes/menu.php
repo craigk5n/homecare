@@ -57,6 +57,11 @@ $hasPatient = $activePatientId > 0 && $activePatient !== null;
   </button>
   <div class="navbar-collapse collapse w-50 order-1 order-md-0 dual-collapse2" id="navbarNavDropdown">
     <ul class="navbar-nav">
+      <!-- Dashboard (cross-patient overview) -->
+      <li class="nav-item">
+        <a class="nav-link" href="dashboard.php"><?php etranslate('Dashboard'); ?></a>
+      </li>
+
       <!-- Medications catalog (global; not patient-scoped) -->
       <li class="nav-item dropdown">
         <a class="nav-link dropdown-toggle" href="#" id="medsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">

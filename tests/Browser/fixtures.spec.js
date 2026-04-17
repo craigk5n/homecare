@@ -25,7 +25,7 @@ async function login(page) {
   await page.fill('input[name="password"]', ADMIN_PASSWORD);
   await page.click('button[type="submit"]');
   // Wait for navigation after login.
-  await page.waitForURL(/\/(index\.php|list_schedule\.php)/);
+  await page.waitForURL(/\/(index\.php|list_schedule\.php|dashboard\.php)/);
 }
 
 // ─── Record Intake Flow ──────────────────────────────────────────────
