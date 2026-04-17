@@ -32,7 +32,7 @@ if ($patient_id <= 0) {
 $db = new DbiAdapter();
 $report = new MedicationSummaryReport(
     $db,
-    new InventoryService(new InventoryRepository($db), new ScheduleRepository($db)),
+    new InventoryService(new InventoryRepository($db), new ScheduleRepository($db), new \HomeCare\Repository\PatientRepository($db)),
 );
 
 $summary = $report->build($patient_id, date('Y-m-d'));
@@ -132,6 +132,21 @@ function medsum_format_float($value): string
 
 <div class="med-summary">
   <h1>Medication Summary: <?= htmlspecialchars($summary['patient']['name']) ?></h1>
+<?php
+$speciesLine = '';
+if (!empty($summary['patient']['species'])) {
+    $speciesLine .= ucfirst(htmlspecialchars($summary['patient']['species']));
+}
+if ($summary['patient']['weight_kg'] !== null) {
+    $speciesLine .= ($speciesLine !== '' ? ' · ' : '') . htmlspecialchars((string) $summary['patient']['weight_kg']) . ' kg';
+    if (!empty($summary['patient']['weight_as_of'])) {
+        $speciesLine .= ' (as of ' . htmlspecialchars($summary['patient']['weight_as_of']) . ')';
+    }
+}
+if ($speciesLine !== '') {
+    echo '<div class="text-muted mb-1">' . $speciesLine . '</div>';
+}
+?>
   <div class="generated">Generated <?= htmlspecialchars($summary['generated_at']) ?></div>
 
   <div class="print-actions no-print">

@@ -238,13 +238,28 @@ $okCount       = count($groups['ok']);
 
 $patientNameEsc = htmlspecialchars($patientName, ENT_QUOTES, 'UTF-8');
 $patientIdEsc   = htmlspecialchars((string) $patient_id, ENT_QUOTES, 'UTF-8');
+// HC-113: show species + weight alongside the patient name.
+$patientSubline = '';
+$patientSpecies = $patient['species'] ?? null;
+$patientWeightKg = $patient['weight_kg'] ?? null;
+if (!empty($patientSpecies)) {
+    $patientSubline .= ucfirst(htmlspecialchars($patientSpecies, ENT_QUOTES, 'UTF-8'));
+}
+if ($patientWeightKg !== null) {
+    $patientSubline .= ($patientSubline !== '' ? ' · ' : '') . htmlspecialchars((string) $patientWeightKg, ENT_QUOTES, 'UTF-8') . ' kg';
+}
 
 echo '<div class="schedule-sticky-header noprint" role="region" aria-label="Patient schedule header" id="scheduleStickyHeader">';
 echo '<div class="d-flex justify-content-between align-items-center flex-wrap" style="gap:.5rem;">';
 
-// Left: patient name + status badges
+// Left: patient name + species/weight + status badges
 echo '<div class="d-flex align-items-center flex-wrap" style="gap:.6rem;">';
-echo '<h1 class="hc-patient-name">' . $patientNameEsc . '</h1>';
+echo '<div>';
+echo '<h1 class="hc-patient-name" style="margin-bottom:0">' . $patientNameEsc . '</h1>';
+if ($patientSubline !== '') {
+    echo '<small class="text-muted">' . $patientSubline . '</small>';
+}
+echo '</div>';
 echo '<div class="hc-status-badges" aria-label="Schedule status summary">';
 if ($overdueCount > 0) {
     echo '<span class="hc-badge hc-badge-overdue" title="Overdue doses">'
@@ -277,6 +292,12 @@ echo '<a href="list_caregiver_notes.php?patient_id=' . $patientIdEsc
    . '<span class="hc-label-full">Notes</span>'
    . '<span class="hc-label-compact" aria-hidden="true">Notes</span>'
    . '<span class="sr-only hc-label-compact">Caregiver Notes</span>'
+   . '</a>';
+echo '<a href="edit_patient.php?id=' . $patientIdEsc
+   . '" class="btn btn-outline-secondary btn-sm" title="Edit patient details">'
+   . '<span class="hc-label-full">Edit Patient</span>'
+   . '<span class="hc-label-compact" aria-hidden="true">Edit</span>'
+   . '<span class="sr-only hc-label-compact">Edit Patient</span>'
    . '</a>';
 echo '<a href="add_to_schedule.php?patient_id=' . $patientIdEsc
    . '" class="btn btn-primary btn-sm" title="Add medication to this schedule">'

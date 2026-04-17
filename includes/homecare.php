@@ -19,6 +19,7 @@ use HomeCare\Auth\Authorization;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Domain\ScheduleCalculator;
 use HomeCare\Repository\InventoryRepository;
+use HomeCare\Repository\PatientRepository;
 use HomeCare\Repository\ScheduleRepository;
 use HomeCare\Service\InventoryService;
 
@@ -123,6 +124,7 @@ function homecare_inventory_service(): InventoryService
         $service = new InventoryService(
             new InventoryRepository($db),
             new ScheduleRepository($db),
+            new PatientRepository($db),
         );
     }
 
@@ -166,15 +168,18 @@ function getDueDateTimeInSeconds($patient_id, $schedule_id, $medicine_id, $show_
 
 function getPatient($patientId)
 {
-    $sql = 'SELECT id, name, created_at, updated_at, is_active FROM hc_patients WHERE id = ?';
+    $sql = 'SELECT id, name, species, weight_kg, weight_as_of, created_at, updated_at, is_active FROM hc_patients WHERE id = ?';
     $rows = dbi_get_cached_rows($sql, [$patientId]);
     if ($rows) {
         $patient = [
             'id' => $rows[0][0],
             'name' => $rows[0][1],
-            'created_at' => $rows[0][2],
-            'updated_at' => $rows[0][3],
-            'is_active' => $rows[0][4],
+            'species' => $rows[0][2],
+            'weight_kg' => $rows[0][3] !== null ? (float) $rows[0][3] : null,
+            'weight_as_of' => $rows[0][4],
+            'created_at' => $rows[0][5],
+            'updated_at' => $rows[0][6],
+            'is_active' => $rows[0][7],
         ];
         return $patient;
     } else {

@@ -2769,7 +2769,7 @@ interaction pairs.
 
 ### HC-113: Veterinary profile
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: Nothing
@@ -2778,21 +2778,37 @@ interaction pairs.
 example from HC-075). Make veterinary patients a first-class
 concept.
 
+**Notes on implementation**:
+- `edit_patient.php` and `edit_patient_handler.php` are new pages;
+  previously there was no patient edit form (only a dead link from
+  index.php). Species is a dropdown with common vet + human values;
+  weight + date are optional fields that populate the per-kg math.
+- `dose_basis` is stored as `VARCHAR(10)` with a default of
+  `'fixed'` rather than a MySQL ENUM for SQLite portability.
+  Validation is in the handler (`'per_kg'` or falls back to
+  `'fixed'`).
+- `InventoryService` now accepts an optional `PatientRepository`.
+  When present and `dose_basis='per_kg'`, it multiplies
+  `unit_per_dose` by `weight_kg`. Missing/zero weight falls back
+  to raw `unit_per_dose` with a warning string.
+- `list_schedule.php` sticky header and medication summary print
+  view both show species + weight alongside the patient name.
+
 **Acceptance Criteria**:
-- [ ] Migration: `hc_patients.species VARCHAR(32) NULL`,
+- [x] Migration: `hc_patients.species VARCHAR(32) NULL`,
       `hc_patients.weight_kg DECIMAL(6,2) NULL`,
       `hc_patients.weight_as_of DATE NULL`
-- [ ] Edit patient page adds species dropdown (cat/dog/horse/
+- [x] Edit patient page adds species dropdown (cat/dog/horse/
       rabbit/bird/reptile/other/human) and weight + date
-- [ ] `hc_medicine_schedules.dose_basis ENUM('fixed','per_kg')
+- [x] `hc_medicine_schedules.dose_basis ENUM('fixed','per_kg')
       DEFAULT 'fixed'`; when `per_kg`, `unit_per_dose` is
       interpreted as mg/kg
-- [ ] `dosesRemaining()` + inventory math multiply `unit_per_dose`
+- [x] `dosesRemaining()` + inventory math multiply `unit_per_dose`
       by `weight_kg` when `dose_basis='per_kg'`
-- [ ] Warning when schedule uses `per_kg` and patient has no
+- [x] Warning when schedule uses `per_kg` and patient has no
       `weight_kg` on file
-- [ ] Medication summary print view shows species + weight
-- [ ] Tests cover per_kg math at multiple weights + missing-weight
+- [x] Medication summary print view shows species + weight
+- [x] Tests cover per_kg math at multiple weights + missing-weight
       edge case
 
 ---

@@ -28,7 +28,7 @@ $medicationsResult = dbi_query($medicationsSql);
 // If medicine id specified, load that
 if (!empty($medicine_id) && !empty($schedule_id)) {
   echo "<h2>Edit Medication to Patient Schedule</h2>\n";
-  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn FROM hc_medicine_schedules ' .
+  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis FROM hc_medicine_schedules ' .
     'WHERE patient_id = ? and medicine_id = ? AND id = ?';
   $rows = dbi_get_cached_rows($sql, [$patient_id, $medicine_id, $schedule_id]);
   $start_date = $rows[0][1];
@@ -36,12 +36,14 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
   $frequency = $rows[0][3];
   $unit_per_dose = $rows[0][4];
   $is_prn = ($rows[0][5] ?? 'N') === 'Y';
+  $dose_basis = $rows[0][6] ?? 'fixed';
 } else {
   echo "<h2>Add Medication to Patient Schedule</h2>\n";
   $start_date = $end_date = '';
   $frequency = '1d'; // default
   $unit_per_dose = '1.00';
   $is_prn = false;
+  $dose_basis = 'fixed';
 }
 
 echo "<div class='container mt-3'>\n";
@@ -141,8 +143,37 @@ echo "<div class='form-group'>\n";
 echo "<label for='unit_per_dose'>Unit Per Dose:</label>\n";
 echo "<input type='number' step='0.01' min='0.01' name='unit_per_dose' id='unit_per_dose' class='form-control' required";
 echo " value='" . htmlspecialchars($unit_per_dose) . "'>\n";
-echo "<small class='form-text text-muted'>Number of tablets/units consumed per dose</small>\n";
+echo "<small class='form-text text-muted' id='unit_per_dose_help'>Number of tablets/units consumed per dose</small>\n";
 echo "</div>\n";
+
+// HC-113: dose basis (fixed amount vs weight-based)
+echo "<div class='form-group'>\n";
+echo "<label for='dose_basis'>Dose Basis:</label>\n";
+echo "<select name='dose_basis' id='dose_basis' class='form-control'>\n";
+$fixedSelected = $dose_basis === 'fixed' ? ' selected' : '';
+$perKgSelected = $dose_basis === 'per_kg' ? ' selected' : '';
+echo "<option value='fixed'{$fixedSelected}>Fixed amount</option>\n";
+echo "<option value='per_kg'{$perKgSelected}>Per kg body weight (mg/kg)</option>\n";
+echo "</select>\n";
+echo "<small class='form-text text-muted'>Per-kg multiplies unit_per_dose by the patient's weight.</small>\n";
+echo "</div>\n";
+
+echo <<<'HTML'
+<script>
+(function () {
+  var sel = document.getElementById('dose_basis');
+  var help = document.getElementById('unit_per_dose_help');
+  if (!sel || !help) return;
+  function sync() {
+    help.textContent = sel.value === 'per_kg'
+      ? 'Dose in mg/kg — will be multiplied by patient weight'
+      : 'Number of tablets/units consumed per dose';
+  }
+  sel.addEventListener('change', sync);
+  sync();
+})();
+</script>
+HTML;
 
 // Submit button
 if (!empty($medicine_id) && !empty($schedule_id)) {

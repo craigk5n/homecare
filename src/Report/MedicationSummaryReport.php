@@ -41,7 +41,7 @@ use HomeCare\Service\InventoryService;
  * }
  *
  * @phpstan-type Summary array{
- *     patient:array{id:int,name:string},
+ *     patient:array{id:int,name:string,species:?string,weight_kg:?float,weight_as_of:?string},
  *     generated_at:string,
  *     today:string,
  *     discontinued_window_days:int,
@@ -83,12 +83,12 @@ final class MedicationSummaryReport
     }
 
     /**
-     * @return array{id:int,name:string}|null
+     * @return array{id:int,name:string,species:?string,weight_kg:?float,weight_as_of:?string}|null
      */
     private function fetchPatient(int $patientId): ?array
     {
         $rows = $this->db->query(
-            'SELECT id, name FROM hc_patients WHERE id = ?',
+            'SELECT id, name, species, weight_kg, weight_as_of FROM hc_patients WHERE id = ?',
             [$patientId]
         );
         if ($rows === []) {
@@ -98,6 +98,9 @@ final class MedicationSummaryReport
         return [
             'id' => (int) $rows[0]['id'],
             'name' => (string) $rows[0]['name'],
+            'species' => $rows[0]['species'] === null ? null : (string) $rows[0]['species'],
+            'weight_kg' => $rows[0]['weight_kg'] === null ? null : (float) $rows[0]['weight_kg'],
+            'weight_as_of' => $rows[0]['weight_as_of'] === null ? null : (string) $rows[0]['weight_as_of'],
         ];
     }
 

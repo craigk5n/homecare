@@ -24,6 +24,7 @@ use InvalidArgumentException;
  *     frequency:?string,
  *     unit_per_dose:float,
  *     is_prn:bool,
+ *     dose_basis:string,
  *     created_at:?string
  * }
  *
@@ -34,7 +35,8 @@ use InvalidArgumentException;
  *     end_date?:?string,
  *     frequency?:?string,
  *     unit_per_dose:float,
- *     is_prn?:bool
+ *     is_prn?:bool,
+ *     dose_basis?:string
  * }
  */
 final class ScheduleRepository implements ScheduleRepositoryInterface
@@ -104,10 +106,12 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
             $frequency = null;
         }
 
+        $doseBasis = $data['dose_basis'] ?? 'fixed';
+
         $this->db->execute(
             'INSERT INTO hc_medicine_schedules
-                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn)
-             VALUES (?, ?, ?, ?, ?, ?, ?)',
+                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $data['patient_id'],
                 $data['medicine_id'],
@@ -116,6 +120,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
                 $frequency,
                 $data['unit_per_dose'],
                 $isPrn ? 'Y' : 'N',
+                $doseBasis,
             ]
         );
 
@@ -125,7 +130,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
     private function selectAllColumns(): string
     {
         return 'SELECT id, patient_id, medicine_id, start_date, end_date, frequency, '
-            . 'unit_per_dose, is_prn, created_at FROM hc_medicine_schedules';
+            . 'unit_per_dose, is_prn, dose_basis, created_at FROM hc_medicine_schedules';
     }
 
     /**
@@ -147,6 +152,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
             'frequency' => $frequency === null || $frequency === '' ? null : (string) $frequency,
             'unit_per_dose' => (float) $row['unit_per_dose'],
             'is_prn' => $isPrn,
+            'dose_basis' => isset($row['dose_basis']) ? (string) $row['dose_basis'] : 'fixed',
             'created_at' => $row['created_at'] === null ? null : (string) $row['created_at'],
         ];
     }

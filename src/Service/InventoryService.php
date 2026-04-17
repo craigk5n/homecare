@@ -6,6 +6,7 @@ namespace HomeCare\Service;
 
 use HomeCare\Domain\ScheduleCalculator;
 use HomeCare\Repository\InventoryRepositoryInterface;
+use HomeCare\Repository\PatientRepository;
 use HomeCare\Repository\ScheduleRepositoryInterface;
 
 /**
@@ -26,7 +27,8 @@ use HomeCare\Repository\ScheduleRepositoryInterface;
  *     lastInventory:?float,
  *     quantityTakenSince:float,
  *     unitPerDose:float,
- *     medicineName:string
+ *     medicineName:string,
+ *     warning:?string
  * }
  */
 final class InventoryService
@@ -34,6 +36,7 @@ final class InventoryService
     public function __construct(
         private readonly InventoryRepositoryInterface $inventory,
         private readonly ScheduleRepositoryInterface $schedules,
+        private readonly ?PatientRepository $patients = null,
     ) {
     }
 
@@ -63,11 +66,30 @@ final class InventoryService
             'quantityTakenSince' => 0.0,
             'unitPerDose' => 0.0,
             'medicineName' => (string) ($this->inventory->getMedicineName($medicineId) ?? ''),
+            'warning' => null,
         ];
 
         $schedule = $this->schedules->getScheduleById($scheduleId);
         if ($schedule !== null) {
-            $report['unitPerDose'] = $schedule['unit_per_dose'];
+            $rawUpd = $schedule['unit_per_dose'];
+            $doseBasis = $schedule['dose_basis'];
+
+            // HC-113: per-kg dosing multiplies the schedule's unit_per_dose
+            // (interpreted as mg/kg) by the patient's weight. When the
+            // patient repo isn't injected or the patient has no weight on
+            // file, we fall back to the raw value and surface a warning.
+            if ($doseBasis === 'per_kg' && $this->patients !== null) {
+                $patient = $this->patients->getById($schedule['patient_id']);
+                $weightKg = $patient['weight_kg'] ?? null;
+                if ($weightKg !== null && $weightKg > 0) {
+                    $report['unitPerDose'] = $rawUpd * $weightKg;
+                } else {
+                    $report['unitPerDose'] = $rawUpd;
+                    $report['warning'] = 'Per-kg dosing requires a patient weight — using raw unit_per_dose';
+                }
+            } else {
+                $report['unitPerDose'] = $rawUpd;
+            }
         }
 
         $stock = $this->inventory->getLatestStock($medicineId);
