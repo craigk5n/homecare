@@ -236,3 +236,14 @@ CREATE TABLE hc_webhook_log (
 CREATE INDEX idx_hc_webhook_log_message ON hc_webhook_log (message_id);
 CREATE INDEX idx_hc_webhook_log_created ON hc_webhook_log (created_at DESC);
 CREATE INDEX idx_hc_webhook_log_success ON hc_webhook_log (success, created_at DESC);
+
+CREATE TABLE hc_weight_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  patient_id INTEGER NOT NULL,
+  weight_kg DECIMAL(6,2) NOT NULL,
+  recorded_at DATE NOT NULL,
+  note VARCHAR(255) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (patient_id) REFERENCES hc_patients(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_hc_weight_history_patient ON hc_weight_history (patient_id, recorded_at DESC);

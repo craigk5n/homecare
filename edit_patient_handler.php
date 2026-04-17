@@ -5,6 +5,9 @@ declare(strict_types=1);
 require_once 'includes/init.php';
 require_role('caregiver');
 
+use HomeCare\Database\DbiAdapter;
+use HomeCare\Repository\WeightRepository;
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: index.php');
     exit;
@@ -35,7 +38,13 @@ if ($weight_kg === '' || $weight_kg === null) {
     }
 }
 
+$weightRepo = new WeightRepository(new DbiAdapter());
+
 if (!empty($id)) {
+    // Check if weight changed from previous value.
+    $oldPatient = getPatient((int) $id);
+    $oldWeight = $oldPatient['weight_kg'] ?? null;
+
     $sql = 'UPDATE hc_patients SET name = ?, species = ?, weight_kg = ?, weight_as_of = ?, is_active = ? WHERE id = ?';
     if (!dbi_execute($sql, [$name, $species, $weight_kg, $weight_as_of, $is_active, (int) $id])) {
         echo '<p>Error updating patient: ' . htmlspecialchars(dbi_error()) . '</p>';
@@ -47,6 +56,11 @@ if (!empty($id)) {
         'weight_kg' => $weight_kg,
         'is_active' => $is_active,
     ]);
+
+    // Record weight history if weight changed.
+    if ($weight_kg !== null && (float) $weight_kg !== (float) ($oldWeight ?? 0)) {
+        $weightRepo->insert((int) $id, (float) $weight_kg, (string) $weight_as_of);
+    }
 } else {
     $sql = 'INSERT INTO hc_patients (name, species, weight_kg, weight_as_of, is_active) VALUES (?, ?, ?, ?, ?)';
     if (!dbi_execute($sql, [$name, $species, $weight_kg, $weight_as_of, 1])) {
@@ -59,6 +73,11 @@ if (!empty($id)) {
         'species' => $species,
         'weight_kg' => $weight_kg,
     ]);
+
+    // Record initial weight history for new patient.
+    if ($weight_kg !== null && $newId > 0) {
+        $weightRepo->insert($newId, (float) $weight_kg, (string) ($weight_as_of ?? date('Y-m-d')));
+    }
 }
 
 do_redirect('index.php');

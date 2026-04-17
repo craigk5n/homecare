@@ -123,6 +123,7 @@ $hasPatient = $activePatientId > 0 && $activePatient !== null;
             <a class="dropdown-item" href="report_missed.php<?php echo $activeIdQs; ?>"><?php etranslate('Missed Medications'); ?></a>
             <a class="dropdown-item" href="report_medications.php<?php echo $activeIdQs; ?>"><?php etranslate('Medication Supply'); ?></a>
             <a class="dropdown-item" href="report_adherence.php<?php echo $activeIdQs; ?>"><?php etranslate('Adherence'); ?></a>
+            <a class="dropdown-item" href="report_weight.php<?php echo $activeIdQs; ?>"><?php etranslate('Weight History'); ?></a>
           </div>
         </li>
       <?php } ?>
