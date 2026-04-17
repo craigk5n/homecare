@@ -96,6 +96,10 @@ echo "</div>\n";
 // Pass existing medications to JS for local filtering
 echo "<script>var HC_MEDICINES = " . json_encode($allMeds, JSON_HEX_TAG | JSON_HEX_AMP) . ";</script>\n";
 
+// HC-112: Interaction warning area
+echo "<div id='interaction-warnings' style='display:none' class='mb-3'></div>\n";
+echo "<input type='hidden' name='interaction_acknowledged' id='interaction_acknowledged' value='0'>\n";
+
 // Schedule dates and frequency
 echo "<div class='form-group'>\n";
 echo "<label for='start_date'>Start Date:</label>\n";
@@ -410,6 +414,110 @@ echo <<<'HTML'
         cantFind.addEventListener('click', function(e) {
             e.preventDefault();
             window.location.href = 'edit_medication.php';
+        });
+    }
+})();
+
+// HC-112: Drug interaction check when medicine is selected.
+(function() {
+    var hiddenId = document.getElementById('medicine_id');
+    var patientSel = document.getElementById('patient_id');
+    var warnArea = document.getElementById('interaction-warnings');
+    var ackInput = document.getElementById('interaction_acknowledged');
+    if (!hiddenId || !patientSel || !warnArea) return;
+
+    var lastChecked = '';
+
+    function checkInteractions() {
+        var medId = hiddenId.value;
+        var patId = patientSel.value;
+        var key = patId + ':' + medId;
+        if (!medId || !patId || key === lastChecked) return;
+        lastChecked = key;
+
+        warnArea.style.display = 'none';
+        warnArea.innerHTML = '';
+        if (ackInput) ackInput.value = '0';
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/v1/interactions.php?patient_id=' + encodeURIComponent(patId)
+            + '&medicine_id=' + encodeURIComponent(medId));
+        xhr.setRequestHeader('Authorization', 'Bearer ' + (window.HC_API_KEY || ''));
+        xhr.onload = function() {
+            try {
+                var resp = JSON.parse(xhr.responseText);
+                if (resp.status !== 'ok' || !resp.data || resp.data.length === 0) return;
+                renderWarnings(resp.data);
+            } catch(e) {}
+        };
+        xhr.send();
+    }
+
+    function renderWarnings(items) {
+        warnArea.innerHTML = '';
+        var hasMajor = false;
+        var hasModerate = false;
+
+        items.forEach(function(item) {
+            var cls = 'alert-info';
+            if (item.severity === 'major') { cls = 'alert-danger'; hasMajor = true; }
+            else if (item.severity === 'moderate') { cls = 'alert-warning'; hasModerate = true; }
+
+            var div = document.createElement('div');
+            div.className = 'alert ' + cls + ' py-2 mb-2';
+            div.innerHTML = '<strong>' + escHtml(item.severity.toUpperCase()) + ' interaction:</strong> '
+                + escHtml(item.ingredient_a) + ' + ' + escHtml(item.ingredient_b)
+                + ' (with ' + escHtml(item.existing_medicine) + ')'
+                + (item.description ? '<br><small>' + escHtml(item.description) + '</small>' : '');
+            warnArea.appendChild(div);
+        });
+
+        if (hasMajor || hasModerate) {
+            var gate = document.createElement('div');
+            gate.className = 'form-check mb-2';
+            gate.innerHTML = '<input type="checkbox" class="form-check-input" id="ack-interactions">'
+                + '<label class="form-check-label" for="ack-interactions">'
+                + "Doctor has OK'd this combination</label>";
+            warnArea.appendChild(gate);
+            var cb = gate.querySelector('#ack-interactions');
+            cb.addEventListener('change', function() {
+                if (ackInput) ackInput.value = cb.checked ? '1' : '0';
+            });
+        }
+
+        warnArea.style.display = 'block';
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // Observe changes to the hidden medicine_id
+    var observer = new MutationObserver(function() { checkInteractions(); });
+    observer.observe(hiddenId, { attributes: true, attributeFilter: ['value'] });
+
+    // Also poll on input events since MutationObserver may miss programmatic .value changes
+    hiddenId.addEventListener('change', checkInteractions);
+    patientSel.addEventListener('change', function() { lastChecked = ''; checkInteractions(); });
+
+    // Check periodically in case value was set programmatically
+    setInterval(function() {
+        var key = patientSel.value + ':' + hiddenId.value;
+        if (key !== lastChecked && hiddenId.value) checkInteractions();
+    }, 500);
+
+    // Block form submit if moderate/major interaction not acknowledged
+    var form = hiddenId.closest('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            var ackCb = document.getElementById('ack-interactions');
+            if (ackCb && !ackCb.checked) {
+                e.preventDefault();
+                alert('Please acknowledge the drug interaction warning before submitting.');
+                ackCb.focus();
+            }
         });
     }
 })();

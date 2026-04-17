@@ -74,6 +74,15 @@ CREATE UNIQUE INDEX idx_drug_catalog_rxnorm ON hc_drug_catalog (rxnorm_id);
 CREATE INDEX idx_drug_catalog_name ON hc_drug_catalog (name);
 CREATE INDEX idx_drug_catalog_ndc ON hc_drug_catalog (ndc);
 
+CREATE TABLE hc_drug_interactions (
+  ingredient_a VARCHAR(64) NOT NULL,
+  ingredient_b VARCHAR(64) NOT NULL,
+  severity VARCHAR(10) NOT NULL DEFAULT 'minor',
+  description TEXT NULL,
+  PRIMARY KEY (ingredient_a, ingredient_b)
+);
+CREATE INDEX idx_drug_interactions_b ON hc_drug_interactions (ingredient_b);
+
 CREATE TABLE `hc_medicines` (
   `id` INTEGER PRIMARY KEY AUTOINCREMENT,
   `name` VARCHAR(255) NOT NULL,

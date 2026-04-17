@@ -2735,7 +2735,7 @@ UPC/EAN on veterinary products.
 
 ### HC-112: Drug interaction checking
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-110
@@ -2745,24 +2745,24 @@ an active one on the same patient. Uses RxNorm's ingredient-level
 interaction pairs.
 
 **Acceptance Criteria**:
-- [ ] Migration: `hc_drug_interactions (ingredient_a VARCHAR(64),
+- [x] Migration: `hc_drug_interactions (ingredient_a VARCHAR(64),
       ingredient_b VARCHAR(64), severity ENUM('minor','moderate',
       'major'), description TEXT, PRIMARY KEY (ingredient_a,
       ingredient_b))`
-- [ ] CLI `bin/import_interactions.php` loads a curated DrugBank
+- [x] CLI `bin/import_interactions.php` loads a curated DrugBank
       / RxNav interaction set (licence-compatible subset;
       documented source in the script)
-- [ ] `src/Service/InteractionService.php`:
+- [x] `src/Service/InteractionService.php`:
       `checkForPatient(int $patientId, int $newMedicineId): array`
       returns a list of interaction records against active
       schedules
-- [ ] `add_to_schedule.php` calls the service; moderate / major
+- [x] `add_to_schedule.php` calls the service; moderate / major
       interactions render a confirmation gate ("Dr. has OK'd
       this combination? ☐"); minor interactions render an info
       banner
-- [ ] `report_medications.php` shows an "Interactions" badge per
+- [x] `report_medications.php` shows an "Interactions" badge per
       patient with a link to detail
-- [ ] Unit + integration tests; no-interaction and multi-
+- [x] Unit + integration tests; no-interaction and multi-
       interaction cases
 
 ---

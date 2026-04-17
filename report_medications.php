@@ -80,6 +80,42 @@ foreach ($rawRows as $row) {
 }
 ksort($rows);
 
+// HC-112: Check drug interactions among active schedules.
+$interactionBadge = '';
+$interactionDetails = [];
+try {
+    require_once __DIR__ . '/vendor/autoload.php';
+    $interDb = new HomeCare\Database\DbiAdapter();
+    $interService = new HomeCare\Service\InteractionService(
+        new HomeCare\Repository\InteractionRepository($interDb),
+        $interDb
+    );
+    $interactionDetails = $interService->checkAllForPatient($patient_id);
+    if ($interactionDetails !== []) {
+        $majorCount = 0;
+        $modCount = 0;
+        foreach ($interactionDetails as $ix) {
+            if ($ix['severity'] === 'major') {
+                $majorCount++;
+            } elseif ($ix['severity'] === 'moderate') {
+                $modCount++;
+            }
+        }
+        if ($majorCount > 0) {
+            $interactionBadge = '<span class="badge badge-danger ml-2" title="Drug interactions detected">'
+                . $majorCount . ' major interaction' . ($majorCount > 1 ? 's' : '') . '</span>';
+        } elseif ($modCount > 0) {
+            $interactionBadge = '<span class="badge badge-warning ml-2" title="Drug interactions detected">'
+                . $modCount . ' moderate interaction' . ($modCount > 1 ? 's' : '') . '</span>';
+        } else {
+            $interactionBadge = '<span class="badge badge-info ml-2" title="Drug interactions detected">'
+                . count($interactionDetails) . ' minor interaction' . (count($interactionDetails) > 1 ? 's' : '') . '</span>';
+        }
+    }
+} catch (\Throwable $e) {
+    // Interaction check is non-critical; fail silently
+}
+
 print_header();
 
 // Toggle URLs preserve the current state of the OTHER toggle.
@@ -93,7 +129,7 @@ $toggleAssumeUrl = 'report_medications.php?patient_id=' . $patient_id
 // ── Sticky header ──
 echo '<div class="page-sticky-header noprint">';
 echo '  <div class="container-fluid d-flex justify-content-between align-items-center flex-wrap">';
-echo '    <h5 class="page-title mb-0">Supply: ' . htmlentities($patientName) . '</h5>';
+echo '    <h5 class="page-title mb-0">Supply: ' . htmlentities($patientName) . $interactionBadge . '</h5>';
 echo '    <div class="page-actions">';
 echo '      <a href="' . htmlspecialchars($toggleAssumeUrl) . '" class="btn btn-sm btn-outline-secondary">'
     . ($assumePastIntake ? '✓ Assume past taken' : 'Assume past taken') . '</a>';
@@ -103,6 +139,26 @@ echo '      <button class="btn btn-sm btn-outline-secondary" data-print>Print</b
 echo '    </div>';
 echo '  </div>';
 echo '</div>';
+
+// HC-112: Interaction details panel
+if ($interactionDetails !== []) {
+    echo '<div class="container-fluid mt-3" id="interaction-details">';
+    echo '<div class="card border-warning">';
+    echo '<div class="card-header bg-warning text-dark"><strong>Drug Interactions</strong></div>';
+    echo '<div class="card-body p-2">';
+    foreach ($interactionDetails as $ix) {
+        $sevClass = $ix['severity'] === 'major' ? 'danger' : ($ix['severity'] === 'moderate' ? 'warning' : 'info');
+        echo '<div class="alert alert-' . $sevClass . ' py-1 mb-1">';
+        echo '<strong>' . htmlspecialchars(strtoupper($ix['severity'])) . ':</strong> ';
+        echo htmlspecialchars($ix['ingredient_a']) . ' + ' . htmlspecialchars($ix['ingredient_b']);
+        echo ' <span class="text-muted">(' . htmlspecialchars($ix['existing_medicine']) . ')</span>';
+        if ($ix['description'] !== null) {
+            echo '<br><small>' . htmlspecialchars($ix['description']) . '</small>';
+        }
+        echo '</div>';
+    }
+    echo '</div></div></div>';
+}
 
 if ($rows === []) {
     echo "<p class='text-muted mt-3'>No medications to report.</p>";

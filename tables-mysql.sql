@@ -94,6 +94,18 @@ CREATE TABLE hc_drug_catalog (
   KEY idx_drug_catalog_ndc (ndc)
 );
 
+/* Ingredient-level drug interaction pairs (HC-112). Each row is one
+   known interaction. Ingredients are alphabetically ordered so each
+   pair is stored once. */
+CREATE TABLE hc_drug_interactions (
+  ingredient_a VARCHAR(64) NOT NULL,
+  ingredient_b VARCHAR(64) NOT NULL,
+  severity VARCHAR(10) NOT NULL DEFAULT 'minor',
+  description TEXT NULL,
+  PRIMARY KEY (ingredient_a, ingredient_b),
+  KEY idx_drug_interactions_b (ingredient_b)
+);
+
 /* Product catalog: the physical item you buy (name + strength/form).
    Prescription details (frequency, unit_per_dose) live on hc_medicine_schedules. */
 CREATE TABLE `hc_medicines` (
