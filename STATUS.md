@@ -3137,7 +3137,7 @@ reverse-proxy auth for users behind Authelia/Authentik.
 
 ### HC-140: Real-time multi-caregiver updates (SSE)
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-013 (audit log drives the event stream)
@@ -3148,20 +3148,20 @@ approach: a Server-Sent Events endpoint tailing `hc_audit_log`
 since the connection's `last_event_id`.
 
 **Acceptance Criteria**:
-- [ ] `events.php` (SSE) streams events since `?since_id=` or the
+- [x] `events.php` (SSE) streams events since `?since_id=` or the
       `Last-Event-ID` header
-- [ ] Event format: `{id, action, entity_type, entity_id,
+- [x] Event format: `{id, action, entity_type, entity_id,
       user_login, created_at}`
-- [ ] Patient-scoped subscription: `?patient_id=N` filters to
+- [x] Patient-scoped subscription: `?patient_id=N` filters to
       events on that patient's schedules / intakes / notes
-- [ ] `list_schedule.php` + `report_adherence.php` subscribe on
+- [x] `list_schedule.php` + `report_adherence.php` subscribe on
       load, re-fetch the relevant row when a matching event
       arrives (debounced 500 ms)
-- [ ] No forever-open DB connections: poll the audit table every
+- [x] No forever-open DB connections: poll the audit table every
       2 s, yield new rows, close on client disconnect
-- [ ] Graceful fallback when `EventSource` is unsupported
+- [x] Graceful fallback when `EventSource` is unsupported
       (no regression)
-- [ ] Integration test: concurrent caregivers scenario
+- [x] Integration test: concurrent caregivers scenario
 
 ---
 

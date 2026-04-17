@@ -715,5 +715,7 @@ function toggleParam(el, param) {
 })();
 </script>
 <?php
+$sse_patient_id = $patient_id;
+include __DIR__ . '/includes/sse_subscribe.php';
 echo print_trailer();
 ?>

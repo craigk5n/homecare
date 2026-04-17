@@ -328,4 +328,8 @@ document.querySelectorAll('[data-autosubmit]').forEach(function(el) {
 
 <?php endif; ?>
 
-<?php echo print_trailer(); ?>
+<?php
+$sse_patient_id = $patient_id;
+include __DIR__ . '/includes/sse_subscribe.php';
+echo print_trailer();
+?>
