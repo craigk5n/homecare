@@ -38,10 +38,10 @@ $statements = [];
 
 // ── Patients ────────────────────────────────────────────────────────
 // 2 active patients
-$statements[] = "INSERT IGNORE INTO hc_patients (id, name, species, is_active, created_at, updated_at)
+$statements[] = "INSERT IGNORE INTO hc_patients (id, name, species, weight_kg, weight_as_of, is_active, created_at, updated_at)
 VALUES
-    (100, 'Bella',  'dog', 1, NOW(), NOW()),
-    (101, 'Mochi',  'cat', 1, NOW(), NOW())";
+    (100, 'Bella',  'dog', 12.50, CURDATE(), 1, NOW(), NOW()),
+    (101, 'Mochi',  'cat',  4.20, CURDATE(), 1, NOW(), NOW())";
 
 // ── Medicines ───────────────────────────────────────────────────────
 // 5 medicines — IDs 100-104
@@ -85,7 +85,20 @@ VALUES
     (103, 103, 90.0, 90.0, DATE_SUB(NOW(), INTERVAL 30 DAY), 'E2E fixture refill'),
     (104, 104,  2.0,  2.0, DATE_SUB(NOW(), INTERVAL 30 DAY), 'E2E low-supply fixture')";
 
-echo "[e2e-seed] Seeding patients, medicines, schedules, inventory...\n";
+// ── Weight history ──────────────────────────────────────────────────
+// A few weight readings over the last 30 days for chart testing.
+$statements[] = "INSERT IGNORE INTO hc_weight_history
+    (id, patient_id, weight_kg, recorded_at, note)
+VALUES
+    (100, 100, 11.80, DATE_SUB(CURDATE(), INTERVAL 28 DAY), 'Initial weigh-in'),
+    (101, 100, 12.10, DATE_SUB(CURDATE(), INTERVAL 21 DAY), 'Vet visit'),
+    (102, 100, 12.30, DATE_SUB(CURDATE(), INTERVAL 14 DAY), NULL),
+    (103, 100, 12.50, DATE_SUB(CURDATE(), INTERVAL 7 DAY),  'After diet change'),
+    (104, 101,  4.00, DATE_SUB(CURDATE(), INTERVAL 28 DAY), NULL),
+    (105, 101,  4.10, DATE_SUB(CURDATE(), INTERVAL 14 DAY), NULL),
+    (106, 101,  4.20, CURDATE(),                            'Current')";
+
+echo "[e2e-seed] Seeding patients, medicines, schedules, inventory, weight history...\n";
 
 foreach ($statements as $sql) {
     if (!$c->query($sql)) {
