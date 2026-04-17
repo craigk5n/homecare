@@ -124,39 +124,39 @@ foreach ($patients as $p) {
             $firstOfDay = $earlier;
         }
 
-        // Walk through today generating each expected dose.
+        // Walk through today generating each expected dose slot.
+        $scheduleDoses = [];
         $current = clone $firstOfDay;
         while ($current <= $todayEnd) {
             if ($endDate !== null && $current > $endDate) {
                 break;
             }
-
-            // Check if this dose was taken (intake within 5 minutes of
-            // the expected time, matching schedule_daily.php).
-            $expectedTs = $current->getTimestamp();
-            $taken = false;
-            foreach ($takenTimesToday as $takenTime) {
-                if (abs($expectedTs - strtotime(trim($takenTime))) < 300) {
-                    $taken = true;
-                    break;
-                }
-            }
-
             $h = (int) $current->format('H');
             $m = (int) $current->format('i');
 
-            $doses[] = [
+            $scheduleDoses[] = [
                 'time_sort' => sprintf('%02d%02d', $h, $m),
                 'time' => $current->format('g:i A'),
                 'name' => $medName,
                 'dosage' => $dosage,
                 'unit_per_dose' => $unitPerDose,
                 'frequency' => $frequency,
-                'taken' => $taken,
+                'taken' => false,
             ];
 
             $current->modify("+{$freqSeconds} seconds");
         }
+
+        // Mark doses as taken: the number of intakes recorded today
+        // determines how many dose slots (earliest first) get checked.
+        // This avoids brittle time-matching — caregivers often record
+        // a few minutes early or late.
+        $takenCount = count($takenTimesToday);
+        for ($i = 0; $i < min($takenCount, count($scheduleDoses)); $i++) {
+            $scheduleDoses[$i]['taken'] = true;
+        }
+
+        array_push($doses, ...$scheduleDoses);
     }
 
     // Sort by time of day.
