@@ -124,6 +124,8 @@ $hasPatient = $activePatientId > 0 && $activePatient !== null;
             <a class="dropdown-item" href="report_medications.php<?php echo $activeIdQs; ?>"><?php etranslate('Medication Supply'); ?></a>
             <a class="dropdown-item" href="report_adherence.php<?php echo $activeIdQs; ?>"><?php etranslate('Adherence'); ?></a>
             <a class="dropdown-item" href="report_weight.php<?php echo $activeIdQs; ?>"><?php etranslate('Weight History'); ?></a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item" href="patient_timeline.php<?php echo $activeIdQs; ?>"><?php etranslate('Timeline'); ?></a>
           </div>
         </li>
       <?php } ?>

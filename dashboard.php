@@ -351,6 +351,8 @@ $caughtUp = getGetValue('caught_up');
                        title="<?php echo displayWeight($pw['current']); ?> <?php echo weightUnitLabel(); ?> as of <?php echo htmlspecialchars($pw['date']); ?>"
                        ><?php echo displayWeight($pw['current'], 1); ?><?php echo weightUnitLabel(); ?><?php echo $arrow; ?></a>
                   <?php endif; ?>
+                  <a href="patient_timeline.php?patient_id=<?php echo (int) $pid; ?>"
+                     class="ml-2 small text-muted" title="View full timeline">timeline</a>
                 </div>
                 <span>
                   <?php if ($overdueCount > 0): ?>
