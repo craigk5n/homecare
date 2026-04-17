@@ -28,7 +28,7 @@ $medicationsResult = dbi_query($medicationsSql);
 // If medicine id specified, load that
 if (!empty($medicine_id) && !empty($schedule_id)) {
   echo "<h2>Edit Medication to Patient Schedule</h2>\n";
-  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis FROM hc_medicine_schedules ' .
+  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days FROM hc_medicine_schedules ' .
     'WHERE patient_id = ? and medicine_id = ? AND id = ?';
   $rows = dbi_get_cached_rows($sql, [$patient_id, $medicine_id, $schedule_id]);
   $start_date = $rows[0][1];
@@ -37,6 +37,8 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
   $unit_per_dose = $rows[0][4];
   $is_prn = ($rows[0][5] ?? 'N') === 'Y';
   $dose_basis = $rows[0][6] ?? 'fixed';
+  $cycle_on_days = $rows[0][7] ?? '';
+  $cycle_off_days = $rows[0][8] ?? '';
 } else {
   echo "<h2>Add Medication to Patient Schedule</h2>\n";
   $start_date = $end_date = '';
@@ -44,6 +46,8 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
   $unit_per_dose = '1.00';
   $is_prn = false;
   $dose_basis = 'fixed';
+  $cycle_on_days = '';
+  $cycle_off_days = '';
 }
 
 echo "<div class='container mt-3'>\n";
@@ -157,6 +161,26 @@ echo "<option value='per_kg'{$perKgSelected}>Per kg body weight (mg/kg)</option>
 echo "</select>\n";
 echo "<small class='form-text text-muted'>Per-kg multiplies unit_per_dose by the patient's weight.</small>\n";
 echo "</div>\n";
+
+// HC-121: optional cycle dosing ("3 weeks on, 1 week off")
+echo "<fieldset class='border p-2 mb-3'>\n";
+echo "<legend class='w-auto px-2' style='font-size:1rem'>Cycle (optional)</legend>\n";
+echo "<div class='form-row'>\n";
+echo "<div class='form-group col-md-6'>\n";
+echo "<label for='cycle_on_days'>Days on:</label>\n";
+echo "<input type='number' min='1' name='cycle_on_days' id='cycle_on_days' class='form-control' placeholder='e.g. 21'"
+    . (!empty($cycle_on_days) ? " value='" . htmlspecialchars((string) $cycle_on_days, ENT_QUOTES, 'UTF-8') . "'" : '')
+    . ">\n";
+echo "</div>\n";
+echo "<div class='form-group col-md-6'>\n";
+echo "<label for='cycle_off_days'>Days off:</label>\n";
+echo "<input type='number' min='1' name='cycle_off_days' id='cycle_off_days' class='form-control' placeholder='e.g. 7'"
+    . (!empty($cycle_off_days) ? " value='" . htmlspecialchars((string) $cycle_off_days, ENT_QUOTES, 'UTF-8') . "'" : '')
+    . ">\n";
+echo "</div>\n";
+echo "</div>\n";
+echo "<small class='form-text text-muted'>Leave blank for continuous dosing. When set, the schedule alternates between on-days (doses expected) and off-days (no doses).</small>\n";
+echo "</fieldset>\n";
 
 echo <<<'HTML'
 <script>

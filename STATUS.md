@@ -2875,7 +2875,7 @@ count against adherence.
 
 ### HC-121: Pulse / cycle dosing
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 5
 **Depends on**: HC-002
@@ -2883,18 +2883,36 @@ count against adherence.
 **Description**: Support "3 weeks on, 1 week off" patterns common
 in veterinary antibiotics, hormonal therapy, and chemotherapy.
 
+**Notes on implementation**:
+- `ScheduleCalculator` gains two pure static methods: `isOnDay()`
+  determines if a target date falls in the on-period of the cycle
+  (modular arithmetic on days-since-start), and
+  `countOnDaysInRange()` counts on-days within a date range (used
+  by AdherenceService for expected-dose calculation).
+- Both columns are nullable — `NULL`/`NULL` means continuous dosing
+  (the existing default). When both are set, the schedule alternates
+  `cycle_on_days` days of normal dosing and `cycle_off_days` days
+  with no expected doses.
+- Off-days suppress reminders (`send_reminders.php`), late-dose
+  alerts (`LateDoseAlertService`), and adherence expected-count
+  (`AdherenceService`). `list_schedule.php` shows "Off day" with a
+  cycle label.
+- The schedule form adds an optional "Cycle" fieldset with two
+  number inputs. Both must be filled or both blank (handler
+  normalises partial input to null).
+
 **Acceptance Criteria**:
-- [ ] Migration: `hc_medicine_schedules.cycle_on_days INT NULL`,
+- [x] Migration: `hc_medicine_schedules.cycle_on_days INT NULL`,
       `hc_medicine_schedules.cycle_off_days INT NULL`
-- [ ] Schedule edit form: optional "Cycle" section, two number
+- [x] Schedule edit form: optional "Cycle" section, two number
       inputs
-- [ ] `ScheduleCalculator` handles the cycle:
+- [x] `ScheduleCalculator` handles the cycle:
       - During on-period: behaves as normal
       - During off-period: no "next due", doses not expected
-- [ ] Adherence expected-count honours the cycle (counts only
+- [x] Adherence expected-count honours the cycle (counts only
       on-days)
-- [ ] Reminder + supply alert loops skip off-days
-- [ ] Unit tests around cycle boundary (last hour of on-period,
+- [x] Reminder + supply alert loops skip off-days
+- [x] Unit tests around cycle boundary (last hour of on-period,
       first hour of off-period)
 
 ---

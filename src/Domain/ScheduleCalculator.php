@@ -142,6 +142,93 @@ final class ScheduleCalculator
     }
 
     /**
+     * Is the given date within the "on" period of a cycle?
+     *
+     * Cycles repeat on a fixed calendar: `cycleOnDays` days of normal
+     * dosing followed by `cycleOffDays` days off. The cycle resets from
+     * `$startDate`. When either cycle parameter is null the schedule is
+     * continuous (always on).
+     *
+     * Returns false if `$targetDate` is before `$startDate`.
+     */
+    public static function isOnDay(
+        string $startDate,
+        ?int $cycleOnDays,
+        ?int $cycleOffDays,
+        string $targetDate,
+    ): bool {
+        if ($cycleOnDays === null || $cycleOffDays === null) {
+            return true;
+        }
+
+        $startTs = strtotime($startDate);
+        $targetTs = strtotime($targetDate);
+        if ($startTs === false || $targetTs === false || $targetTs < $startTs) {
+            return false;
+        }
+
+        $daysSinceStart = (int) floor(($targetTs - $startTs) / 86400);
+        $cycleLength = $cycleOnDays + $cycleOffDays;
+        if ($cycleLength <= 0) {
+            return true;
+        }
+
+        return ($daysSinceStart % $cycleLength) < $cycleOnDays;
+    }
+
+    /**
+     * Count calendar days in [$rangeStart, $rangeEnd] that fall within
+     * the "on" period of a cycle. Used by AdherenceService to compute
+     * expected doses for cycled schedules.
+     *
+     * When cycle parameters are null (continuous), returns the full
+     * inclusive day count of the range.
+     */
+    public static function countOnDaysInRange(
+        string $startDate,
+        ?int $cycleOnDays,
+        ?int $cycleOffDays,
+        string $rangeStart,
+        string $rangeEnd,
+    ): int {
+        $rsTs = strtotime($rangeStart);
+        $reTs = strtotime($rangeEnd);
+        if ($rsTs === false || $reTs === false || $rsTs > $reTs) {
+            return 0;
+        }
+
+        $totalDays = (int) floor(($reTs - $rsTs) / 86400) + 1;
+
+        if ($cycleOnDays === null || $cycleOffDays === null) {
+            return $totalDays;
+        }
+
+        $cycleLength = $cycleOnDays + $cycleOffDays;
+        if ($cycleLength <= 0) {
+            return $totalDays;
+        }
+
+        $startTs = strtotime($startDate);
+        if ($startTs === false) {
+            return $totalDays;
+        }
+
+        $count = 0;
+        $dayTs = $rsTs;
+        for ($i = 0; $i < $totalDays; $i++) {
+            if ($dayTs >= $startTs) {
+                $daysSinceStart = (int) floor(($dayTs - $startTs) / 86400);
+                if (($daysSinceStart % $cycleLength) < $cycleOnDays) {
+                    $count++;
+                }
+            }
+            $dayTs += 86400;
+        }
+
+        return $count;
+    }
+
+    /**
      * @return array{0:positive-int,1:'d'|'h'|'m'} [amount, unit]
      *
      * @throws InvalidArgumentException

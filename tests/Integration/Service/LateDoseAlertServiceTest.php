@@ -196,6 +196,31 @@ final class LateDoseAlertServiceTest extends DatabaseTestCase
         $this->assertSame([], $svc->findPendingAlerts(60));
     }
 
+    public function testCycleOffDaySchedulesAreSkipped(): void
+    {
+        // HC-121: a schedule in its off-period should not fire late-dose
+        // alerts, even if the last intake is far in the past.
+        [$p, $m] = $this->seedPatientAndMedicine();
+        $db = $this->getDb();
+        // 3 days on, 4 days off. Start 2026-04-14.
+        // Apr 17-20 are off-days. If "now" is Apr 18, no alert.
+        $db->execute(
+            "INSERT INTO hc_medicine_schedules
+                (patient_id, medicine_id, start_date, frequency, unit_per_dose, cycle_on_days, cycle_off_days)
+             VALUES (?, ?, '2026-04-14', '8h', 1.0, 3, 4)",
+            [$p, $m]
+        );
+        $sid = $db->lastInsertId();
+        $db->execute(
+            'INSERT INTO hc_medicine_intake (schedule_id, taken_time) VALUES (?, ?)',
+            [$sid, '2026-04-16 08:00:00']
+        );
+
+        $svc = $this->service(now: '2026-04-18 18:00:00');
+
+        $this->assertSame([], $svc->findPendingAlerts(60));
+    }
+
     public function testPausedSchedulesAreSkipped(): void
     {
         // HC-124: a paused schedule should not trigger a late-dose alert

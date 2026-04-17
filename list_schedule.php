@@ -34,6 +34,7 @@ if (!$showCompleted) {
     $includeCompletedSql = '';
 }
 $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medicine_id, ms.is_prn,
+        ms.cycle_on_days, ms.cycle_off_days,
         (SELECT MAX(mi.taken_time) FROM hc_medicine_intake mi WHERE mi.schedule_id = ms.id) AS last_taken
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
@@ -70,7 +71,11 @@ foreach ($rows as $row) {
     $end_date     = $row[4];
     $medicine_id  = $row[5];
     $isPrn        = isset($row[6]) && $row[6] === 'Y';
-    $lastTaken    = !empty($row[7]) ? $row[7] : null;
+    $cycleOn      = $row[7] !== null ? (int) $row[7] : null;
+    $cycleOff     = $row[8] !== null ? (int) $row[8] : null;
+    $lastTaken    = !empty($row[9]) ? $row[9] : null;
+    $hasCycle     = $cycleOn !== null && $cycleOff !== null;
+    $isOffDay     = $hasCycle && !HomeCare\Domain\ScheduleCalculator::isOnDay($start_date, $cycleOn, $cycleOff, $todayDate);
     $lastTakenNicely = formatDateNicely($lastTaken);
 
     $secondsUntilDue = null;
@@ -96,6 +101,20 @@ foreach ($rows as $row) {
             $isCompleted = true;
             $statusGroup = 'done';
             $nextDueLabel = 'Completed';
+            $sortKey = sprintf("999999-%06d", $schedule_id);
+        }
+    } elseif ($isOffDay) {
+        // HC-121: schedule is in its off-period. Show a calm status
+        // badge and sort alongside the "ok" group.
+        $nextDueLabel = 'Off day';
+        $nextDueDetail = "Cycle: {$cycleOn}d on / {$cycleOff}d off";
+        $sortKey = 'OFFDAY-' . strtolower($medName) . '-' . sprintf('%06d', $schedule_id);
+        $statusGroup = 'ok';
+        if (!empty($end_date) && $end_date < $todayDate) {
+            $isCompleted = true;
+            $statusGroup = 'done';
+            $nextDueLabel = 'Completed';
+            $nextDueDetail = '';
             $sortKey = sprintf("999999-%06d", $schedule_id);
         }
     } elseif ($isPrn) {
@@ -200,11 +219,11 @@ foreach ($rows as $row) {
     $entry = [
         'sortKey'         => $sortKey,
         'medName'         => $medName,
-        'frequency'       => $isPrn ? 'PRN' : $frequency,
+        'frequency'       => $isPrn ? 'PRN' : ($hasCycle ? $frequency . " ({$cycleOn}d on/{$cycleOff}d off)" : $frequency),
         'lastTakenNicely' => $lastTakenNicely,
         'nextDueLabel'    => $nextDueLabel,
         'nextDueDetail'   => $nextDueDetail,
-        'secondsUntilDue' => ($isPrn || $isPaused) ? null : $secondsUntilDue,
+        'secondsUntilDue' => ($isPrn || $isPaused || $isOffDay) ? null : $secondsUntilDue,
         'remainShort'     => $remainShort,
         'remainDetail'    => $remainDetail,
         'recordUrl'       => $recordUrl,

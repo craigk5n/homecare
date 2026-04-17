@@ -169,20 +169,8 @@ final class InventoryServiceTest extends TestCase
     }
 
     /**
-     * @param array{
-     *     id?:int,
-     *     patient_id?:int,
-     *     medicine_id?:int,
-     *     start_date?:string,
-     *     end_date?:?string,
-     *     frequency?:?string,
-     *     unit_per_dose?:float,
-     *     is_prn?:bool,
-     *     dose_basis?:string,
-     *     created_at?:?string
-     * } $overrides
-     *
-     * @return array{id:int,patient_id:int,medicine_id:int,start_date:string,end_date:?string,frequency:?string,unit_per_dose:float,is_prn:bool,dose_basis:string,created_at:?string}
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
      */
     private static function schedule(array $overrides = []): array
     {
@@ -196,6 +184,8 @@ final class InventoryServiceTest extends TestCase
             'unit_per_dose' => $overrides['unit_per_dose'] ?? 1.0,
             'is_prn' => $overrides['is_prn'] ?? false,
             'dose_basis' => $overrides['dose_basis'] ?? 'fixed',
+            'cycle_on_days' => $overrides['cycle_on_days'] ?? null,
+            'cycle_off_days' => $overrides['cycle_off_days'] ?? null,
             'created_at' => $overrides['created_at'] ?? '2026-01-01 00:00:00',
         ];
     }

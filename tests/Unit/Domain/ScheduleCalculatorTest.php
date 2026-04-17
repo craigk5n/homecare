@@ -157,4 +157,91 @@ final class ScheduleCalculatorTest extends TestCase
             ScheduleCalculator::calculateNextDueDateOrNull('2026-04-13 10:00:00', '8h')
         );
     }
+
+    // Cycle dosing — HC-121 -----------------------------------------------
+
+    public function testIsOnDayReturnsTrueDuringOnPeriod(): void
+    {
+        // 3 weeks on (21d), 1 week off (7d). Schedule started 2026-01-01.
+        // Day 0 (Jan 1) = on, Day 20 (Jan 21) = on, Day 21 (Jan 22) = off.
+        $this->assertTrue(ScheduleCalculator::isOnDay('2026-01-01', 21, 7, '2026-01-01'));
+        $this->assertTrue(ScheduleCalculator::isOnDay('2026-01-01', 21, 7, '2026-01-10'));
+        $this->assertTrue(ScheduleCalculator::isOnDay('2026-01-01', 21, 7, '2026-01-21'));
+    }
+
+    public function testIsOnDayReturnsFalseDuringOffPeriod(): void
+    {
+        // Day 21 (Jan 22) through Day 27 (Jan 28) = off.
+        $this->assertFalse(ScheduleCalculator::isOnDay('2026-01-01', 21, 7, '2026-01-22'));
+        $this->assertFalse(ScheduleCalculator::isOnDay('2026-01-01', 21, 7, '2026-01-28'));
+    }
+
+    public function testIsOnDaySecondCycleStartsOn(): void
+    {
+        // Day 28 (Jan 29) = start of second cycle → on again.
+        $this->assertTrue(ScheduleCalculator::isOnDay('2026-01-01', 21, 7, '2026-01-29'));
+    }
+
+    public function testIsOnDayWithNullCycleAlwaysReturnsTrue(): void
+    {
+        $this->assertTrue(ScheduleCalculator::isOnDay('2026-01-01', null, null, '2026-06-15'));
+    }
+
+    public function testIsOnDayBeforeStartDateReturnsFalse(): void
+    {
+        $this->assertFalse(ScheduleCalculator::isOnDay('2026-03-01', 21, 7, '2026-02-15'));
+    }
+
+    public function testCountOnDaysInRangeFullCycle(): void
+    {
+        // 21 on + 7 off = 28-day cycle. Range: exactly one full cycle.
+        $this->assertSame(
+            21,
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-01', '2026-01-28')
+        );
+    }
+
+    public function testCountOnDaysInRangePartialOnOnly(): void
+    {
+        // Range covers only the first 10 on-days.
+        $this->assertSame(
+            10,
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-01', '2026-01-10')
+        );
+    }
+
+    public function testCountOnDaysInRangeOffPeriodOnly(): void
+    {
+        // Range falls entirely within the off-period.
+        $this->assertSame(
+            0,
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-22', '2026-01-28')
+        );
+    }
+
+    public function testCountOnDaysInRangeSpanningOnOffBoundary(): void
+    {
+        // Day 20 (Jan 21) on, Day 21 (Jan 22) off → 1 on-day in 2-day range.
+        $this->assertSame(
+            1,
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 21, 7, '2026-01-21', '2026-01-22')
+        );
+    }
+
+    public function testCountOnDaysInRangeNullCycleCountsAllDays(): void
+    {
+        $this->assertSame(
+            7,
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', null, null, '2026-04-01', '2026-04-07')
+        );
+    }
+
+    public function testCountOnDaysInRangeMultipleCycles(): void
+    {
+        // 7 on, 3 off = 10-day cycle. Range: 30 days = 3 full cycles → 21 on-days.
+        $this->assertSame(
+            21,
+            ScheduleCalculator::countOnDaysInRange('2026-01-01', 7, 3, '2026-01-01', '2026-01-30')
+        );
+    }
 }

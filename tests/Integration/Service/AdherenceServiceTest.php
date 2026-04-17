@@ -282,6 +282,62 @@ final class AdherenceServiceTest extends DatabaseTestCase
         $this->assertSame(100.0, $result['percentage']);
     }
 
+    public function testCycleDosing21On7OffCountsOnlyOnDays(): void
+    {
+        // HC-121: 7-day window, schedule started 2026-04-01 with 3-day on
+        // and 4-day off cycle. On-days in [Apr 1-7]: Apr 1,2,3 (on), Apr
+        // 4,5,6,7 (off) = 3 on-days. At 8h freq (3 doses/day) → 9 expected.
+        $db = $this->getDb();
+        $patient = (new PatientFactory($db))->create();
+        $medicine = (new MedicineFactory($db))->create();
+        $cycledSched = (new ScheduleFactory($db))->create([
+            'patient_id' => $patient['id'],
+            'medicine_id' => $medicine['id'],
+            'start_date' => '2026-04-01',
+            'frequency' => '8h',
+            'unit_per_dose' => 1.0,
+            'cycle_on_days' => 3,
+            'cycle_off_days' => 4,
+        ])['id'];
+
+        $intakes = new IntakeFactory($db);
+        foreach (['01', '02', '03'] as $day) {
+            foreach (['08:00:00', '16:00:00', '23:59:00'] as $t) {
+                $intakes->create([
+                    'schedule_id' => $cycledSched,
+                    'taken_time' => "2026-04-{$day} {$t}",
+                ]);
+            }
+        }
+
+        $result = $this->service->calculateAdherence($cycledSched, '2026-04-01', '2026-04-07');
+
+        $this->assertSame(9, $result['expected']);
+        $this->assertSame(9, $result['actual']);
+        $this->assertSame(100.0, $result['percentage']);
+    }
+
+    public function testCycleDosingOffPeriodOnlyReturnsZeroExpected(): void
+    {
+        // Query window falls entirely within the off period.
+        $db = $this->getDb();
+        $patient = (new PatientFactory($db))->create();
+        $medicine = (new MedicineFactory($db))->create();
+        $sched = (new ScheduleFactory($db))->create([
+            'patient_id' => $patient['id'],
+            'medicine_id' => $medicine['id'],
+            'start_date' => '2026-04-01',
+            'frequency' => '1d',
+            'cycle_on_days' => 3,
+            'cycle_off_days' => 4,
+        ])['id'];
+
+        // Apr 4-7 = all off-days for a 3on/4off cycle starting Apr 1
+        $result = $this->service->calculateAdherence($sched, '2026-04-04', '2026-04-07');
+
+        $this->assertSame(0, $result['expected']);
+    }
+
     public function testOpenEndedPauseSubtractsFromExpected(): void
     {
         // HC-124: open-ended pause starting Apr 5 within a 7-day window.

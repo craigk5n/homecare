@@ -22,7 +22,9 @@ use HomeCare\Database\DatabaseInterface;
  *     frequency?:?string,
  *     unit_per_dose?:float,
  *     is_prn?:bool,
- *     dose_basis?:string
+ *     dose_basis?:string,
+ *     cycle_on_days?:?int,
+ *     cycle_off_days?:?int
  * }
  * @phpstan-type ScheduleRecord array{
  *     id:int,
@@ -33,7 +35,9 @@ use HomeCare\Database\DatabaseInterface;
  *     frequency:?string,
  *     unit_per_dose:float,
  *     is_prn:bool,
- *     dose_basis:string
+ *     dose_basis:string,
+ *     cycle_on_days:?int,
+ *     cycle_off_days:?int
  * }
  */
 final class ScheduleFactory
@@ -56,6 +60,8 @@ final class ScheduleFactory
         }
 
         $doseBasis = $overrides['dose_basis'] ?? 'fixed';
+        $cycleOn = $overrides['cycle_on_days'] ?? null;
+        $cycleOff = $overrides['cycle_off_days'] ?? null;
         $record = [
             'patient_id' => $overrides['patient_id'],
             'medicine_id' => $overrides['medicine_id'],
@@ -65,12 +71,14 @@ final class ScheduleFactory
             'unit_per_dose' => $overrides['unit_per_dose'] ?? 1.0,
             'is_prn' => $isPrn,
             'dose_basis' => $doseBasis,
+            'cycle_on_days' => $cycleOn,
+            'cycle_off_days' => $cycleOff,
         ];
 
         $this->db->execute(
             'INSERT INTO hc_medicine_schedules
-                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $record['patient_id'],
                 $record['medicine_id'],
@@ -80,6 +88,8 @@ final class ScheduleFactory
                 $record['unit_per_dose'],
                 $isPrn ? 'Y' : 'N',
                 $doseBasis,
+                $cycleOn,
+                $cycleOff,
             ]
         );
 

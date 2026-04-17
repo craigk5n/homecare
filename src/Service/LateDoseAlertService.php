@@ -116,7 +116,8 @@ final class LateDoseAlertService
         // HC-120: skip PRN schedules — no cadence, "late" is meaningless.
         // HC-124: skip paused schedules — no alerts while on hold.
         $rows = $this->db->query(
-            "SELECT ms.id AS schedule_id, ms.frequency,
+            "SELECT ms.id AS schedule_id, ms.frequency, ms.start_date,
+                    ms.cycle_on_days, ms.cycle_off_days,
                     m.name AS medicine_name, p.name AS patient_name,
                     (SELECT MAX(mi.taken_time)
                        FROM hc_medicine_intake mi
@@ -146,6 +147,13 @@ final class LateDoseAlertService
             }
             $scheduleId = (int) $row['schedule_id'];
             $frequency = (string) $row['frequency'];
+
+            // HC-121: skip off-days in cycle schedules.
+            $cycleOn = $row['cycle_on_days'] !== null ? (int) $row['cycle_on_days'] : null;
+            $cycleOff = $row['cycle_off_days'] !== null ? (int) $row['cycle_off_days'] : null;
+            if (!ScheduleCalculator::isOnDay((string) $row['start_date'], $cycleOn, $cycleOff, $today)) {
+                continue;
+            }
 
             $lastAlertDueAt = $this->log->lastDueAt($scheduleId);
             if (!self::shouldAlert(

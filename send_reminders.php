@@ -74,7 +74,8 @@ foreach ($patients as $patient) {
     // HC-120: PRN rows have no cadence, so `ms.is_prn = 'N'` excludes
     // them from the reminder fan-out entirely -- the cron job has
     // nothing to remind about until a caregiver takes one voluntarily.
-    $sql = "SELECT ms.id, m.name, ms.frequency,
+    $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date,
+            ms.cycle_on_days, ms.cycle_off_days,
             (SELECT MAX(mi.taken_time) FROM hc_medicine_intake mi WHERE mi.schedule_id = ms.id) AS last_taken
             FROM hc_medicine_schedules ms
             JOIN hc_medicines m ON ms.medicine_id = m.id
@@ -86,8 +87,11 @@ foreach ($patients as $patient) {
 
     foreach ($schedules as $schedule) {
         $scheduleId = (int) $schedule[0];
-        $lastTaken = $schedule[3];
         $frequency = $schedule[2];
+        $schedStartDate = (string) $schedule[3];
+        $cycleOn = $schedule[4] !== null ? (int) $schedule[4] : null;
+        $cycleOff = $schedule[5] !== null ? (int) $schedule[5] : null;
+        $lastTaken = $schedule[6];
 
         if (!$lastTaken || $frequency === null || $frequency === '') {
             continue;
@@ -95,6 +99,11 @@ foreach ($patients as $patient) {
 
         // HC-124: skip paused schedules — no reminders while on hold.
         if ($pauseRepo->isPausedOn($scheduleId, $todayDate)) {
+            continue;
+        }
+
+        // HC-121: skip off-days in cycle dosing schedules.
+        if (!HomeCare\Domain\ScheduleCalculator::isOnDay($schedStartDate, $cycleOn, $cycleOff, $todayDate)) {
             continue;
         }
 

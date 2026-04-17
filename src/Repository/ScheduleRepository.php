@@ -25,6 +25,8 @@ use InvalidArgumentException;
  *     unit_per_dose:float,
  *     is_prn:bool,
  *     dose_basis:string,
+ *     cycle_on_days:?int,
+ *     cycle_off_days:?int,
  *     created_at:?string
  * }
  *
@@ -36,7 +38,9 @@ use InvalidArgumentException;
  *     frequency?:?string,
  *     unit_per_dose:float,
  *     is_prn?:bool,
- *     dose_basis?:string
+ *     dose_basis?:string,
+ *     cycle_on_days?:?int,
+ *     cycle_off_days?:?int
  * }
  */
 final class ScheduleRepository implements ScheduleRepositoryInterface
@@ -107,11 +111,13 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
         }
 
         $doseBasis = $data['dose_basis'] ?? 'fixed';
+        $cycleOn = $data['cycle_on_days'] ?? null;
+        $cycleOff = $data['cycle_off_days'] ?? null;
 
         $this->db->execute(
             'INSERT INTO hc_medicine_schedules
-                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $data['patient_id'],
                 $data['medicine_id'],
@@ -121,6 +127,8 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
                 $data['unit_per_dose'],
                 $isPrn ? 'Y' : 'N',
                 $doseBasis,
+                $cycleOn,
+                $cycleOff,
             ]
         );
 
@@ -130,7 +138,8 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
     private function selectAllColumns(): string
     {
         return 'SELECT id, patient_id, medicine_id, start_date, end_date, frequency, '
-            . 'unit_per_dose, is_prn, dose_basis, created_at FROM hc_medicine_schedules';
+            . 'unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, created_at'
+            . ' FROM hc_medicine_schedules';
     }
 
     /**
@@ -153,6 +162,8 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
             'unit_per_dose' => (float) $row['unit_per_dose'],
             'is_prn' => $isPrn,
             'dose_basis' => isset($row['dose_basis']) ? (string) $row['dose_basis'] : 'fixed',
+            'cycle_on_days' => $row['cycle_on_days'] === null ? null : (int) $row['cycle_on_days'],
+            'cycle_off_days' => $row['cycle_off_days'] === null ? null : (int) $row['cycle_off_days'],
             'created_at' => $row['created_at'] === null ? null : (string) $row['created_at'],
         ];
     }

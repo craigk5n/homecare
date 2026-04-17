@@ -88,7 +88,18 @@ final class AdherenceService
         $actual = 0;
         $coverageDays = 0;
         if ($effectiveStart <= $effectiveEnd) {
-            $coverageDays = self::inclusiveDayCount($effectiveStart, $effectiveEnd);
+            // HC-121: cycle-aware day count. When the schedule has a
+            // cycle (on_days/off_days), only on-days produce expected
+            // doses. Continuous schedules return the full day span.
+            $cycleOn = $schedule['cycle_on_days'] ?? null;
+            $cycleOff = $schedule['cycle_off_days'] ?? null;
+            $coverageDays = ScheduleCalculator::countOnDaysInRange(
+                $schedStart,
+                $cycleOn,
+                $cycleOff,
+                $effectiveStart,
+                $effectiveEnd,
+            );
 
             // HC-124: subtract paused days so expected count doesn't
             // penalise the caregiver for days the schedule was on hold.
