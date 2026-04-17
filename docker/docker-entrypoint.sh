@@ -84,14 +84,44 @@ hc_config_exists=$(mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \
 
 if [[ "${hc_config_exists}" == "0" ]]; then
     echo "[entrypoint] Empty database detected — running migrations."
-    # Load initial schema as migration 000
+    # Load current schema (tables-mysql.sql already includes all migration changes)
     mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \
           -u "${HC_DB_USER}" -p"${HC_DB_PASSWORD}" \
           "${MYSQL_CLIENT_OPTS[@]}" \
           "${HC_DB_NAME}" < /var/www/html/tables-mysql.sql
-    
-    # Run migrations to apply deltas and record everything
-    php /var/www/html/bin/migrate.php
+
+    # Create the migrations tracking table and mark all existing migrations
+    # as applied — the base schema already includes their changes.
+    mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \
+          -u "${HC_DB_USER}" -p"${HC_DB_PASSWORD}" \
+          "${MYSQL_CLIENT_OPTS[@]}" \
+          "${HC_DB_NAME}" <<'EOSQL'
+CREATE TABLE IF NOT EXISTS hc_migrations (
+    name VARCHAR(64) PRIMARY KEY,
+    applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+EOSQL
+
+    for f in /var/www/html/migrations/*.sql; do
+        mname=$(basename "$f")
+        mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \
+              -u "${HC_DB_USER}" -p"${HC_DB_PASSWORD}" \
+              "${MYSQL_CLIENT_OPTS[@]}" \
+              "${HC_DB_NAME}" \
+              -e "INSERT IGNORE INTO hc_migrations (name) VALUES ('${mname}')"
+    done
+    echo "[entrypoint] Base schema loaded; $(ls /var/www/html/migrations/*.sql | wc -l) migrations marked as applied."
+
+    # Seed admin user (migration 004 contains the INSERT; the base schema
+    # only has the table DDL). Safe to re-run — uses INSERT IGNORE or
+    # IF NOT EXISTS.
+    if [[ -f /var/www/html/migrations/004_seed_admin_user.sql ]]; then
+        mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \
+              -u "${HC_DB_USER}" -p"${HC_DB_PASSWORD}" \
+              "${MYSQL_CLIENT_OPTS[@]}" \
+              "${HC_DB_NAME}" < /var/www/html/migrations/004_seed_admin_user.sql 2>/dev/null || true
+        echo "[entrypoint] Admin user seeded."
+    fi
     
     # Ensure version is set
     mysql -h "${HC_DB_HOST}" -P "${HC_DB_PORT}" \

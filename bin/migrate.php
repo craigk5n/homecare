@@ -2,21 +2,32 @@
 #!/usr/bin/env php
 /**
  * Migration runner for HomeCare.
- * 
+ *
  * Runs pending .sql migrations from migrations/ directory.
  * Records applied in hc_migrations table.
- * 
+ *
  * Usage: php bin/migrate [--dry-run]
  */
 
 declare(strict_types=1);
 
-require __DIR__ . '/../vendor/autoload.php';
-require __DIR__ . '/../includes/init.php'; // Sets up $c = mysqli
+// Load config without the full init.php bootstrap (which tries to
+// start sessions and validate login — neither relevant for CLI).
+if (!defined('_ISVALID')) {
+    define('_ISVALID', true);
+}
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/dbi4php.php';
 
-use mysqli;
+do_config();
 
-global $c;
+global $db_host, $db_login, $db_password, $db_database;
+
+$c = @new \mysqli($db_host, $db_login, $db_password, $db_database);
+if ($c->connect_error) {
+    echo "Error: Cannot connect to database: {$c->connect_error}\n";
+    exit(1);
+}
 
 $dryRun = in_array('--dry-run', $argv, true);
 
