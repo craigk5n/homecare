@@ -1,25 +1,7 @@
-# Ignore vendor/ by default so every transient composer update doesn't
-# pollute the working tree — but allow-list the production runtime deps
-# so `git clone` delivers a working app without needing `composer install`
-# (same philosophy as pub/bootstrap.min.css being checked in).
-#
-# Dev-only deps (phpunit, phpstan, nikic, sebastian, phar-io, myclabs,
-# theseer) are NOT allow-listed; contributors who run tests locally get
-# them via `composer install`.
-/vendor/*
-!/vendor/autoload.php
-!/vendor/bacon
-!/vendor/composer
-!/vendor/dasprid
-!/vendor/dompdf
-!/vendor/egulias
-!/vendor/masterminds
-!/vendor/paragonie
-!/vendor/pragmarx
-!/vendor/psr
-!/vendor/sabberworm
-!/vendor/symfony
-!/vendor/thecodingmachine
+# Composer dependencies — installed via `composer install` from the lock
+# file. Docker builds and local dev both use this workflow; there's no
+# need to track vendor/ in git.
+/vendor/
 
 # Uploaded attachments (HC-130) — keep .htaccess, ignore content
 data/attachments/
