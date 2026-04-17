@@ -3218,7 +3218,7 @@ seeded fixtures that don't exist in CI. Close the gap.
 
 ### HC-143: Reverse-proxy auth mode
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-010
@@ -3229,22 +3229,22 @@ entirely. The old WebCalendar HTTP-auth hook was removed in
 HC-073; add a narrower, explicit mode.
 
 **Acceptance Criteria**:
-- [ ] `hc_config`: `auth_mode` ENUM('native','reverse_proxy')
+- [x] `hc_config`: `auth_mode` ENUM('native','reverse_proxy')
       DEFAULT 'native', `reverse_proxy_header`
       (default `X-Forwarded-User`)
-- [ ] When `auth_mode='reverse_proxy'`:
-      - `login.php` / `logout.php` redirect to `$HOME_LINK`
+- [x] When `auth_mode='reverse_proxy'`:
+      - `login.php` / `logout.php` redirect to `index.php`
       - `validate.php` reads the configured header and resolves
         the user via `UserRepository::findByLogin`
       - Missing / mismatched users trigger a 401 (no auto-provision
         by default to avoid confusion)
       - TOTP / password reset / password-policy gates are all
         bypassed — the proxy owns the factor
-- [ ] Admin UI toggle in `settings.php`, with a prominent warning
+- [x] Admin UI toggle in `settings.php`, with a prominent warning
       about requiring a proxy that sets the trusted header
-- [ ] Docs page: "Reverse proxy auth with Authelia / Authentik /
+- [x] Docs page: "Reverse proxy auth with Authelia / Authentik /
       Caddy" with sample configs
-- [ ] Integration test: fake proxy header resolves to the right
+- [x] Integration test: fake proxy header resolves to the right
       user; missing header → 401
 
 ---

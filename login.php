@@ -24,6 +24,7 @@ use HomeCare\Auth\PasswordHasher;
 use HomeCare\Auth\SecurityNotifier;
 use HomeCare\Auth\TotpService;
 use HomeCare\Config\EmailConfig;
+use HomeCare\Config\ReverseProxyConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Notification\EmailChannel;
 use HomeCare\Repository\UserRepository;
@@ -35,6 +36,14 @@ $c = @dbi_connect($db_host, $db_login, $db_password, $db_database);
 if (!$c) {
     http_response_code(500);
     echo 'Database connection failed.';
+    exit;
+}
+
+// HC-143: In reverse-proxy mode, the proxy owns authentication.
+// Redirect login.php to the app root — the proxy login gate handles it.
+$rpConfig = new ReverseProxyConfig(new DbiAdapter());
+if ($rpConfig->isReverseProxyMode()) {
+    header('Location: index.php');
     exit;
 }
 

@@ -29,8 +29,10 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use HomeCare\Auth\AuthService;
 use HomeCare\Auth\PasswordHasher;
+use HomeCare\Auth\ReverseProxyAuth;
 use HomeCare\Auth\SessionState;
 use HomeCare\Auth\SessionTimeout;
+use HomeCare\Config\ReverseProxyConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\UserRepository;
 
@@ -109,50 +111,73 @@ function hc_validate(): void
         session_start();
     }
 
-    $login = !empty($_SESSION['hc_login']) ? (string) $_SESSION['hc_login'] : '';
+    // HC-143: reverse-proxy auth mode — the proxy owns authentication;
+    // we just read the header it sets and resolve the user.
+    $db = new DbiAdapter();
+    $rpConfig = new ReverseProxyConfig($db);
+    if ($rpConfig->isReverseProxyMode()) {
+        $rpAuth = new ReverseProxyAuth($rpConfig, new UserRepository($db));
+        $result = $rpAuth->authenticate($_SERVER);
+        if (!$result->success || $result->user === null) {
+            http_response_code(401);
+            die_miserable_death('Reverse-proxy authentication failed: '
+                . htmlspecialchars((string) $result->reason));
+        }
+        $login = $result->user['login'];
+        $_SESSION['hc_login'] = $login;
+        $_SESSION['last_activity'] = time();
+        // Skip to legacy-global population (no idle timeout, no
+        // remember-me — the proxy handles session lifetime).
+    } else {
+        // Native authentication mode.
+        $login = !empty($_SESSION['hc_login']) ? (string) $_SESSION['hc_login'] : '';
 
-    // Try remember-me cookie if the session is empty.
-    if ($login === '' && !empty($_COOKIE['hc_remember'])) {
-        $authService = new AuthService(
-            new UserRepository(new DbiAdapter()),
-            new PasswordHasher()
-        );
-        $result = $authService->loginWithRememberToken((string) $_COOKIE['hc_remember']);
-        if ($result->success && $result->user !== null) {
-            session_regenerate_id(true);
-            $_SESSION['hc_login'] = $result->user['login'];
-            $_SESSION['last_activity'] = time();
-            $login = $result->user['login'];
-        } else {
-            hc_clear_remember_cookie();
+        // Try remember-me cookie if the session is empty.
+        if ($login === '' && !empty($_COOKIE['hc_remember'])) {
+            $authService = new AuthService(
+                new UserRepository($db),
+                new PasswordHasher()
+            );
+            $result = $authService->loginWithRememberToken((string) $_COOKIE['hc_remember']);
+            if ($result->success && $result->user !== null) {
+                session_regenerate_id(true);
+                $_SESSION['hc_login'] = $result->user['login'];
+                $_SESSION['last_activity'] = time();
+                $login = $result->user['login'];
+            } else {
+                hc_clear_remember_cookie();
+            }
+        }
+
+        if ($login === '') {
+            hc_redirect_to_login($script);
         }
     }
 
-    if ($login === '') {
-        hc_redirect_to_login($script);
-    }
+    // HC-012: idle-timeout enforcement (native mode only ��� the proxy
+    // owns session lifetime in reverse-proxy mode).
+    if (!$rpConfig->isReverseProxyMode()) {
+        $timeoutMins = SessionTimeout::DEFAULT_TIMEOUT_MINUTES;
+        $cfg = dbi_get_cached_rows(
+            "SELECT value FROM hc_config WHERE setting = 'session_timeout'"
+        );
+        if (!empty($cfg[0][0]) && (int) $cfg[0][0] > 0) {
+            $timeoutMins = (int) $cfg[0][0];
+        }
+        $timeout = new SessionTimeout($timeoutMins);
+        $lastActivity = isset($_SESSION['last_activity'])
+            ? (int) $_SESSION['last_activity']
+            : null;
 
-    // HC-012: idle-timeout enforcement.
-    $timeoutMins = SessionTimeout::DEFAULT_TIMEOUT_MINUTES;
-    $cfg = dbi_get_cached_rows(
-        "SELECT value FROM hc_config WHERE setting = 'session_timeout'"
-    );
-    if (!empty($cfg[0][0]) && (int) $cfg[0][0] > 0) {
-        $timeoutMins = (int) $cfg[0][0];
+        if ($timeout->evaluate($lastActivity, time()) === SessionState::Expired) {
+            $_SESSION = [];
+            @session_destroy();
+            hc_clear_remember_cookie();
+            header('Location: login.php?expired=1');
+            exit;
+        }
+        $_SESSION['last_activity'] = time();
     }
-    $timeout = new SessionTimeout($timeoutMins);
-    $lastActivity = isset($_SESSION['last_activity'])
-        ? (int) $_SESSION['last_activity']
-        : null;
-
-    if ($timeout->evaluate($lastActivity, time()) === SessionState::Expired) {
-        $_SESSION = [];
-        @session_destroy();
-        hc_clear_remember_cookie();
-        header('Location: login.php?expired=1');
-        exit;
-    }
-    $_SESSION['last_activity'] = time();
 
     // Populate the legacy globals every page reads.
     $rows = dbi_get_cached_rows(

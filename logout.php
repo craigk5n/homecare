@@ -13,6 +13,7 @@ require_once __DIR__ . '/includes/homecare.php';
 
 use HomeCare\Auth\AuthService;
 use HomeCare\Auth\PasswordHasher;
+use HomeCare\Config\ReverseProxyConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\UserRepository;
 
@@ -66,5 +67,14 @@ setcookie('hc_remember', '', [
     'samesite' => 'Lax',
 ]);
 
-header('Location: login.php');
+// HC-143: In reverse-proxy mode, redirect to app root (the proxy
+// handles the actual logout via its own endpoint).
+$redirectTarget = 'login.php';
+if ($c) {
+    $rpConfig = new ReverseProxyConfig(new DbiAdapter());
+    if ($rpConfig->isReverseProxyMode()) {
+        $redirectTarget = 'index.php';
+    }
+}
+header('Location: ' . $redirectTarget);
 exit;

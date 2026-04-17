@@ -28,6 +28,7 @@ use HomeCare\Auth\SecurityNotifier;
 use HomeCare\Auth\TotpService;
 use HomeCare\Config\EmailConfig;
 use HomeCare\Config\NtfyConfig;
+use HomeCare\Config\ReverseProxyConfig;
 use HomeCare\Config\WebhookConfig;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Notification\ChannelRegistry;
@@ -53,6 +54,7 @@ $users = new UserRepository($db);
 $ntfyConfig = new NtfyConfig($db);
 $emailConfig = new EmailConfig($db);
 $webhookConfig = new WebhookConfig($db);
+$rpConfig = new ReverseProxyConfig($db);
 $totpService = new TotpService();
 
 // Mirror the channel registration in send_reminders.php so the
@@ -233,6 +235,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ];
             }
         }
+} elseif ($action === 'save_auth_mode' && $isAdmin) {
+    $mode = trim((string) getPostValue('auth_mode'));
+    $header = trim((string) getPostValue('reverse_proxy_header'));
+    if ($header === '') {
+        $header = ReverseProxyConfig::DEFAULT_HEADER;
+    }
+    $rpConfig->setAuthMode($mode);
+    $rpConfig->setHeader($header);
+    audit_log('auth_mode.config_updated', 'config', null, $rpConfig->getAll());
+    $flash = ['type' => 'success', 'text' => 'Authentication mode saved.'];
 } elseif ($action === 'save_ntfy' && $isAdmin) {
     $ntfyConfig->setUrl(trim((string) getPostValue('ntfy_url')));
     $ntfyConfig->setTopic(trim((string) getPostValue('ntfy_topic')));
@@ -715,9 +727,45 @@ foreach ($myChannels->defaultChannelNames() as $name) {
 <?php endif; ?>
 
 <?php if ($isAdmin):
-    $nt = $ntfyConfig->getAll();
+    $rp = $rpConfig->getAll();
 ?>
   <hr class="my-4">
+  <h4 id="auth-mode">Authentication Mode <small class="text-muted">— admin only</small></h4>
+  <div class="alert alert-warning" role="alert">
+    <strong>Warning:</strong> Enabling reverse-proxy mode disables the native login form.
+    Only enable this if HomeCare is behind a trusted authenticating proxy (Authelia, Authentik,
+    Caddy forward-auth, Traefik forward-auth) that sets a header with the authenticated username.
+    Misconfiguring this will lock you out.
+  </div>
+  <form method="post" class="form">
+    <?php print_form_key(); ?>
+    <input type="hidden" name="action" value="save_auth_mode">
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="auth_mode" class="form-label">Mode</label>
+      <select class="form-control" id="auth_mode" name="auth_mode">
+        <option value="native" <?= $rp['auth_mode'] === 'native' ? 'selected' : '' ?>>Native (built-in login)</option>
+        <option value="reverse_proxy" <?= $rp['auth_mode'] === 'reverse_proxy' ? 'selected' : '' ?>>Reverse Proxy</option>
+      </select>
+    </div>
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="reverse_proxy_header" class="form-label">Proxy Header</label>
+      <input type="text" class="form-control" id="reverse_proxy_header"
+             name="reverse_proxy_header"
+             value="<?= htmlspecialchars($rp['header']) ?>"
+             placeholder="X-Forwarded-User">
+      <small class="form-text text-muted">
+        The HTTP header your reverse proxy sets with the authenticated username.
+        Common values: <code>X-Forwarded-User</code>, <code>Remote-User</code>,
+        <code>X-Auth-User</code>.
+      </small>
+    </div>
+    <button type="submit" class="btn btn-primary">Save authentication settings</button>
+  </form>
+
+  <hr class="my-4">
+<?php
+    $nt = $ntfyConfig->getAll();
+?>
   <h4 id="notifications">Notifications (ntfy) <small class="text-muted">— admin only</small></h4>
   <p class="text-muted">
     Push notifications for medication reminders and low-supply alerts.
