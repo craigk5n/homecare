@@ -73,6 +73,16 @@ echo "</div>\n";
 echo "<div id='scan-not-found' style='display:none' class='mt-2'>\n";
 echo "<div class='alert alert-warning'>No matching drug found for this barcode. You can enter the refill manually below.</div>\n";
 echo "</div>\n";
+// Manual NDC entry — shown when photo decode fails or as a direct fallback
+echo "<div id='manual-ndc-group' style='display:none' class='mt-2'>\n";
+echo "<div class='input-group'>\n";
+echo "<input type='text' id='manual-ndc' class='form-control' placeholder='Type NDC digits (e.g. 00071015523)' maxlength='13' pattern='[0-9\\-]{10,13}'>\n";
+echo "<div class='input-group-append'>\n";
+echo "<button type='button' class='btn btn-outline-primary' id='manual-ndc-btn'>Look up</button>\n";
+echo "</div>\n";
+echo "</div>\n";
+echo "<small class='form-text text-muted'>Find the NDC number on the prescription label (usually near the barcode).</small>\n";
+echo "</div>\n";
 echo "<small class='form-text text-muted'>Scan the NDC barcode on a US prescription label, or a UPC/EAN on veterinary products.</small>\n";
 echo "</div>\n";
 echo "</div>\n";
@@ -235,7 +245,10 @@ echo "</div>\n";
                         Html5QrcodeSupportedFormats.UPC_E,
                         Html5QrcodeSupportedFormats.EAN_13,
                         Html5QrcodeSupportedFormats.EAN_8,
-                        Html5QrcodeSupportedFormats.CODE_128
+                        Html5QrcodeSupportedFormats.CODE_128,
+                        Html5QrcodeSupportedFormats.CODE_39,
+                        Html5QrcodeSupportedFormats.ITF,
+                        Html5QrcodeSupportedFormats.CODABAR
                     ]
                 },
                 function onScanSuccess(decodedText) {
@@ -260,18 +273,54 @@ echo "</div>\n";
             resetScanUI();
             captureProcessing.style.display = 'block';
 
-            var html5Qr = new Html5Qrcode('scanner-region');
-            html5Qr.scanFileV2(file, false).then(function(result) {
+            var html5Qr = new Html5Qrcode('scanner-region', {
+                formatsToSupport: [
+                    Html5QrcodeSupportedFormats.UPC_A,
+                    Html5QrcodeSupportedFormats.UPC_E,
+                    Html5QrcodeSupportedFormats.EAN_13,
+                    Html5QrcodeSupportedFormats.EAN_8,
+                    Html5QrcodeSupportedFormats.CODE_128,
+                    Html5QrcodeSupportedFormats.CODE_39,
+                    Html5QrcodeSupportedFormats.ITF,
+                    Html5QrcodeSupportedFormats.CODABAR
+                ]
+            });
+            // showImage=true makes the library render the image into
+            // scanner-region so the underlying ZXing decoder can work
+            // on the full-resolution image — critical when the barcode
+            // is only part of a larger photo.
+            html5Qr.scanFileV2(file, true).then(function(result) {
                 captureProcessing.style.display = 'none';
+                scannerRegion.style.display = 'none';
                 lookupNdc(result.decodedText);
             }).catch(function(err) {
                 captureProcessing.style.display = 'none';
-                scanStatus.textContent = 'Could not read a barcode from that photo. Try again with the barcode in focus.';
+                scannerRegion.style.display = 'none';
+                scanStatus.innerHTML = 'Could not read a barcode from that photo.<br>'
+                    + '<small>Tip: get closer so the barcode fills most of the frame, or type the NDC digits manually below.</small>';
                 scanResult.style.display = 'block';
+                manualNdcGroup.style.display = 'block';
             });
 
             // Reset so the same file can be re-selected
             barcodePhoto.value = '';
+        });
+    }
+
+    // ── Manual NDC entry fallback ──
+    var manualNdcGroup = document.getElementById('manual-ndc-group');
+    var manualNdcInput = document.getElementById('manual-ndc');
+    var manualNdcBtn = document.getElementById('manual-ndc-btn');
+    if (manualNdcBtn && manualNdcInput) {
+        manualNdcBtn.addEventListener('click', function() {
+            var ndc = manualNdcInput.value.trim();
+            if (ndc.length < 10) {
+                alert('NDC codes are typically 10-11 digits. Please check the number.');
+                return;
+            }
+            resetScanUI();
+            manualNdcGroup.style.display = 'none';
+            lookupNdc(ndc);
         });
     }
 
