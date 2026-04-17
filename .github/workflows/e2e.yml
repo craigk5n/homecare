@@ -41,6 +41,9 @@ jobs:
             'mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE"' \
             < migrations/004_seed_admin_user.sql || echo "(seed already applied)"
 
+      - name: Seed E2E fixtures
+        run: docker compose exec -T web php bin/seed_e2e_fixtures.php
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'

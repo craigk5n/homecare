@@ -157,6 +157,7 @@ cmd_e2e() {
     docker compose up -d --build
     wait_for_app "$port" 60
     seed_admin "$port"
+    seed_e2e_fixtures "$port"
     echo "E2E setup complete."
   fi
 
@@ -175,6 +176,9 @@ cmd_ci_up() {
 
   header "Verifying admin seed"
   seed_admin "$CI_PORT"
+
+  header "Seeding E2E fixtures"
+  seed_e2e_fixtures "$CI_PORT"
 
   echo ""
   echo -e "${GREEN}CI environment ready at http://localhost:${CI_PORT}${RESET}"
@@ -266,6 +270,16 @@ wait_for_app() {
     fi
     sleep 2
   done
+}
+
+seed_e2e_fixtures() {
+  local port="$1"
+  echo "Seeding E2E fixtures..."
+  if [[ "$port" == "$CI_PORT" ]]; then
+    ci_compose exec -T web php bin/seed_e2e_fixtures.php
+  else
+    docker compose exec -T web php bin/seed_e2e_fixtures.php
+  fi
 }
 
 seed_admin() {

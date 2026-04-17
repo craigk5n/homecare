@@ -1,6 +1,6 @@
 # STATUS.md -- Project Backlog & Progress
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-17*
 
 This file tracks epics, stories, and progress using a Jira-style format.
 All development follows **Test-Driven Development (TDD)**: write tests first (RED),
@@ -3192,7 +3192,7 @@ Portuguese-BR as the next two most-requested languages.
 
 ### HC-142: E2E fixture seeding + richer Playwright suite
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-078
@@ -3202,17 +3202,17 @@ adherence flows. We shipped smoke-only because richer flows needed
 seeded fixtures that don't exist in CI. Close the gap.
 
 **Acceptance Criteria**:
-- [ ] `bin/seed_e2e_fixtures.php`: creates 2 patients, 5
+- [x] `bin/seed_e2e_fixtures.php`: creates 2 patients, 5
       medicines, 3 active schedules, 30 days of intakes with
       ~85% adherence, one cadence-mismatch case, one low-supply
       case
-- [ ] `e2e.yml` runs the seeder after `docker compose up` and
+- [x] `e2e.yml` runs the seeder after `docker compose up` and
       before Playwright
-- [ ] New specs: record-intake flow, merge-medicines flow,
+- [x] New specs: record-intake flow, merge-medicines flow,
       adherence-report renders chart with colour-correct cells,
       supply-alert appears on the dashboard
-- [ ] Each spec under 30s; total suite under 3 min
-- [ ] Fixtures are additive — re-running the seeder is idempotent
+- [x] Each spec under 30s; total suite under 3 min
+- [x] Fixtures are additive — re-running the seeder is idempotent
 
 ---
 
