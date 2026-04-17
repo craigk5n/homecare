@@ -2,7 +2,6 @@
 
 # Composer + test artefacts
 vendor/
-composer.lock
 .phpunit.cache/
 .phpunit.result.cache
 phpunit.xml

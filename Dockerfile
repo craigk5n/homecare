@@ -40,11 +40,16 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
+# Copy Composer manifests first for layer caching — deps only re-install
+# when composer.json or composer.lock change, not on every source edit.
+COPY composer.json composer.lock /var/www/html/
+RUN composer install --no-dev --no-interaction --optimize-autoloader --no-scripts
+
 # Copy app sources (the .dockerignore keeps vendor/ and dumps out).
 COPY . /var/www/html/
 
-# Install runtime deps only (no PHPUnit/PHPStan in the image).
-RUN composer install --no-dev --no-interaction --optimize-autoloader
+# Re-run autoload dump after full source is available.
+RUN composer dump-autoload --no-dev --optimize --classmap-authoritative
 
 # Make the writable dirs writable by Apache.
 RUN chown -R www-data:www-data /var/www/html
