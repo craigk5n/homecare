@@ -40,8 +40,7 @@ foreach ($patients as $p) {
     $patientName = (string) $p['name'];
 
     $sql = "SELECT ms.id, m.name, m.dosage, ms.frequency, ms.unit_per_dose,
-                   (SELECT MAX(mi.taken_time) FROM hc_medicine_intake mi
-                    WHERE mi.schedule_id = ms.id) AS last_taken
+                   ms.start_date, ms.end_date
               FROM hc_medicine_schedules ms
               JOIN hc_medicines m ON ms.medicine_id = m.id
              WHERE ms.patient_id = ?
@@ -53,13 +52,21 @@ foreach ($patients as $p) {
 
     $rows = dbi_get_cached_rows($sql, [$patientId, $date, $date]);
 
+    // Compute today's expected dose times using the same logic as
+    // schedule_daily.php: advance from the last recorded intake (or
+    // start_date) by frequency until we fill today's window.
     $doses = [];
+    $todayStart = new DateTime("$date 00:00:00");
+    $todayEnd = new DateTime("$date 23:59:59");
+
     foreach ($rows as $row) {
+        $scheduleId = (int) $row[0];
         $medName = (string) $row[1];
         $dosage = (string) $row[2];
         $frequency = (string) $row[3];
         $unitPerDose = (float) $row[4];
-        $lastTaken = $row[5];
+        $startDate = (string) $row[5];
+        $endDate = $row[6] !== null ? new DateTime((string) $row[6]) : null;
 
         try {
             $freqSeconds = frequencyToSeconds($frequency);
@@ -67,23 +74,58 @@ foreach ($patients as $p) {
             continue;
         }
 
-        $dosesPerDay = (int) round(86400 / $freqSeconds);
-        $startHour = 8; // Assume first dose at 08:00
+        // Find most recent intake for this schedule.
+        $lastIntake = dbi_get_cached_rows(
+            'SELECT taken_time FROM hc_medicine_intake WHERE schedule_id = ? ORDER BY taken_time DESC LIMIT 1',
+            [$scheduleId],
+        );
 
-        for ($i = 0; $i < $dosesPerDay; $i++) {
-            $hour = $startHour + ($i * ($freqSeconds / 3600));
-            $h = (int) floor($hour);
-            $m = (int) round(($hour - $h) * 60);
-            $timeLabel = date('g:i A', mktime($h, $m));
+        $startDateTime = new DateTime($startDate);
+
+        if (!empty($lastIntake)) {
+            // Advance from last intake by frequency until we reach today.
+            $nextDose = new DateTime((string) $lastIntake[0][0]);
+            $nextDose->modify("+{$freqSeconds} seconds");
+            while ($nextDose < $todayStart) {
+                $nextDose->modify("+{$freqSeconds} seconds");
+            }
+        } else {
+            // No intakes yet — anchor from start_date's time-of-day.
+            $nextDose = clone $todayStart;
+            if ($frequency === '1d') {
+                $nextDose->setTime((int) $startDateTime->format('H'), (int) $startDateTime->format('i'));
+                if ($nextDose < $todayStart) {
+                    $nextDose->modify('+1 day');
+                }
+            } else {
+                $secondsSinceMidnight = ((int) $startDateTime->format('H') * 3600)
+                    + ((int) $startDateTime->format('i') * 60);
+                $interval = $secondsSinceMidnight % $freqSeconds;
+                if ($interval > 0) {
+                    $nextDose->modify('+' . ($freqSeconds - $interval) . ' seconds');
+                }
+            }
+        }
+
+        // Walk through today generating each expected dose.
+        $current = clone $nextDose;
+        while ($current <= $todayEnd) {
+            if ($endDate !== null && $current > $endDate) {
+                break;
+            }
+            $h = (int) $current->format('H');
+            $m = (int) $current->format('i');
 
             $doses[] = [
                 'time_sort' => sprintf('%02d%02d', $h, $m),
-                'time' => $timeLabel,
+                'time' => $current->format('g:i A'),
                 'name' => $medName,
                 'dosage' => $dosage,
                 'unit_per_dose' => $unitPerDose,
                 'frequency' => $frequency,
             ];
+
+            $current->modify("+{$freqSeconds} seconds");
         }
     }
 
