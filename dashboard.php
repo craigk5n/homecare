@@ -13,6 +13,27 @@ declare(strict_types=1);
 
 require_once 'includes/init.php';
 
+/**
+ * Format seconds into a human-readable duration (e.g., "2h 15m", "45m", "3d 6h").
+ */
+function formatOverdueDuration(int $seconds): string
+{
+    if ($seconds < 60) {
+        return '< 1m';
+    }
+    $days = intdiv($seconds, 86400);
+    $hours = intdiv($seconds % 86400, 3600);
+    $minutes = intdiv($seconds % 3600, 60);
+
+    if ($days > 0) {
+        return $hours > 0 ? "{$days}d {$hours}h" : "{$days}d";
+    }
+    if ($hours > 0) {
+        return $minutes > 0 ? "{$hours}h {$minutes}m" : "{$hours}h";
+    }
+    return "{$minutes}m";
+}
+
 $patients = getPatients();
 $patientCount = count($patients);
 
@@ -75,6 +96,8 @@ foreach ($rows as $row) {
     if ($lastTaken) {
         $seconds = calculateSecondsUntilDue($lastTaken, $frequency, true);
         if ($seconds <= 0) {
+            $entry['overdue_seconds'] = abs($seconds);
+            $entry['last_taken_display'] = formatDateNicely($lastTaken);
             $patientStats[$patientId]['overdue'][] = $entry;
             $totalOverdue++;
         } elseif ($seconds <= $dueSoonSeconds) {
@@ -84,6 +107,8 @@ foreach ($rows as $row) {
             $patientStats[$patientId]['ok']++;
         }
     } else {
+        $entry['overdue_seconds'] = null; // never taken
+        $entry['last_taken_display'] = null;
         $patientStats[$patientId]['overdue'][] = $entry;
         $totalOverdue++;
     }
@@ -235,7 +260,13 @@ $caughtUp = getGetValue('caught_up');
                          class="text-danger" title="Record intake">
                         <?php echo htmlspecialchars($dose['medicine_name']); ?>
                         <span class="text-muted"><?php echo htmlspecialchars($dose['dosage']); ?></span>
-                        — overdue
+                        — <?php
+                        if ($dose['overdue_seconds'] !== null) {
+                            echo 'overdue by ' . formatOverdueDuration((int) $dose['overdue_seconds']);
+                        } else {
+                            echo 'never taken';
+                        }
+                        ?>
                       </a>
                     </div>
                   <?php endforeach; ?>
