@@ -139,11 +139,20 @@ final class InventoryService
         // ($schedule['is_prn']) is the authoritative signal; a null
         // frequency on a non-PRN schedule is a data bug, not a PRN row.
         $isPrn = ($schedule['is_prn'] ?? false) === true;
-        $freqForDays = $frequency ?? ($schedule['frequency'] ?? null);
-        if (!$isPrn && $freqForDays !== null && $freqForDays !== '') {
-            $secondsPerDose = ScheduleCalculator::frequencyToSeconds($freqForDays);
-            $dosesPerDay = 86400 / $secondsPerDose;
-            $report['remainingDays'] = max(0, (int) floor($remainingDoses / $dosesPerDay));
+        if (!$isPrn) {
+            // HC-123: wall-clock times override frequency-based math.
+            $wallClock = $schedule['wall_clock_times'] ?? null;
+            $wallClockDpd = ScheduleCalculator::dosesPerDayFromWallClock($wallClock);
+            if ($wallClockDpd > 0) {
+                $report['remainingDays'] = max(0, (int) floor($remainingDoses / $wallClockDpd));
+            } else {
+                $freqForDays = $frequency ?? ($schedule['frequency'] ?? null);
+                if ($freqForDays !== null && $freqForDays !== '') {
+                    $secondsPerDose = ScheduleCalculator::frequencyToSeconds($freqForDays);
+                    $dosesPerDay = 86400 / $secondsPerDose;
+                    $report['remainingDays'] = max(0, (int) floor($remainingDoses / $dosesPerDay));
+                }
+            }
         }
 
         return $report;

@@ -30,6 +30,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($dose_basis !== 'per_kg') {
         $dose_basis = 'fixed';
     }
+    // HC-123: wall-clock times — CSV of HH:MM.
+    $wallClockRaw = $_POST['wall_clock_times'] ?? [];
+    if (is_array($wallClockRaw)) {
+        $wallClockRaw = array_filter(array_map('trim', $wallClockRaw), static fn ($v) => $v !== '');
+        sort($wallClockRaw);
+        $wall_clock_times = $wallClockRaw !== [] ? implode(',', $wallClockRaw) : null;
+    } else {
+        $wall_clock_times = null;
+    }
+
     // HC-121: cycle dosing. Both must be set or both null.
     $cycle_on_raw = getPostValue('cycle_on_days');
     $cycle_off_raw = getPostValue('cycle_off_days');
@@ -48,9 +58,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (!empty($schedule_id)) {
             // Updating schedule
             $sql = "UPDATE hc_medicine_schedules SET " .
-                "patient_id = ?, medicine_id = ?, start_date = ?, end_date = ?, frequency = ?, unit_per_dose = ?, is_prn = ?, dose_basis = ?, cycle_on_days = ?, cycle_off_days = ? " .
+                "patient_id = ?, medicine_id = ?, start_date = ?, end_date = ?, frequency = ?, unit_per_dose = ?, is_prn = ?, dose_basis = ?, cycle_on_days = ?, cycle_off_days = ?, wall_clock_times = ? " .
                 "WHERE id = ?";
-            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $dose_basis, $cycle_on_days, $cycle_off_days, $schedule_id];
+            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $dose_basis, $cycle_on_days, $cycle_off_days, $wall_clock_times, $schedule_id];
             if (!dbi_execute($sql, $values)) {
                 echo "<p>Error updating schedule: " . dbi_error() . "</p>";
                 exit;
@@ -70,9 +80,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             // Adding schedule
             $sql = "INSERT INTO hc_medicine_schedules " .
-                "(patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days) " .
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $dose_basis, $cycle_on_days, $cycle_off_days];
+                "(patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times) " .
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $dose_basis, $cycle_on_days, $cycle_off_days, $wall_clock_times];
             if (!dbi_execute($sql, $values)) {
                 echo "<p>Error adding schedule: " . dbi_error() . "</p>";
                 exit;

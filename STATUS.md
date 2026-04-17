@@ -2963,7 +2963,7 @@ continuity. Model it as a single schedule with a step table.
 
 ### HC-123: Multiple wall-clock times per day
 
-**Status**: `BACKLOG`
+**Status**: `DONE`
 **Type**: Story
 **Points**: 3
 **Depends on**: HC-002
@@ -2972,18 +2972,34 @@ continuity. Model it as a single schedule with a step table.
 `12h` frequency covers it but drifts over weeks as intake times
 vary; a wall-clock schedule keeps doses anchored.
 
+**Notes on implementation**:
+- `wall_clock_times` is stored as a CSV of `HH:MM` strings (e.g.
+  `"08:00,14:00,20:00"`). NULL means interval-based scheduling
+  (the existing default). When set, wall-clock overrides frequency
+  for next-due, adherence expected-count, and supply projection.
+- `ScheduleCalculator` gains `parseWallClockTimes()`,
+  `dosesPerDayFromWallClock()`, and `secondsUntilNextWallClock()`
+  — all pure functions with no DB access.
+- `list_schedule.php` shows "Due at 2:00 PM" for wall-clock
+  schedules instead of the relative "in 4h 30m".
+- The schedule form adds a "Fixed times per day" section with
+  dynamic `<input type="time">` rows and an "Add time" button.
+- DST note: all math uses `strtotime()` which respects the
+  server's timezone. Wall-clock times are anchored to local wall
+  time — doses don't shift across DST transitions.
+
 **Acceptance Criteria**:
-- [ ] Migration: `hc_medicine_schedules.wall_clock_times VARCHAR(128)
+- [x] Migration: `hc_medicine_schedules.wall_clock_times VARCHAR(128)
       NULL` (CSV of `HH:MM` times)
-- [ ] Schedule edit form: "Fixed times per day" option, renders
+- [x] Schedule edit form: "Fixed times per day" option, renders
       N `<input type="time">` rows
-- [ ] `ScheduleCalculator` resolves the next-due to the nearest
+- [x] `ScheduleCalculator` resolves the next-due to the nearest
       future clock time
-- [ ] Supply and adherence math: expected doses per day =
+- [x] Supply and adherence math: expected doses per day =
       `count(wall_clock_times)`
-- [ ] `list_schedule.php` next-due label shows the actual clock
+- [x] `list_schedule.php` next-due label shows the actual clock
       time ("Due at 2:00 PM") rather than "in 4h 30m"
-- [ ] Tests over DST transition days (US/America/New_York) — the
+- [x] Tests over DST transition days (US/America/New_York) — the
       doses stay anchored to local wall time, not UTC
 
 ---

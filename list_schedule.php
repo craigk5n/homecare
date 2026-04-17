@@ -34,7 +34,7 @@ if (!$showCompleted) {
     $includeCompletedSql = '';
 }
 $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medicine_id, ms.is_prn,
-        ms.cycle_on_days, ms.cycle_off_days,
+        ms.cycle_on_days, ms.cycle_off_days, ms.wall_clock_times,
         (SELECT MAX(mi.taken_time) FROM hc_medicine_intake mi WHERE mi.schedule_id = ms.id) AS last_taken
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
@@ -73,9 +73,11 @@ foreach ($rows as $row) {
     $isPrn        = isset($row[6]) && $row[6] === 'Y';
     $cycleOn      = $row[7] !== null ? (int) $row[7] : null;
     $cycleOff     = $row[8] !== null ? (int) $row[8] : null;
-    $lastTaken    = !empty($row[9]) ? $row[9] : null;
+    $wallClock    = $row[9] !== null ? (string) $row[9] : null;
+    $lastTaken    = !empty($row[10]) ? $row[10] : null;
     $hasCycle     = $cycleOn !== null && $cycleOff !== null;
     $isOffDay     = $hasCycle && !HomeCare\Domain\ScheduleCalculator::isOnDay($start_date, $cycleOn, $cycleOff, $todayDate);
+    $hasWallClock = $wallClock !== null && $wallClock !== '';
     $lastTakenNicely = formatDateNicely($lastTaken);
 
     $secondsUntilDue = null;
@@ -132,6 +134,22 @@ foreach ($rows as $row) {
             $nextDueLabel  = 'Completed';
             $nextDueDetail = '';
             $sortKey       = sprintf("999999-%06d", $schedule_id);
+        }
+    } elseif ($hasWallClock) {
+        // HC-123: wall-clock schedule — resolve next-due to a specific
+        // clock time rather than an interval from last intake.
+        $nowStr = date('Y-m-d H:i:s');
+        $wcResult = HomeCare\Domain\ScheduleCalculator::secondsUntilNextWallClock($wallClock, $nowStr);
+        if ($wcResult !== null) {
+            $secondsUntilDue = $wcResult['seconds'];
+            $hours   = floor($secondsUntilDue / 3600);
+            $minutes = floor(($secondsUntilDue % 3600) / 60);
+            $sortKey = sprintf("%06d-%06d", (60 * $hours) + $minutes, $schedule_id);
+
+            $clockLabel = date('g:i A', strtotime($wcResult['next_date'] . ' ' . $wcResult['next_time'] . ':00'));
+            $nextDueLabel = 'Due at ' . $clockLabel;
+            $nextDueDetail = $wcResult['next_date'] === $todayDate ? 'Today' : $wcResult['next_date'];
+            $statusGroup = $secondsUntilDue <= $dueInNextHour ? 'due_soon' : 'ok';
         }
     } elseif ($lastTaken) {
         $secondsUntilDue = calculateSecondsUntilDue($lastTaken, $frequency);

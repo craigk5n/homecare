@@ -229,6 +229,81 @@ final class ScheduleCalculator
     }
 
     /**
+     * Parse a wall_clock_times CSV string into a sorted list of HH:MM strings.
+     *
+     * @return list<string>
+     */
+    public static function parseWallClockTimes(?string $wallClockTimes): array
+    {
+        if ($wallClockTimes === null || $wallClockTimes === '') {
+            return [];
+        }
+
+        $times = array_map('trim', explode(',', $wallClockTimes));
+        $times = array_values(array_filter($times, static fn (string $t): bool => $t !== ''));
+        sort($times);
+
+        return $times;
+    }
+
+    /**
+     * Number of expected doses per day from a wall_clock_times string.
+     */
+    public static function dosesPerDayFromWallClock(?string $wallClockTimes): int
+    {
+        return count(self::parseWallClockTimes($wallClockTimes));
+    }
+
+    /**
+     * Seconds until the next wall-clock dose, and which time/date it is.
+     *
+     * Returns null when wall_clock_times is empty or null.
+     *
+     * @return array{seconds:int,next_time:string,next_date:string}|null
+     */
+    public static function secondsUntilNextWallClock(?string $wallClockTimes, string $now): ?array
+    {
+        $times = self::parseWallClockTimes($wallClockTimes);
+        if ($times === []) {
+            return null;
+        }
+
+        $nowTs = strtotime($now);
+        if ($nowTs === false) {
+            return null;
+        }
+
+        $todayDate = date('Y-m-d', $nowTs);
+        $nowHhMm = date('H:i', $nowTs);
+
+        foreach ($times as $t) {
+            if ($t > $nowHhMm) {
+                $targetTs = strtotime($todayDate . ' ' . $t . ':00');
+                if ($targetTs !== false) {
+                    return [
+                        'seconds' => $targetTs - $nowTs,
+                        'next_time' => $t,
+                        'next_date' => $todayDate,
+                    ];
+                }
+            }
+        }
+
+        $tomorrowDate = date('Y-m-d', $nowTs + 86400);
+        $firstTime = $times[0];
+        $targetTs = strtotime($tomorrowDate . ' ' . $firstTime . ':00');
+        if ($targetTs === false) {
+            return null;
+        }
+
+        return [
+            'seconds' => $targetTs - $nowTs,
+            'next_time' => $firstTime,
+            'next_date' => $tomorrowDate,
+        ];
+    }
+
+    /**
      * @return array{0:positive-int,1:'d'|'h'|'m'} [amount, unit]
      *
      * @throws InvalidArgumentException

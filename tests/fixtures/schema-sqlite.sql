@@ -89,6 +89,7 @@ CREATE TABLE `hc_medicine_schedules` (
   `dose_basis` VARCHAR(10) NOT NULL DEFAULT 'fixed',
   `cycle_on_days` INTEGER NULL,
   `cycle_off_days` INTEGER NULL,
+  `wall_clock_times` VARCHAR(128) NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`patient_id`) REFERENCES `hc_patients`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`medicine_id`) REFERENCES `hc_medicines`(`id`) ON DELETE CASCADE

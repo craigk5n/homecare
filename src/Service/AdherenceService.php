@@ -113,8 +113,15 @@ final class AdherenceService
             }
 
             if ($coverageDays > 0) {
-                $secondsPerDose = ScheduleCalculator::frequencyToSeconds($frequency);
-                $dosesPerDay = 86400 / $secondsPerDose;
+                // HC-123: wall-clock times override frequency-based math.
+                $wallClock = $schedule['wall_clock_times'] ?? null;
+                $wallClockDpd = ScheduleCalculator::dosesPerDayFromWallClock($wallClock);
+                if ($wallClockDpd > 0) {
+                    $dosesPerDay = $wallClockDpd;
+                } else {
+                    $secondsPerDose = ScheduleCalculator::frequencyToSeconds($frequency);
+                    $dosesPerDay = 86400 / $secondsPerDose;
+                }
                 $expected = (int) round($coverageDays * $dosesPerDay);
             }
 

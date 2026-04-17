@@ -27,6 +27,7 @@ use InvalidArgumentException;
  *     dose_basis:string,
  *     cycle_on_days:?int,
  *     cycle_off_days:?int,
+ *     wall_clock_times:?string,
  *     created_at:?string
  * }
  *
@@ -40,7 +41,8 @@ use InvalidArgumentException;
  *     is_prn?:bool,
  *     dose_basis?:string,
  *     cycle_on_days?:?int,
- *     cycle_off_days?:?int
+ *     cycle_off_days?:?int,
+ *     wall_clock_times?:?string
  * }
  */
 final class ScheduleRepository implements ScheduleRepositoryInterface
@@ -113,11 +115,12 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
         $doseBasis = $data['dose_basis'] ?? 'fixed';
         $cycleOn = $data['cycle_on_days'] ?? null;
         $cycleOff = $data['cycle_off_days'] ?? null;
+        $wallClock = $data['wall_clock_times'] ?? null;
 
         $this->db->execute(
             'INSERT INTO hc_medicine_schedules
-                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $data['patient_id'],
                 $data['medicine_id'],
@@ -129,6 +132,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
                 $doseBasis,
                 $cycleOn,
                 $cycleOff,
+                $wallClock,
             ]
         );
 
@@ -138,8 +142,8 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
     private function selectAllColumns(): string
     {
         return 'SELECT id, patient_id, medicine_id, start_date, end_date, frequency, '
-            . 'unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, created_at'
-            . ' FROM hc_medicine_schedules';
+            . 'unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, '
+            . 'wall_clock_times, created_at FROM hc_medicine_schedules';
     }
 
     /**
@@ -164,6 +168,7 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
             'dose_basis' => isset($row['dose_basis']) ? (string) $row['dose_basis'] : 'fixed',
             'cycle_on_days' => $row['cycle_on_days'] === null ? null : (int) $row['cycle_on_days'],
             'cycle_off_days' => $row['cycle_off_days'] === null ? null : (int) $row['cycle_off_days'],
+            'wall_clock_times' => $row['wall_clock_times'] === null ? null : (string) $row['wall_clock_times'],
             'created_at' => $row['created_at'] === null ? null : (string) $row['created_at'],
         ];
     }

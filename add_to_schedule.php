@@ -28,7 +28,7 @@ $medicationsResult = dbi_query($medicationsSql);
 // If medicine id specified, load that
 if (!empty($medicine_id) && !empty($schedule_id)) {
   echo "<h2>Edit Medication to Patient Schedule</h2>\n";
-  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days FROM hc_medicine_schedules ' .
+  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times FROM hc_medicine_schedules ' .
     'WHERE patient_id = ? and medicine_id = ? AND id = ?';
   $rows = dbi_get_cached_rows($sql, [$patient_id, $medicine_id, $schedule_id]);
   $start_date = $rows[0][1];
@@ -39,6 +39,7 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
   $dose_basis = $rows[0][6] ?? 'fixed';
   $cycle_on_days = $rows[0][7] ?? '';
   $cycle_off_days = $rows[0][8] ?? '';
+  $wall_clock_times = $rows[0][9] ?? '';
 } else {
   echo "<h2>Add Medication to Patient Schedule</h2>\n";
   $start_date = $end_date = '';
@@ -48,6 +49,7 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
   $dose_basis = 'fixed';
   $cycle_on_days = '';
   $cycle_off_days = '';
+  $wall_clock_times = '';
 }
 
 echo "<div class='container mt-3'>\n";
@@ -120,24 +122,55 @@ echo "</div>\n";
 // network call; pure DOM toggle. When PRN is on, we also clear the
 // `name` attribute on the <select> so the browser omits it from the
 // submitted form and the handler treats frequency as absent.
+// HC-123: wall-clock fixed times ("8am + 2pm + 8pm"). When filled,
+// these override the frequency dropdown for next-due calculations.
+$wcTimes = !empty($wall_clock_times) ? explode(',', $wall_clock_times) : [];
+echo "<div class='form-group' id='wall-clock-group'" . ($is_prn ? " style='display:none'" : '') . ">\n";
+echo "<label>Fixed times per day (optional):</label>\n";
+echo "<div id='wall-clock-inputs'>\n";
+foreach ($wcTimes as $i => $t) {
+    echo "<input type='time' name='wall_clock_times[]' class='form-control d-inline-block mb-1' style='width:auto' value='" . htmlspecialchars(trim($t), ENT_QUOTES, 'UTF-8') . "'>\n";
+}
+echo "</div>\n";
+echo "<button type='button' class='btn btn-sm btn-outline-secondary mt-1' id='add-time-btn'>+ Add time</button>\n";
+echo "<small class='form-text text-muted'>When set, doses are expected at these exact times instead of every N hours. Leave blank for interval-based scheduling.</small>\n";
+echo "</div>\n";
+
 echo <<<HTML
 <script>
 (function () {
   var box = document.getElementById('is_prn');
-  var wrap = document.getElementById('frequency-group');
+  var freqWrap = document.getElementById('frequency-group');
+  var wcWrap = document.getElementById('wall-clock-group');
   var sel = document.getElementById('frequency');
-  if (!box || !wrap || !sel) return;
+  if (!box || !freqWrap || !sel) return;
   function sync() {
     if (box.checked) {
-      wrap.style.display = 'none';
+      freqWrap.style.display = 'none';
+      if (wcWrap) wcWrap.style.display = 'none';
       sel.removeAttribute('name');
     } else {
-      wrap.style.display = '';
+      freqWrap.style.display = '';
+      if (wcWrap) wcWrap.style.display = '';
       sel.setAttribute('name', 'frequency');
     }
   }
   box.addEventListener('change', sync);
   sync();
+
+  // Add-time button
+  var addBtn = document.getElementById('add-time-btn');
+  var container = document.getElementById('wall-clock-inputs');
+  if (addBtn && container) {
+    addBtn.addEventListener('click', function() {
+      var inp = document.createElement('input');
+      inp.type = 'time';
+      inp.name = 'wall_clock_times[]';
+      inp.className = 'form-control d-inline-block mb-1';
+      inp.style.width = 'auto';
+      container.appendChild(inp);
+    });
+  }
 })();
 </script>
 HTML;

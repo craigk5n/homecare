@@ -244,4 +244,87 @@ final class ScheduleCalculatorTest extends TestCase
             ScheduleCalculator::countOnDaysInRange('2026-01-01', 7, 3, '2026-01-01', '2026-01-30')
         );
     }
+
+    // Wall-clock times — HC-123 ------------------------------------------
+
+    public function testParseWallClockTimesReturnsEmptyForNull(): void
+    {
+        $this->assertSame([], ScheduleCalculator::parseWallClockTimes(null));
+    }
+
+    public function testParseWallClockTimesReturnsEmptyForEmptyString(): void
+    {
+        $this->assertSame([], ScheduleCalculator::parseWallClockTimes(''));
+    }
+
+    public function testParseWallClockTimesReturnsSortedArray(): void
+    {
+        $this->assertSame(
+            ['08:00', '14:00', '20:00'],
+            ScheduleCalculator::parseWallClockTimes('20:00,08:00,14:00')
+        );
+    }
+
+    public function testDosesPerDayFromWallClockTimes(): void
+    {
+        $this->assertSame(3, ScheduleCalculator::dosesPerDayFromWallClock('08:00,14:00,20:00'));
+        $this->assertSame(1, ScheduleCalculator::dosesPerDayFromWallClock('09:00'));
+        $this->assertSame(0, ScheduleCalculator::dosesPerDayFromWallClock(null));
+    }
+
+    public function testSecondsUntilNextWallClockBeforeFirstDose(): void
+    {
+        // 7:30 AM → next dose at 08:00 = 30 minutes = 1800 seconds.
+        $result = ScheduleCalculator::secondsUntilNextWallClock(
+            '08:00,14:00,20:00',
+            '2026-04-16 07:30:00',
+        );
+        $this->assertNotNull($result);
+        $this->assertSame(1800, $result['seconds']);
+        $this->assertSame('08:00', $result['next_time']);
+        $this->assertSame('2026-04-16', $result['next_date']);
+    }
+
+    public function testSecondsUntilNextWallClockBetweenDoses(): void
+    {
+        // 10:00 AM → next dose at 14:00 = 4 hours = 14400 seconds.
+        $result = ScheduleCalculator::secondsUntilNextWallClock(
+            '08:00,14:00,20:00',
+            '2026-04-16 10:00:00',
+        );
+        $this->assertNotNull($result);
+        $this->assertSame(14400, $result['seconds']);
+        $this->assertSame('14:00', $result['next_time']);
+    }
+
+    public function testSecondsUntilNextWallClockAfterLastDoseWrapsToTomorrow(): void
+    {
+        // 21:00 → next dose is tomorrow's 08:00 = 11 hours = 39600 seconds.
+        $result = ScheduleCalculator::secondsUntilNextWallClock(
+            '08:00,14:00,20:00',
+            '2026-04-16 21:00:00',
+        );
+        $this->assertNotNull($result);
+        $this->assertSame(39600, $result['seconds']);
+        $this->assertSame('08:00', $result['next_time']);
+        $this->assertSame('2026-04-17', $result['next_date']);
+    }
+
+    public function testSecondsUntilNextWallClockExactlyOnDoseTime(): void
+    {
+        // At exactly 14:00 → overdue for 14:00, next is 20:00 = 6h = 21600.
+        $result = ScheduleCalculator::secondsUntilNextWallClock(
+            '08:00,14:00,20:00',
+            '2026-04-16 14:00:00',
+        );
+        $this->assertNotNull($result);
+        $this->assertSame(21600, $result['seconds']);
+        $this->assertSame('20:00', $result['next_time']);
+    }
+
+    public function testSecondsUntilNextWallClockReturnsNullForEmpty(): void
+    {
+        $this->assertNull(ScheduleCalculator::secondsUntilNextWallClock(null, '2026-04-16 10:00:00'));
+        $this->assertNull(ScheduleCalculator::secondsUntilNextWallClock('', '2026-04-16 10:00:00'));
+    }
 }
