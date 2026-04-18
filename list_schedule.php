@@ -215,11 +215,11 @@ foreach ($rows as $row) {
         $remainShort  = translate('None');
         $remainDetail = '';
     } elseif ($isPrn) {
-        $remainShort  = sprintf("%s doses", $remainingDoses['remainingDoses']);
+        $remainShort  = sprintf("%.1f doses", (float) $remainingDoses['remainingDoses']);
         $remainDetail = '';
     } else {
-        $doseCount    = $remainingDoses['remainingDoses'];
-        $remainShort  = sprintf("%s doses (%d days)", $doseCount, $days);
+        $doseCount    = (float) $remainingDoses['remainingDoses'];
+        $remainShort  = sprintf("%.1f doses (%d days)", $doseCount, $days);
         $remainDetail = 'Until ' . $futureDate;
         if ($assumePastIntake) {
             $remainDetail .= ' (est.)';

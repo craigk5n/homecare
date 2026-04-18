@@ -43,17 +43,18 @@ foreach ($rawRows as $row) {
     $doses = $remaining['remainingDoses'];
 
     $isEnded = $endDate !== null && $endDate < date('Y-m-d');
+    $doses = (float) $doses;
     if ($isEnded) {
-        $remainText = sprintf('%s doses, %d days', $doses, $days);
+        $remainText = sprintf('%.1f doses, %d days', $doses, $days);
         $sortKey = sprintf('Z-%06d %s', $days, $name);
     } elseif ($isPrn) {
         // HC-120: PRN schedules have no cadence, so "days of supply"
         // is not a meaningful projection. Show doses only.
-        $remainText = $doses > 0 ? sprintf('%s doses (PRN)', $doses) : 'None (PRN)';
+        $remainText = $doses > 0 ? sprintf('%.1f doses (PRN)', $doses) : 'None (PRN)';
         $sortKey = sprintf('Y-%06d %s', 0, $name);
     } else {
         $until = date('M j, Y', strtotime("+$days days"));
-        $remainText = sprintf('Until %s — %s doses, %d days', $until, $doses, $days);
+        $remainText = sprintf('Until %s — %.1f doses, %d days', $until, $doses, $days);
         $sortKey = sprintf('%06d %s', $days, $name);
     }
     if ($assumePastIntake && (float) $doses > 0) {
