@@ -15,10 +15,26 @@ if (empty($data)) {
     exit;
 }
 
-// Filter: medicines with inventory only, or all
+// Split medicines into groups:
+//   - onSchedule: has inventory AND an active schedule (daily_consumption > 0)
+//   - offSchedule: has inventory but NO active schedule
+//   - noInventory: no inventory record at all
 $showAll = getGetValue('show_all');
-$hasInventory = array_filter($data, function($d) { return $d['current_stock'] !== null; });
-$noInventory = array_filter($data, function($d) { return $d['current_stock'] === null; });
+$showOff = getGetValue('show_off');
+
+$onSchedule = [];
+$offSchedule = [];
+$noInventory = [];
+foreach ($data as $d) {
+    if ($d['current_stock'] === null) {
+        $noInventory[] = $d;
+    } elseif ($d['daily_consumption'] > 0) {
+        $onSchedule[] = $d;
+    } else {
+        $offSchedule[] = $d;
+    }
+}
+$hasInventory = array_merge($onSchedule, $showOff ? $offSchedule : []);
 
 // Desktop table
 echo "<div class='d-none d-md-block'>\n";
@@ -61,13 +77,42 @@ foreach ($hasInventory as $item) {
     echo "</tr>\n";
 }
 
-// Medicines without inventory
+// Medicines with inventory but not on any active schedule
+if (!empty($offSchedule)) {
+    $offQs = $showOff ? '' : '?show_off=1';
+    $offLabel = $showOff ? 'hide' : 'show';
+    echo "<tr><td colspan='5' class='text-muted text-center'><em>";
+    echo count($offSchedule) . " medicine(s) not on an active schedule";
+    echo " &mdash; <a href='{$offQs}'>{$offLabel}</a>";
+    echo "</em></td></tr>\n";
+
+    if (!empty($showOff)) {
+        foreach ($offSchedule as $item) {
+            $medId = intval($item['medicine_id']);
+            $lastUpdated = $item['last_updated'] ? date('M j, Y', strtotime($item['last_updated'])) : 'Never';
+            $stockDisplay = number_format($item['current_stock'], 1);
+            echo "<tr class='text-muted'>";
+            echo "<td>" . htmlspecialchars($item['name']) . " <small>(no active schedule)</small></td>";
+            echo "<td class='text-right'>$stockDisplay</td>";
+            echo "<td class='text-right'>N/A</td>";
+            echo "<td>$lastUpdated</td>";
+            echo "<td>";
+            echo "<a href='inventory_refill.php?medicine_id=$medId' class='btn btn-sm btn-success mr-1'>Refill</a>";
+            echo "<a href='inventory_adjust.php?medicine_id=$medId' class='btn btn-sm btn-outline-secondary mr-1'>Adjust</a>";
+            echo "<a href='inventory_history.php?medicine_id=$medId' class='btn btn-sm btn-outline-info'>History</a>";
+            echo "</td>";
+            echo "</tr>\n";
+        }
+    }
+}
+
+// Medicines without any inventory record
 if (!empty($noInventory)) {
+    $allQs = $showAll ? ($showOff ? '?show_off=1' : '') : ('?show_all=1' . ($showOff ? '&show_off=1' : ''));
+    $allLabel = $showAll ? 'hide' : 'show';
     echo "<tr><td colspan='5' class='text-muted text-center'><em>";
     echo count($noInventory) . " medicine(s) with no inventory recorded";
-    if (empty($showAll)) {
-        echo " &mdash; <a href='?show_all=1'>show all</a>";
-    }
+    echo " &mdash; <a href='{$allQs}'>{$allLabel}</a>";
     echo "</em></td></tr>\n";
 
     if (!empty($showAll)) {
@@ -123,6 +168,30 @@ foreach ($hasInventory as $item) {
     echo "</div>\n";
     echo "</div>\n";
     echo "</div>\n";
+}
+
+// Mobile: off-schedule medicines
+if (!empty($showOff) && !empty($offSchedule)) {
+    foreach ($offSchedule as $item) {
+        $medId = intval($item['medicine_id']);
+        $lastUpdated = $item['last_updated'] ? date('M j, Y', strtotime($item['last_updated'])) : 'Never';
+        $stockDisplay = number_format($item['current_stock'], 1);
+        echo "<div class='card mb-3 border-light'>\n";
+        echo "<div class='card-body p-3 text-muted'>\n";
+        echo "<h6 class='card-title mb-1'>" . htmlspecialchars($item['name']) . " <small>(no active schedule)</small></h6>\n";
+        echo "<div class='d-flex justify-content-between mb-2'>\n";
+        echo "<span>Stock: <strong>$stockDisplay</strong></span>\n";
+        echo "<span>Supply: <strong>N/A</strong></span>\n";
+        echo "</div>\n";
+        echo "<small class='text-muted d-block mb-2'>Updated: $lastUpdated</small>\n";
+        echo "<div>\n";
+        echo "<a href='inventory_refill.php?medicine_id=$medId' class='btn btn-sm btn-success mr-1'>Refill</a>";
+        echo "<a href='inventory_adjust.php?medicine_id=$medId' class='btn btn-sm btn-outline-secondary mr-1'>Adjust</a>";
+        echo "<a href='inventory_history.php?medicine_id=$medId' class='btn btn-sm btn-outline-info'>History</a>";
+        echo "</div>\n";
+        echo "</div>\n";
+        echo "</div>\n";
+    }
 }
 
 echo "</div>\n";
