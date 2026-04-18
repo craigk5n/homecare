@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS hc_webhook_log (
   elapsed_ms INT NULL,
   success TINYINT(1) NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_hc_webhook_log_message ON hc_webhook_log (message_id);
 CREATE INDEX idx_hc_webhook_log_created ON hc_webhook_log (created_at DESC);

@@ -41,40 +41,42 @@ if ($dateTo !== '') {
 // ── Gather events from all sources ──────────────────────────────────
 // Each query returns: event_time, event_type, title, detail, note
 
+// Each subquery selects into the same column shapes. To avoid
+// "Illegal mix of collations" in the UNION (MySQL 8's server-default
+// collation for string literals can differ from table collations),
+// CAST the type-tag literals so they match the table charset.
 $intakeSql = "SELECT mi.taken_time AS event_time,
-                     'intake' AS event_type,
+                     CAST('intake' AS CHAR) AS event_type,
                      CONCAT(m.name, ' ', m.dosage) AS title,
-                     ms.frequency AS detail,
-                     mi.note
+                     CAST(ms.frequency AS CHAR) AS detail,
+                     CAST(mi.note AS CHAR) AS note
                 FROM hc_medicine_intake mi
                 JOIN hc_medicine_schedules ms ON mi.schedule_id = ms.id
                 JOIN hc_medicines m ON ms.medicine_id = m.id
                WHERE ms.patient_id = ?";
 
-// COLLATE: hc_weight_history uses utf8mb4_0900_ai_ci while older tables
-// use utf8mb4_unicode_ci. Force a common collation so the UNION works.
-$weightSql = "SELECT CONCAT(wh.recorded_at, ' 00:00:00') AS event_time,
-                     'weight' COLLATE utf8mb4_unicode_ci AS event_type,
-                     CONCAT(wh.weight_kg, ' kg') COLLATE utf8mb4_unicode_ci AS title,
-                     NULL AS detail,
-                     wh.note COLLATE utf8mb4_unicode_ci AS note
+$weightSql = "SELECT CAST(CONCAT(wh.recorded_at, ' 00:00:00') AS CHAR) AS event_time,
+                     CAST('weight' AS CHAR) AS event_type,
+                     CAST(CONCAT(wh.weight_kg, ' kg') AS CHAR) AS title,
+                     CAST(NULL AS CHAR) AS detail,
+                     CAST(wh.note AS CHAR) AS note
                 FROM hc_weight_history wh
                WHERE wh.patient_id = ?";
 
 $noteSql = "SELECT cn.note_time AS event_time,
-                   'note' AS event_type,
-                   SUBSTRING(cn.note, 1, 80) AS title,
-                   NULL AS detail,
-                   cn.note
+                   CAST('note' AS CHAR) AS event_type,
+                   CAST(SUBSTRING(cn.note, 1, 80) AS CHAR) AS title,
+                   CAST(NULL AS CHAR) AS detail,
+                   CAST(cn.note AS CHAR) AS note
               FROM hc_caregiver_notes cn
              WHERE cn.patient_id = ?";
 
 // Inventory: join through schedules to find medicines used by this patient.
 $inventorySql = "SELECT inv.recorded_at AS event_time,
-                        'inventory' AS event_type,
+                        CAST('inventory' AS CHAR) AS event_type,
                         CONCAT(m.name, ' ', m.dosage) AS title,
-                        CONCAT('Stock: ', inv.current_stock) AS detail,
-                        inv.note
+                        CAST(CONCAT('Stock: ', inv.current_stock) AS CHAR) AS detail,
+                        CAST(inv.note AS CHAR) AS note
                    FROM hc_medicine_inventory inv
                    JOIN hc_medicines m ON inv.medicine_id = m.id
                   WHERE inv.medicine_id IN (

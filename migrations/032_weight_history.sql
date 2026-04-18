@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS hc_weight_history (
   note VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (patient_id) REFERENCES hc_patients(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE INDEX idx_hc_weight_history_patient ON hc_weight_history (patient_id, recorded_at DESC);
 
