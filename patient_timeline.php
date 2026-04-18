@@ -39,85 +39,109 @@ if ($dateTo !== '') {
 }
 
 // ── Gather events from all sources ──────────────────────────────────
-// Each query returns: event_time, event_type, title, detail, note
+// Run four separate queries and merge in PHP. This avoids MySQL
+// collation conflicts that plague UNION across tables with different
+// charsets / server defaults — a persistent issue on MySQL 8.
 
-// Each subquery selects into the same column shapes. To avoid
-// "Illegal mix of collations" in the UNION (MySQL 8's server-default
-// collation for string literals can differ from table collations),
-// CAST the type-tag literals so they match the table charset.
-$intakeSql = "SELECT mi.taken_time AS event_time,
-                     CAST('intake' AS CHAR) AS event_type,
-                     CONCAT(m.name, ' ', m.dosage) AS title,
-                     CAST(ms.frequency AS CHAR) AS detail,
-                     CAST(mi.note AS CHAR) AS note
-                FROM hc_medicine_intake mi
-                JOIN hc_medicine_schedules ms ON mi.schedule_id = ms.id
-                JOIN hc_medicines m ON ms.medicine_id = m.id
-               WHERE ms.patient_id = ?";
+$allEvents = [];
 
-$weightSql = "SELECT CAST(CONCAT(wh.recorded_at, ' 00:00:00') AS CHAR) AS event_time,
-                     CAST('weight' AS CHAR) AS event_type,
-                     CAST(CONCAT(wh.weight_kg, ' kg') AS CHAR) AS title,
-                     CAST(NULL AS CHAR) AS detail,
-                     CAST(wh.note AS CHAR) AS note
-                FROM hc_weight_history wh
-               WHERE wh.patient_id = ?";
-
-$noteSql = "SELECT cn.note_time AS event_time,
-                   CAST('note' AS CHAR) AS event_type,
-                   CAST(SUBSTRING(cn.note, 1, 80) AS CHAR) AS title,
-                   CAST(NULL AS CHAR) AS detail,
-                   CAST(cn.note AS CHAR) AS note
-              FROM hc_caregiver_notes cn
-             WHERE cn.patient_id = ?";
-
-// Inventory: join through schedules to find medicines used by this patient.
-$inventorySql = "SELECT inv.recorded_at AS event_time,
-                        CAST('inventory' AS CHAR) AS event_type,
-                        CONCAT(m.name, ' ', m.dosage) AS title,
-                        CAST(CONCAT('Stock: ', inv.current_stock) AS CHAR) AS detail,
-                        CAST(inv.note AS CHAR) AS note
-                   FROM hc_medicine_inventory inv
-                   JOIN hc_medicines m ON inv.medicine_id = m.id
-                  WHERE inv.medicine_id IN (
-                      SELECT DISTINCT ms2.medicine_id
-                        FROM hc_medicine_schedules ms2
-                       WHERE ms2.patient_id = ?
-                  )";
-
-// Union all four, apply date filter, sort, paginate.
-$unionSql = "SELECT * FROM (
-    ({$intakeSql}) UNION ALL
-    ({$weightSql}) UNION ALL
-    ({$noteSql}) UNION ALL
-    ({$inventorySql})
-) AS timeline
-WHERE 1=1 {$dateWhere}
-ORDER BY event_time DESC
-LIMIT {$perPage} OFFSET " . (($page - 1) * $perPage);
-
-$params = array_merge(
-    [$patient_id], // intakes
-    [$patient_id], // weight
-    [$patient_id], // notes
-    [$patient_id], // inventory
-    $dateParams,
+// 1. Intakes
+$intakeRows = dbi_get_cached_rows(
+    "SELECT mi.taken_time, m.name, m.dosage, ms.frequency, mi.note
+       FROM hc_medicine_intake mi
+       JOIN hc_medicine_schedules ms ON mi.schedule_id = ms.id
+       JOIN hc_medicines m ON ms.medicine_id = m.id
+      WHERE ms.patient_id = ?
+      ORDER BY mi.taken_time DESC",
+    [$patient_id],
 );
+foreach ($intakeRows as $r) {
+    $allEvents[] = [
+        'time' => (string) $r[0],
+        'type' => 'intake',
+        'title' => $r[1] . ' ' . $r[2],
+        'detail' => (string) $r[3],
+        'note' => $r[4],
+    ];
+}
 
-$events = dbi_get_cached_rows($unionSql, $params);
+// 2. Weight history
+$weightRows = dbi_get_cached_rows(
+    "SELECT recorded_at, weight_kg, note FROM hc_weight_history
+      WHERE patient_id = ? ORDER BY recorded_at DESC",
+    [$patient_id],
+);
+foreach ($weightRows as $r) {
+    $allEvents[] = [
+        'time' => $r[0] . ' 00:00:00',
+        'type' => 'weight',
+        'title' => displayWeight((float) $r[1]) . ' ' . weightUnitLabel(),
+        'detail' => null,
+        'note' => $r[2],
+    ];
+}
 
-// Count for pagination.
-$countSql = "SELECT COUNT(*) FROM (
-    ({$intakeSql}) UNION ALL
-    ({$weightSql}) UNION ALL
-    ({$noteSql}) UNION ALL
-    ({$inventorySql})
-) AS timeline
-WHERE 1=1 {$dateWhere}";
+// 3. Caregiver notes
+$noteRows = dbi_get_cached_rows(
+    "SELECT note_time, note FROM hc_caregiver_notes
+      WHERE patient_id = ? ORDER BY note_time DESC",
+    [$patient_id],
+);
+foreach ($noteRows as $r) {
+    $fullNote = (string) $r[1];
+    $allEvents[] = [
+        'time' => (string) $r[0],
+        'type' => 'note',
+        'title' => mb_substr($fullNote, 0, 80),
+        'detail' => null,
+        'note' => $fullNote,
+    ];
+}
 
-$countRows = dbi_get_cached_rows($countSql, $params);
-$total = (int) ($countRows[0][0] ?? 0);
+// 4. Inventory (for medicines used by this patient)
+$invRows = dbi_get_cached_rows(
+    "SELECT inv.recorded_at, m.name, m.dosage, inv.current_stock, inv.note
+       FROM hc_medicine_inventory inv
+       JOIN hc_medicines m ON inv.medicine_id = m.id
+      WHERE inv.medicine_id IN (
+          SELECT DISTINCT ms2.medicine_id FROM hc_medicine_schedules ms2
+           WHERE ms2.patient_id = ?
+      )
+      ORDER BY inv.recorded_at DESC",
+    [$patient_id],
+);
+foreach ($invRows as $r) {
+    $allEvents[] = [
+        'time' => (string) $r[0],
+        'type' => 'inventory',
+        'title' => $r[1] . ' ' . $r[2],
+        'detail' => 'Stock: ' . $r[3],
+        'note' => $r[4],
+    ];
+}
+
+// Apply date filter.
+if ($dateFrom !== '' || $dateTo !== '') {
+    $allEvents = array_filter($allEvents, static function (array $ev) use ($dateFrom, $dateTo): bool {
+        $t = $ev['time'];
+        if ($dateFrom !== '' && $t < $dateFrom . ' 00:00:00') {
+            return false;
+        }
+        if ($dateTo !== '' && $t > $dateTo . ' 23:59:59') {
+            return false;
+        }
+        return true;
+    });
+}
+
+// Sort newest first.
+usort($allEvents, static fn(array $a, array $b): int => strcmp($b['time'], $a['time']));
+
+$total = count($allEvents);
 $totalPages = (int) ceil($total / $perPage);
+
+// Paginate.
+$events = array_slice($allEvents, ($page - 1) * $perPage, $perPage);
 
 // ── Helper: badge style per event type ──────────────────────────────
 function timeline_badge(string $type): string
@@ -179,21 +203,13 @@ print_header();
     <?php
     $lastDate = '';
     foreach ($events as $ev):
-        $eventTime = (string) $ev[0];
-        $eventType = (string) $ev[1];
-        $title = (string) $ev[2];
-        $detail = $ev[3] !== null ? (string) $ev[3] : null;
-        $note = $ev[4] !== null ? (string) $ev[4] : null;
+        $eventTime = (string) $ev['time'];
+        $eventType = (string) $ev['type'];
+        $title = (string) $ev['title'];
+        $detail = $ev['detail'] !== null ? (string) $ev['detail'] : null;
+        $note = $ev['note'] !== null ? (string) $ev['note'] : null;
         $eventDate = substr($eventTime, 0, 10);
         $eventTimeShort = substr($eventTime, 11, 5); // HH:MM
-
-        // Display weight in configured unit.
-        if ($eventType === 'weight') {
-            $kgMatch = [];
-            if (preg_match('/^([\d.]+)\s*kg$/', $title, $kgMatch)) {
-                $title = displayWeight((float) $kgMatch[1]) . ' ' . weightUnitLabel();
-            }
-        }
 
         // Date separator.
         if ($eventDate !== $lastDate):
