@@ -217,6 +217,7 @@ final class AdherenceServiceTest extends TestCase
             'end_date' => $end,
             'frequency' => $frequency,
             'unit_per_dose' => 1.0,
+            'is_prn' => false,
             'created_at' => '2026-01-01 00:00:00',
         ];
     }
