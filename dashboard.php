@@ -195,6 +195,37 @@ foreach ($weightRows as $wr) {
     }
 }
 
+// ── 1d. Doses given today vs expected ────────────────────────────────
+$todayDate = date('Y-m-d');
+$patientIdList = implode(',', array_map('intval', array_keys($patientStats)));
+
+$givenTodaySql = "SELECT COUNT(*) AS cnt
+                    FROM hc_medicine_intake mi
+                    JOIN hc_medicine_schedules ms ON mi.schedule_id = ms.id
+                   WHERE ms.patient_id IN ({$patientIdList})
+                     AND DATE(mi.taken_time) = ?";
+$givenRows = dbi_get_cached_rows($givenTodaySql, [$todayDate]);
+$dosesGivenToday = (int) ($givenRows[0][0] ?? 0);
+
+// Expected today: sum doses_per_day (86400 / frequency_seconds) for
+// all active non-PRN schedules across all patients.
+$expectedSql = "SELECT ms.frequency
+                  FROM hc_medicine_schedules ms
+                 WHERE ms.patient_id IN ({$patientIdList})
+                   AND ms.is_prn = 'N'
+                   AND ms.frequency IS NOT NULL
+                   AND ms.start_date <= ?
+                   AND (ms.end_date IS NULL OR ms.end_date >= ?)";
+$expectedRows = dbi_get_cached_rows($expectedSql, [$todayDate, $todayDate]);
+$dosesExpectedToday = 0;
+foreach ($expectedRows as $er) {
+    try {
+        $dosesExpectedToday += (int) round(86400 / frequencyToSeconds((string) $er[0]));
+    } catch (\InvalidArgumentException) {
+        // skip unknown frequency
+    }
+}
+
 // ── 2. Low-supply medicines ─────────────────────────────────────────
 $inventoryData = getInventoryDashboardData();
 $lowSupply = [];
@@ -265,7 +296,7 @@ $caughtUp = getGetValue('caught_up');
 
   <!-- ── Summary cards ─────────────────────────────────────────── -->
   <div class="row mb-4">
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
       <div class="card border-<?php echo $totalOverdue > 0 ? 'danger' : 'success'; ?> h-100">
         <div class="card-body text-center">
           <h2 class="display-4 mb-1 text-<?php echo $totalOverdue > 0 ? 'danger' : 'success'; ?>">
@@ -275,7 +306,7 @@ $caughtUp = getGetValue('caught_up');
         </div>
       </div>
     </div>
-    <div class="col-md-4 mb-3">
+    <div class="col-md-3 mb-3">
       <div class="card border-<?php echo $totalDueSoon > 0 ? 'warning' : 'success'; ?> h-100">
         <div class="card-body text-center">
           <h2 class="display-4 mb-1 text-<?php echo $totalDueSoon > 0 ? 'warning' : 'success'; ?>">
@@ -285,7 +316,21 @@ $caughtUp = getGetValue('caught_up');
         </div>
       </div>
     </div>
-    <div class="col-md-4 mb-3">
+    <?php
+      $allDone = $dosesExpectedToday > 0 && $dosesGivenToday >= $dosesExpectedToday;
+      $todayColor = $allDone ? 'success' : ($dosesGivenToday > 0 ? 'info' : 'secondary');
+    ?>
+    <div class="col-md-3 mb-3">
+      <div class="card border-<?php echo $todayColor; ?> h-100">
+        <div class="card-body text-center">
+          <h2 class="display-4 mb-1 text-<?php echo $todayColor; ?>">
+            <?php echo (int) $dosesGivenToday; ?><span class="h5 text-muted">/<?php echo (int) $dosesExpectedToday; ?></span>
+          </h2>
+          <p class="text-muted mb-0"><?php etranslate('Doses Today'); ?></p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3">
       <div class="card border-<?php echo count($lowSupply) > 0 ? 'danger' : 'success'; ?> h-100">
         <div class="card-body text-center">
           <h2 class="display-4 mb-1 text-<?php echo count($lowSupply) > 0 ? 'danger' : 'success'; ?>">

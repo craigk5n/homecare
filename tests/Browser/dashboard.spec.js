@@ -26,14 +26,14 @@ test.describe('Multi-patient dashboard', () => {
 
     await expect(page.locator('body')).not.toContainText('Fatal error');
 
-    // Three summary cards should be visible (overdue, due soon, low supply).
+    // Four summary cards: overdue, due soon, doses today, low supply.
     const cards = page.locator('.card .display-4');
-    await expect(cards).toHaveCount(3);
+    await expect(cards).toHaveCount(4);
 
-    // Each card should contain a number.
-    for (let i = 0; i < 3; i++) {
+    // Each card should contain a number (or a fraction like "4/11" for doses today).
+    for (let i = 0; i < 4; i++) {
       const text = await cards.nth(i).textContent();
-      expect(text.trim()).toMatch(/^\d+$/);
+      expect(text.trim()).toMatch(/^\d+(\/\d+)?$/);
     }
   });
 
