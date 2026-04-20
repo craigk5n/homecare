@@ -360,50 +360,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $flash = ['type' => 'danger', 'text' => 'Invalid parameters.'];
     } else {
         $signedUrl = \HomeCare\Auth\SignedUrl::instance();
-        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') 
+        $baseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http')
             . '://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/';
-        
-        $params = [];
-        $queryString = '';
-        $endpoint = '';
-        
+
+        $patientId = (int) getPostValue('patient_id');
+        if ($patientId <= 0) {
+            $flash = ['type' => 'danger', 'text' => 'Invalid patient ID.'];
+            goto end;
+        }
+
         if ($type === 'ics') {
-            $scheduleId = (int) getPostValue('schedule_id');
-            if ($scheduleId <= 0) {
-                $flash = ['type' => 'danger', 'text' => 'Invalid schedule ID.'];
-                goto end;
-            }
-            $params = ['type' => 'ics', 'schedule_id' => $scheduleId];
-            $queryString = 'schedule_id=' . $scheduleId;
+            $params = ['type' => 'ics', 'patient_id' => $patientId];
+            $queryString = 'patient_id=' . $patientId;
             $endpoint = 'schedule_ics.php';
         } else {
-            $patientId = (int) getPostValue('patient_id');
             $startDate = getPostValue('start_date') ?: date('Y-m-d', strtotime('-30 days'));
             $endDate = getPostValue('end_date') ?: date('Y-m-d');
-            if ($patientId <= 0) {
-                $flash = ['type' => 'danger', 'text' => 'Invalid patient ID.'];
-                goto end;
-            }
             $params = [
                 'type' => $type,
                 'patient_id' => $patientId,
                 'start_date' => $startDate,
-                'end_date' => $endDate
+                'end_date' => $endDate,
             ];
             $queryString = 'patient_id=' . $patientId . '&start_date=' . urlencode($startDate) . '&end_date=' . urlencode($endDate);
             $endpoint = 'export_intake_' . $type . '.php';
         }
-        
+
         $token = $signedUrl->sign($params, $ttl);
         $fullUrl = $baseUrl . $endpoint . '?' . $queryString . '&token=' . $token;
-        
-$days = $ttl / 86400;
-$flash = [
-    'type' => 'success', 
-    'text' => htmlspecialchars("Shareable URL generated (expires in {$days} days).<br><pre class=\"mt-2 bg-light p-2 small\" style=\"word-break: break-all;\">" . htmlspecialchars($fullUrl) . '</pre>')
-];
-        
-        audit_log('signedurl.generated', 'user', null, ['type' => $type, 'ttl' => $ttl, 'target_id' => $patientId ?? $scheduleId]);
+
+        $days = $ttl / 86400;
+        $flash = [
+            'type' => 'success',
+            'text' => htmlspecialchars("Shareable URL generated (expires in {$days} days).<br><pre class=\"mt-2 bg-light p-2 small\" style=\"word-break: break-all;\">" . htmlspecialchars($fullUrl) . '</pre>'),
+        ];
+
+        audit_log('signedurl.generated', 'user', null, ['type' => $type, 'ttl' => $ttl, 'target_id' => $patientId]);
     }
     end:
 }
@@ -1005,12 +997,8 @@ foreach ($myChannels->defaultChannelNames() as $name) {
         </select>
       </div>
       <div class="col-md-2">
-        <label for="share_patient_id" class="form-label">Patient ID (exports)</label>
+        <label for="share_patient_id" class="form-label">Patient ID</label>
         <input type="number" class="form-control" id="share_patient_id" name="patient_id" min="1">
-      </div>
-      <div class="col-md-1 d-none" id="schedule_id_group">
-        <label for="share_schedule_id" class="form-label">Schedule ID (iCal)</label>
-        <input type="number" class="form-control" id="share_schedule_id" name="schedule_id" min="1">
       </div>
       <div class="col-md-2 d-none" id="start_date_group">
         <label for="share_start" class="form-label">Start Date</label>
@@ -1037,25 +1025,18 @@ foreach ($myChannels->defaultChannelNames() as $name) {
   <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
   const typeSelect = document.getElementById('share_type');
   const patientGroup = document.getElementById('share_patient_id').parentElement;
-  const scheduleGroup = document.getElementById('schedule_id_group');
   const dateGroups = document.querySelectorAll('#start_date_group, #end_date_group');
-  
+
   typeSelect.addEventListener('change', function() {
     const val = this.value;
     const isExport = val === 'csv' || val === 'fhir';
-    const isIcs = val === 'ics';
-    
-    patientGroup.style.display = isExport ? 'block' : 'none';
-    scheduleGroup.classList.toggle('d-none', !isIcs);
-    
+    const isValid = isExport || val === 'ics';
+
+    patientGroup.style.display = isValid ? 'block' : 'none';
     dateGroups.forEach(group => group.classList.toggle('d-none', !isExport));
-    
-    // Clear values
-    if (!isExport) {
+
+    if (!isValid) {
       document.querySelector('[name="patient_id"]').value = '';
-    }
-    if (!isIcs) {
-      document.querySelector('[name="schedule_id"]').value = '';
     }
     if (isExport) {
       if (!document.querySelector('[name="start_date"]').value) {
