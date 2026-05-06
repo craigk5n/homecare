@@ -38,11 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && getPostValue('action') === 'add_wei
         $weightKg = inputWeightToKg((float) $newWeight);
         $weightRepo->insert($patient_id, $weightKg, $recordedAt, $newNote !== '' ? $newNote : null);
 
-        // Also update the patient's current weight (always stored in kg).
-        dbi_execute(
-            'UPDATE hc_patients SET weight_kg = ?, weight_as_of = ? WHERE id = ?',
-            [$weightKg, $recordedAt, $patient_id],
-        );
+        // Sync the patient's current weight to the most recent history
+        // entry by recorded_at, so back-dated entries don't overwrite a
+        // newer reading.
+        $weightRepo->syncCurrentWeight($patient_id);
 
         audit_log('weight.recorded', 'patient', $patient_id, [
             'weight_kg' => $weightKg,
@@ -57,12 +56,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && getPostValue('action') === 'add_wei
 
 $history = $weightRepo->getHistory($patient_id, 200);
 
-// Prepare chart data (oldest first for the X-axis).
+// Prepare chart data (oldest first for the X-axis). The chart uses a
+// time scale, so each point is {x: 'YYYY-MM-DD', y: <weight>}. $chartValues
+// is also kept as a flat list for the min/max/change stats below.
 $chartHistory = array_reverse($history);
-$chartLabels = array_map(static fn(array $r): string => $r['recorded_at'], $chartHistory);
 $unit = weightUnitLabel();
 $convFactor = $unit === 'lb' ? 2.20462 : 1.0;
 $chartValues = array_map(static fn(array $r): float => round($r['weight_kg'] * $convFactor, 2), $chartHistory);
+$chartPoints = [];
+foreach ($chartHistory as $i => $r) {
+    $chartPoints[] = ['x' => $r['recorded_at'], 'y' => $chartValues[$i]];
+}
 
 // Compute stats.
 $latest = !empty($history) ? $history[0] : null;
@@ -221,25 +225,24 @@ print_header();
 
 <?php if (count($chartValues) >= 2): ?>
 <script src="pub/chart.umd.min.js" nonce="<?php echo htmlspecialchars($GLOBALS['NONCE'] ?? ''); ?>"></script>
+<script src="pub/chartjs-adapter-date-fns.bundle.min.js" nonce="<?php echo htmlspecialchars($GLOBALS['NONCE'] ?? ''); ?>"></script>
 <script nonce="<?php echo htmlspecialchars($GLOBALS['NONCE'] ?? ''); ?>">
 (function() {
-  var labels = <?php echo json_encode($chartLabels); ?>;
-  var values = <?php echo json_encode($chartValues); ?>;
+  var points = <?php echo json_encode($chartPoints); ?>;
 
   var ctx = document.getElementById('weightChart').getContext('2d');
   new Chart(ctx, {
     type: 'line',
     data: {
-      labels: labels,
       datasets: [{
         label: 'Weight (<?php echo $unit; ?>)',
-        data: values,
+        data: points,
         borderColor: 'rgba(44, 122, 123, 1)',
         backgroundColor: 'rgba(44, 122, 123, 0.1)',
         fill: true,
         tension: 0.3,
         pointBackgroundColor: 'rgba(44, 122, 123, 1)',
-        pointRadius: 4,
+        pointRadius: 3,
         pointHoverRadius: 6,
       }]
     },
@@ -250,6 +253,11 @@ print_header();
         legend: { display: false },
         tooltip: {
           callbacks: {
+            title: function(items) {
+              if (!items.length) return '';
+              var d = new Date(items[0].parsed.x);
+              return d.toISOString().slice(0, 10);
+            },
             label: function(context) {
               return context.parsed.y.toFixed(2) + ' <?php echo $unit; ?>';
             }
@@ -264,6 +272,18 @@ print_header();
           }
         },
         x: {
+          type: 'time',
+          time: {
+            // date-fns parses 'YYYY-MM-DD' natively; tick units adapt.
+            tooltipFormat: 'yyyy-MM-dd',
+            displayFormats: {
+              day: 'MMM d',
+              week: 'MMM d',
+              month: 'MMM yyyy',
+              quarter: 'MMM yyyy',
+              year: 'yyyy'
+            }
+          },
           ticks: {
             autoSkip: true,
             maxTicksLimit: 12,

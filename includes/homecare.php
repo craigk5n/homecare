@@ -138,7 +138,14 @@ function homecare_inventory_service(): InventoryService
  */
 function getWeightUnit(): string
 {
-    return ($GLOBALS['weight_unit'] ?? 'kg') === 'lb' ? 'lb' : 'kg';
+    if (!isset($GLOBALS['weight_unit'])) {
+        $rows = dbi_get_cached_rows(
+            "SELECT value FROM hc_config WHERE setting = 'weight_unit'",
+            []
+        );
+        $GLOBALS['weight_unit'] = !empty($rows) ? (string) $rows[0][0] : 'kg';
+    }
+    return $GLOBALS['weight_unit'] === 'lb' ? 'lb' : 'kg';
 }
 
 /**

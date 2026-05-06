@@ -45,8 +45,11 @@ if (!empty($id)) {
     $oldPatient = getPatient((int) $id);
     $oldWeight = $oldPatient['weight_kg'] ?? null;
 
-    $sql = 'UPDATE hc_patients SET name = ?, species = ?, weight_kg = ?, weight_as_of = ?, is_active = ? WHERE id = ?';
-    if (!dbi_execute($sql, [$name, $species, $weight_kg, $weight_as_of, $is_active, (int) $id])) {
+    // Update non-weight fields. The weight columns are synced below from
+    // hc_weight_history so the displayed weight is always the most recent
+    // by recorded_at, not by data-entry order.
+    $sql = 'UPDATE hc_patients SET name = ?, species = ?, is_active = ? WHERE id = ?';
+    if (!dbi_execute($sql, [$name, $species, $is_active, (int) $id])) {
         echo '<p>Error updating patient: ' . htmlspecialchars(dbi_error()) . '</p>';
         exit;
     }
@@ -57,10 +60,12 @@ if (!empty($id)) {
         'is_active' => $is_active,
     ]);
 
-    // Record weight history if weight changed.
+    // Record weight history if weight changed, then sync the patient's
+    // current weight to the most recent history entry by date.
     if ($weight_kg !== null && (float) $weight_kg !== (float) ($oldWeight ?? 0)) {
         $weightRepo->insert((int) $id, (float) $weight_kg, (string) $weight_as_of);
     }
+    $weightRepo->syncCurrentWeight((int) $id);
 } else {
     $sql = 'INSERT INTO hc_patients (name, species, weight_kg, weight_as_of, is_active) VALUES (?, ?, ?, ?, ?)';
     if (!dbi_execute($sql, [$name, $species, $weight_kg, $weight_as_of, 1])) {

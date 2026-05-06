@@ -81,4 +81,21 @@ final class WeightRepository
     {
         $this->db->execute('DELETE FROM hc_weight_history WHERE id = ?', [$id]);
     }
+
+    /**
+     * Sync hc_patients.weight_kg / weight_as_of to the most recent history
+     * entry (by recorded_at). If no history exists, leaves the patient row
+     * untouched.
+     */
+    public function syncCurrentWeight(int $patientId): void
+    {
+        $latest = $this->getLatest($patientId);
+        if ($latest === null) {
+            return;
+        }
+        $this->db->execute(
+            'UPDATE hc_patients SET weight_kg = ?, weight_as_of = ? WHERE id = ?',
+            [$latest['weight_kg'], $latest['recorded_at'], $patientId],
+        );
+    }
 }
