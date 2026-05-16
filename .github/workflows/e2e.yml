@@ -44,7 +44,7 @@ jobs:
       - name: Seed E2E fixtures
         run: docker compose exec -T web php bin/seed_e2e_fixtures.php
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'npm'
