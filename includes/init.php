@@ -51,6 +51,16 @@ date_default_timezone_set('America/New_York');
 // short-circuit inside hc_validate().
 hc_validate();
 
+// Populate $APPLICATION_NAME, $LANGUAGE, $SERVER_URL, $BGCOLOR, $TEXTCOLOR,
+// $MENU_ENABLED, etc. from hc_config so print_header() (and pages that read
+// these globals) see configured values instead of falling back to the literal
+// 'Title' placeholder. Guarded because exempt entrypoints (CLI, login.php,
+// logout.php, schedule_ics.php, css_cacher.php) skip the hc_validate() DB
+// connect and manage their own bootstrap.
+if (!empty($GLOBALS['db_connection'])) {
+    load_global_settings();
+}
+
 // Return the toplevel URL (no path) of the current URL.
 function get_server_top_url () {
   if(isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')

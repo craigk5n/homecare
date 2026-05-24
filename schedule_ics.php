@@ -4,6 +4,16 @@ require_once 'src/Auth/SignedUrl.php';
 
 use HomeCare\Auth\SignedUrl;
 
+// Exempt entrypoint: hc_validate() skips DB connect for schedule_ics.php,
+// so establish the connection here.
+if (empty($c)) {
+    $c = @dbi_connect($db_host, $db_login, $db_password, $db_database);
+    if (!$c) {
+        http_response_code(500);
+        die('Database connection failed.');
+    }
+}
+
 // Check auth: session or token
 $token = getGetValue('token', '');
 $patient_id = (int) getGetValue('patient_id', 0);
