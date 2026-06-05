@@ -53,8 +53,16 @@ foreach ($rows as $r) {
     echo '<tr>';
     echo '<td>' . htmlspecialchars($r['name']) . '</td>';
     echo '<td>' . htmlspecialchars($r['dosage']) . '</td>';
-    echo '<td class="actions-cell"><a href="edit_medication.php?id=' . $r['id']
-        . '" class="btn btn-sm btn-outline-secondary">Edit</a></td>';
+    echo '<td class="actions-cell">';
+    echo '<a href="edit_medication.php?id=' . $r['id']
+        . '" class="btn btn-sm btn-outline-secondary">Edit</a> ';
+    echo '<form method="POST" action="delete_medication_handler.php" class="d-inline js-delete-medicine">';
+    echo csrf_form_key();
+    echo '<input type="hidden" name="id" value="' . $r['id'] . '">';
+    echo '<input type="hidden" name="medname" value="' . htmlspecialchars($r['name']) . '">';
+    echo '<button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>';
+    echo '</form>';
+    echo '</td>';
     echo '</tr>';
 }
 echo '      </tbody>';
@@ -75,6 +83,12 @@ foreach ($rows as $r) {
     echo '  <div class="card-actions noprint">';
     echo '    <a href="edit_medication.php?id=' . $r['id']
         . '" class="btn btn-sm btn-outline-secondary">Edit</a>';
+    echo '    <form method="POST" action="delete_medication_handler.php" class="d-inline js-delete-medicine">';
+    echo '      ' . csrf_form_key();
+    echo '      <input type="hidden" name="id" value="' . $r['id'] . '">';
+    echo '      <input type="hidden" name="medname" value="' . htmlspecialchars($r['name']) . '">';
+    echo '      <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>';
+    echo '    </form>';
     echo '  </div>';
     echo '</div>';
 }
@@ -83,6 +97,15 @@ echo '</div>';
 <script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
 document.addEventListener('click', function(e) {
   if (e.target.closest('[data-print]')) window.print();
+});
+document.addEventListener('submit', function(e) {
+  var form = e.target.closest('.js-delete-medicine');
+  if (!form) return;
+  var name = form.querySelector('input[name="medname"]');
+  var label = name && name.value ? '"' + name.value + '"' : 'this medication';
+  if (!window.confirm('Delete ' + label + '? This cannot be undone.')) {
+    e.preventDefault();
+  }
 });
 </script>
 <?php

@@ -6,9 +6,21 @@ $medicationId = isset($_GET['id']) ? intval($_GET['id']) : 0;
 $medication = ['name' => '', 'dosage' => '', 'drug_catalog_id' => null];
 
 if ($medicationId > 0) {
-    // Fetch medication details for editing
+    // Fetch medication details for editing. Use dbi_get_cached_rows (not
+    // dbi_query) because only it binds the parameter array -- dbi_query's
+    // second argument is $fatalOnError, so passing params there leaves the
+    // literal '?' in the SQL and the query dies. Rows come back numerically
+    // indexed, so map the columns onto the string keys the form reads.
     $sql = "SELECT id, name, dosage, drug_catalog_id FROM hc_medicines WHERE id = ?";
-    $medication = dbi_fetch_row(dbi_query($sql, [$medicationId]));
+    $rows = dbi_get_cached_rows($sql, [$medicationId]);
+    if (!empty($rows)) {
+        $row = $rows[0];
+        $medication = [
+            'name' => (string) $row[1],
+            'dosage' => (string) $row[2],
+            'drug_catalog_id' => $row[3],
+        ];
+    }
 }
 
 print_header();
@@ -39,7 +51,7 @@ $actionUrl = $medicationId > 0 ? "update_medication_handler.php" : "add_medicati
     <button type='submit' class='btn btn-primary'><?= $medicationId > 0 ? 'Update' : 'Add' ?> Medication</button>
 </form>
 </div>
-<script>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
 (function() {
     var nameInput = document.getElementById('name');
     var dosageInput = document.getElementById('dosage');

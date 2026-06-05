@@ -187,7 +187,7 @@ echo "</form>\n";
 echo "</div>\n";
 
 ?>
-<script>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
 document.getElementById('import_type').addEventListener('change', function() {
     document.getElementById('patient-group').style.display =
         this.value === 'schedules' ? 'none' : '';

@@ -148,6 +148,7 @@ CREATE TABLE `hc_medicines` (
   `drug_catalog_id` INT NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `uq_medicines_name_dosage` UNIQUE (`name`, `dosage`),
   FOREIGN KEY (`drug_catalog_id`) REFERENCES `hc_drug_catalog`(`id`) ON DELETE SET NULL
 );
 

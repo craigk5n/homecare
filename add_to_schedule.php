@@ -3,6 +3,12 @@ require_once 'includes/init.php';
 
 print_header();
 
+// CSP nonce stamped on every inline <script> below. The page's CSP is
+// `script-src 'self' 'nonce-…'` (no unsafe-inline), so any <script> without
+// this nonce is silently blocked by the browser -- which kills the whole
+// medication autocomplete (HC_MEDICINES + the search handler).
+$nonce = htmlspecialchars($GLOBALS['NONCE'] ?? '', ENT_QUOTES, 'UTF-8');
+
 // TODO: Move this to a shared file
 $frequencies = [
     '1d' => '1d - once daily',
@@ -94,7 +100,7 @@ echo "<div id='med-suggestions' class='list-group' style='position:absolute;z-in
 echo "<small class='form-text text-muted'><a href='#' id='cant-find-med'>I don't see my medication</a> &mdash; <a href='edit_medication.php'>add a new one</a></small>\n";
 echo "</div>\n";
 // Pass existing medications to JS for local filtering
-echo "<script>var HC_MEDICINES = " . json_encode($allMeds, JSON_HEX_TAG | JSON_HEX_AMP) . ";</script>\n";
+echo "<script nonce=\"$nonce\">var HC_MEDICINES = " . json_encode($allMeds, JSON_HEX_TAG | JSON_HEX_AMP) . ";</script>\n";
 
 // HC-112: Interaction warning area
 echo "<div id='interaction-warnings' style='display:none' class='mb-3'></div>\n";
@@ -155,7 +161,7 @@ echo "<small class='form-text text-muted'>When set, doses are expected at these 
 echo "</div>\n";
 
 echo <<<HTML
-<script>
+<script nonce="$nonce">
 (function () {
   var box = document.getElementById('is_prn');
   var freqWrap = document.getElementById('frequency-group');
@@ -233,8 +239,8 @@ echo "</div>\n";
 echo "<small class='form-text text-muted'>Leave blank for continuous dosing. When set, the schedule alternates between on-days (doses expected) and off-days (no doses).</small>\n";
 echo "</fieldset>\n";
 
-echo <<<'HTML'
-<script>
+echo <<<HTML
+<script nonce="$nonce">
 (function () {
   var sel = document.getElementById('dose_basis');
   var help = document.getElementById('unit_per_dose_help');
@@ -261,8 +267,8 @@ echo "</div>\n";
 
 // Medication autocomplete: searches drug catalog via API and falls back
 // to filtering the local HC_MEDICINES array for existing medicines.
-echo <<<'HTML'
-<script>
+echo <<<HTML
+<script nonce="$nonce">
 (function() {
     var search = document.getElementById('medicine_search');
     var hiddenId = document.getElementById('medicine_id');
