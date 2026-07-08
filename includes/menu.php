@@ -120,6 +120,7 @@ $hasPatient = $activePatientId > 0 && $activePatient !== null;
           </a>
           <div class="dropdown-menu" aria-labelledby="reportsDropdown">
             <a class="dropdown-item" href="report_intake.php<?php echo $activeIdQs; ?>"><?php etranslate('Intake History'); ?></a>
+            <a class="dropdown-item" href="export.php<?php echo $activeIdQs; ?>"><?php etranslate('Export…'); ?></a>
             <a class="dropdown-item" href="report_missed.php<?php echo $activeIdQs; ?>"><?php etranslate('Missed Medications'); ?></a>
             <a class="dropdown-item" href="report_medications.php<?php echo $activeIdQs; ?>"><?php etranslate('Medication Supply'); ?></a>
             <a class="dropdown-item" href="report_adherence.php<?php echo $activeIdQs; ?>"><?php etranslate('Adherence'); ?></a>

@@ -99,32 +99,11 @@ echo '      <a class="btn btn-sm btn-outline-secondary" href="report_intake.php?
     . $patient_id . '&date=' . urlencode($current_date) . '&sort=' . $sortSwap
     . '" title="Toggle sort order">' . $sortLabel . '</a>';
 echo '      <button class="btn btn-sm btn-outline-secondary" data-print>Print</button>';
-echo '      <a class="btn btn-sm btn-outline-secondary" href="export_intake_pdf.php' . $exportQs
-    . '" title="Print-ready PDF of the current month">PDF</a>';
-echo '      <a class="btn btn-sm btn-outline-secondary" href="export_intake_csv.php' . $exportQs . '">CSV</a>';
-echo '      <a class="btn btn-sm btn-outline-secondary" href="export_intake_fhir.php' . $exportQs
-    . '" title="HL7 FHIR R4 MedicationAdministration bundle">FHIR</a>';
-
-// HC-108: "Email me a copy" buttons. Small inline POST forms so
-// each carries the CSRF token and the delivery=email marker; the
-// endpoint hands them off to EmailExportService instead of
-// streaming to the browser.
-$hiddens = '<input type="hidden" name="patient_id" value="' . (int) $patient_id . '">'
-    . '<input type="hidden" name="start_date" value="' . htmlspecialchars($start_of_month) . '">'
-    . '<input type="hidden" name="end_date" value="' . htmlspecialchars($end_of_month) . '">'
-    . '<input type="hidden" name="delivery" value="email">';
-
-echo '      <form method="post" action="export_intake_csv.php" class="d-inline ml-1">';
-print_form_key();
-echo $hiddens;
-echo '<button type="submit" class="btn btn-sm btn-outline-secondary"'
-   . ' title="Email CSV to my account\'s address">Email CSV</button></form>';
-
-echo '      <form method="post" action="export_intake_fhir.php" class="d-inline ml-1">';
-print_form_key();
-echo $hiddens;
-echo '<button type="submit" class="btn btn-sm btn-outline-secondary"'
-   . ' title="Email FHIR bundle to my account\'s address">Email FHIR</button></form>';
+// Unified export: format picker (Text / Markdown / CSV / PDF / FHIR),
+// date range, and download-or-email delivery all live on export.php.
+// This supersedes the per-format buttons that used to sit here.
+echo '      <a class="btn btn-sm btn-outline-secondary" href="export.php' . $exportQs
+    . '" title="Export this history in Text, Markdown, CSV, PDF, or FHIR">Export&hellip;</a>';
 
 echo '    </div>';
 echo '  </div>';

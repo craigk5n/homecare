@@ -30,8 +30,8 @@ if (!function_exists('hc108_email_and_exit')) {
      *
      * Exits after rendering a feedback page — caller does not return.
      *
-     * @param 'csv'|'fhir'|'medication_summary' $type
-     * @param array{id:int,name:string}         $patient
+     * @param 'csv'|'fhir'|'text'|'markdown'|'medication_summary' $type
+     * @param array{id:int,name:string}                           $patient
      */
     function hc108_email_and_exit(
         string $type,
@@ -87,6 +87,20 @@ if (!function_exists('hc108_email_and_exit')) {
                 (string) $endDate,
             ),
             'fhir' => $service->sendFhirExport(
+                $login,
+                $user['email'],
+                $patientId,
+                (string) $startDate,
+                (string) $endDate,
+            ),
+            'text' => $service->sendTextExport(
+                $login,
+                $user['email'],
+                $patientId,
+                (string) $startDate,
+                (string) $endDate,
+            ),
+            'markdown' => $service->sendMarkdownExport(
                 $login,
                 $user['email'],
                 $patientId,

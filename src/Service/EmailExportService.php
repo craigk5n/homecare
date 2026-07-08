@@ -9,6 +9,8 @@ use HomeCare\Database\DatabaseInterface;
 use HomeCare\Export\CsvIntakeExporter;
 use HomeCare\Export\FhirIntakeExporter;
 use HomeCare\Export\IntakeExportQuery;
+use HomeCare\Export\MarkdownIntakeExporter;
+use HomeCare\Export\TextIntakeExporter;
 use HomeCare\Report\MedicationSummaryReport;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Mailer;
@@ -40,6 +42,8 @@ final class EmailExportService
 
     private const TYPE_CSV = 'csv';
     private const TYPE_FHIR = 'fhir';
+    private const TYPE_TEXT = 'text';
+    private const TYPE_MARKDOWN = 'markdown';
     private const TYPE_MEDICATION_SUMMARY = 'medication_summary';
 
     /** @var callable():string */
@@ -49,6 +53,10 @@ final class EmailExportService
     private readonly mixed $audit;
 
     private ?MailerInterface $mailer;
+
+    private readonly TextIntakeExporter $textExporter;
+
+    private readonly MarkdownIntakeExporter $markdownExporter;
 
     public function __construct(
         private readonly DatabaseInterface $db,
@@ -60,11 +68,17 @@ final class EmailExportService
         ?MailerInterface $mailer = null,
         ?callable $clock = null,
         ?callable $audit = null,
+        ?TextIntakeExporter $textExporter = null,
+        ?MarkdownIntakeExporter $markdownExporter = null,
     ) {
         $this->mailer = $mailer;
         $this->clock = $clock ?? static fn(): string => date('Y-m-d H:i:s');
         $this->audit = $audit
             ?? static fn(string $action, string $entityType, ?int $entityId, array $details): null => null;
+        // Stateless renderers with no collaborators — default-construct
+        // when the caller doesn't inject a stub.
+        $this->textExporter = $textExporter ?? new TextIntakeExporter();
+        $this->markdownExporter = $markdownExporter ?? new MarkdownIntakeExporter();
     }
 
     /**
@@ -139,6 +153,92 @@ final class EmailExportService
             body: $this->fhirBody($patientName, $startDate, $endDate, count($rows)),
             auditMeta: [
                 'type'       => self::TYPE_FHIR,
+                'patient_id' => $patientId,
+                'start_date' => $startDate,
+                'end_date'   => $endDate,
+                'size_bytes' => $size,
+            ],
+        );
+    }
+
+    /**
+     * @return array{ok:bool,reason:?string,size_bytes:int}
+     */
+    public function sendTextExport(
+        string $login,
+        string $recipientEmail,
+        int $patientId,
+        string $startDate,
+        string $endDate,
+    ): array {
+        $guard = $this->preflight($login, $recipientEmail);
+        if ($guard !== null) {
+            return $guard;
+        }
+
+        $rows = $this->exportQuery->fetch($patientId, $startDate, $endDate);
+        $patientName = $rows[0]['patient_name'] ?? "patient-{$patientId}";
+        $bytes = $this->textExporter->toText($rows, [
+            'patient_name' => $patientName,
+            'period_label' => self::periodLabel($startDate, $endDate),
+            'generated_at' => substr($this->now(), 0, 16),
+        ]);
+        $size = strlen($bytes);
+
+        return $this->dispatch(
+            login: $login,
+            recipient: $recipientEmail,
+            type: self::TYPE_TEXT,
+            filename: self::filename($patientName, 'txt'),
+            contentType: 'text/plain; charset=utf-8',
+            attachment: $bytes,
+            subject: "[HomeCare] Intake export (text) — {$patientName}",
+            body: $this->genericBody($patientName, $startDate, $endDate, count($rows), 'plain-text'),
+            auditMeta: [
+                'type'       => self::TYPE_TEXT,
+                'patient_id' => $patientId,
+                'start_date' => $startDate,
+                'end_date'   => $endDate,
+                'size_bytes' => $size,
+            ],
+        );
+    }
+
+    /**
+     * @return array{ok:bool,reason:?string,size_bytes:int}
+     */
+    public function sendMarkdownExport(
+        string $login,
+        string $recipientEmail,
+        int $patientId,
+        string $startDate,
+        string $endDate,
+    ): array {
+        $guard = $this->preflight($login, $recipientEmail);
+        if ($guard !== null) {
+            return $guard;
+        }
+
+        $rows = $this->exportQuery->fetch($patientId, $startDate, $endDate);
+        $patientName = $rows[0]['patient_name'] ?? "patient-{$patientId}";
+        $bytes = $this->markdownExporter->toMarkdown($rows, [
+            'patient_name' => $patientName,
+            'period_label' => self::periodLabel($startDate, $endDate),
+            'generated_at' => substr($this->now(), 0, 16),
+        ]);
+        $size = strlen($bytes);
+
+        return $this->dispatch(
+            login: $login,
+            recipient: $recipientEmail,
+            type: self::TYPE_MARKDOWN,
+            filename: self::filename($patientName, 'md'),
+            contentType: 'text/markdown; charset=utf-8',
+            attachment: $bytes,
+            subject: "[HomeCare] Intake export (Markdown) — {$patientName}",
+            body: $this->genericBody($patientName, $startDate, $endDate, count($rows), 'Markdown'),
+            auditMeta: [
+                'type'       => self::TYPE_MARKDOWN,
                 'patient_id' => $patientId,
                 'start_date' => $startDate,
                 'end_date'   => $endDate,
@@ -306,6 +406,18 @@ final class EmailExportService
             . "covering {$start} to {$end}.\n\n"
             . "Total intake records: {$rowCount}.\n\n"
             . 'Open the attachment in any spreadsheet app or import it into a clinic EMR.';
+    }
+
+    private static function periodLabel(string $start, string $end): string
+    {
+        return $start === $end ? $start : $start . ' – ' . $end;
+    }
+
+    private function genericBody(string $patientName, string $start, string $end, int $rowCount, string $formatLabel): string
+    {
+        return "Attached is the {$formatLabel} intake history for {$patientName}, "
+            . "covering {$start} to {$end}.\n\n"
+            . "Total intake records: {$rowCount}.";
     }
 
     private function fhirBody(string $patientName, string $start, string $end, int $rowCount): string
