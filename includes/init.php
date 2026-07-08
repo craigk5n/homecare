@@ -58,6 +58,14 @@ hc_validate();
 // logout.php, schedule_ics.php, css_cacher.php) skip the hc_validate() DB
 // connect and manage their own bootstrap.
 if (!empty($GLOBALS['db_connection'])) {
+    // load_global_settings() reads $GLOBALS['SERVER_TIMEZONE'] unguarded
+    // (functions.php:396). When that key is absent from hc_config, PHP 8
+    // emits an "Undefined global variable" warning to output *before* any
+    // page sends headers — which silently breaks every subsequent
+    // header() call (redirects and Content-Type) on authenticated pages
+    // when display_errors is on. Seed a default so no warning is emitted;
+    // load_global_settings() overwrites it from hc_config when present.
+    $GLOBALS['SERVER_TIMEZONE'] ??= '';
     load_global_settings();
 }
 
