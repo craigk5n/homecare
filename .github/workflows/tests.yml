@@ -79,7 +79,7 @@ jobs:
 
       - name: Upload coverage artifact (8.2 only)
         if: matrix.php-version == '8.2'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report
           path: |
