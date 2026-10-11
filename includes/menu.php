@@ -1,6 +1,6 @@
 <?php
 global $ALLOW_VIEW_OTHER, $BodyX,
-$fullname, $HOME_LINK, $is_admin, $login_return_path,
+$fullname, $HOME_LINK, $is_admin, $is_nonuser, $login_return_path,
 $login, $MENU_DATE_TOP, $readonly,
 $REPORTS_ENABLED, $show_printer, $single_user, $START_VIEW,
 $use_http_auth, $user_fullname, $users;

@@ -139,6 +139,10 @@ function print_header( $includes = '', $HeadX = '', $BodyX = '',
   $self, $TABLECELLFG, $TEXTCOLOR, $THBG, $THFG, $TODAYCELLBG, $WEEKENDBG,
   $ASSETS;
 
+  if (!is_string($self) || $self === '') {
+    $self = $_SERVER['PHP_SELF'] ?? '/index.php';
+  }
+
   ob_start ();
 
   if ( is_dir ( 'includes' ) ) {
