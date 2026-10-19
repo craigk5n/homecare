@@ -1,0 +1,112 @@
+# Publish the HomeCare web image to GitHub Container Registry.
+#
+# - Tag push `v*` (e.g. v0.2.0): build linux/amd64 + linux/arm64 and
+#   push ghcr.io/<owner>/<repo>:{version}, :{major}.{minor}, plus
+#   :latest when the tag is not a pre-release (no `-` in the tag,
+#   e.g. v0.2.0-rc1 does not move :latest).
+# - workflow_dispatch: same build, pushed as :sha-<short> (and the
+#   semver tags too when dispatched against a tag ref).
+# - Pull requests touching the image inputs: build amd64 only, no
+#   push — catches Dockerfile / entrypoint breakage before release.
+#
+# The image is the same one docker-compose.yml builds; see
+# docs/kubernetes.md for running it outside Compose.
+
+name: docker-publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - docker/**
+      - composer.json
+      - composer.lock
+      - .github/workflows/docker-publish.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    name: Build${{ github.event_name != 'pull_request' && ' + push' || '' }} image
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # GHCR image names must be lowercase; github.repository keeps the
+      # owner's casing.
+      - name: Compute image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      # arm64 is built under QEMU emulation. php:8.3-apache and
+      # composer:2 both publish amd64 + arm64 variants.
+      - name: Set up QEMU
+        if: github.event_name != 'pull_request'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata (tags + OCI labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        env:
+          # Put OCI annotations on both the per-arch manifests and the
+          # multi-arch index so GHCR shows them either way.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
+        with:
+          images: ${{ env.IMAGE }}
+          flavor: |
+            latest=false
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+            type=sha,enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=ref,event=pr
+          labels: |
+            org.opencontainers.image.title=HomeCare
+            org.opencontainers.image.description=Medication schedule, intake and inventory tracker (Apache + PHP)
+            org.opencontainers.image.licenses=GPL-2.0-or-later
+          annotations: |
+            org.opencontainers.image.title=HomeCare
+            org.opencontainers.image.description=Medication schedule, intake and inventory tracker (Apache + PHP)
+            org.opencontainers.image.licenses=GPL-2.0-or-later
+
+      - name: Build${{ github.event_name != 'pull_request' && ' and push' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/amd64' || 'linux/amd64,linux/arm64' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Supply-chain metadata on published images only: a full
+          # SLSA provenance attestation and an SPDX SBOM, both stored
+          # alongside the image in GHCR.
+          provenance: ${{ github.event_name != 'pull_request' && 'mode=max' || 'false' }}
+          sbom: ${{ github.event_name != 'pull_request' }}

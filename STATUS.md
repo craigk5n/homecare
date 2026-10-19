@@ -3249,6 +3249,37 @@ HC-073; add a narrower, explicit mode.
 
 ---
 
+### HC-215: Published container image + Kubernetes example
+
+*Proposed contribution.*
+
+**Status**: `DONE`
+**Type**: Story
+**Points**: 2
+**Depends on**: HC-050
+
+**Description**: Self-hosters running Kubernetes (or anything that
+pulls images) currently have to build the HC-050 image themselves.
+Publish it from release tags and document a working Kubernetes
+deployment, including the reverse-proxy auth setup from HC-143.
+
+**Acceptance Criteria**:
+- [x] `.github/workflows/docker-publish.yml`: on `v*` tags (and
+      manual dispatch) build linux/amd64 + linux/arm64 and push to
+      `ghcr.io/<owner>/<repo>` with `{version}`, `{major}.{minor}`
+      and `latest` (non-pre-release only); OCI labels incl.
+      `GPL-2.0-or-later`; GHA build cache; SBOM + provenance
+- [x] Pull requests touching the image inputs build (no push)
+- [x] `docs/kubernetes.md`: Namespace, Secret, MySQL StatefulSet,
+      Deployment with migrate init container + probes + attachments
+      PVC, Service, Ingress, `send_reminders.php` CronJob,
+      forward-auth examples (ingress-nginx, Traefik) and a
+      NetworkPolicy
+- [x] README links the image and the Kubernetes doc
+- [x] No change to the image or to Compose behaviour
+
+---
+
 ## Story Dependency Graph
 
 ```

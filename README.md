@@ -118,6 +118,10 @@ container start.
 Persistence is held in the `homecare_db_data` volume; wipe it with
 `docker compose down -v`.
 
+Release images are published as `ghcr.io/craigk5n/homecare:<version>`
+(amd64 + arm64); see [docs/kubernetes.md](docs/kubernetes.md) for a
+Kubernetes example.
+
 ## Manual install (without Docker)
 
 If you already run Apache + PHP 8.1+ + MySQL 8:
