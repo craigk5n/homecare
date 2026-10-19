@@ -78,7 +78,8 @@ foreach ($rows as $row) {
     $hasCycle     = $cycleOn !== null && $cycleOff !== null;
     $isOffDay     = $hasCycle && !HomeCare\Domain\ScheduleCalculator::isOnDay($start_date, $cycleOn, $cycleOff, $todayDate);
     $hasWallClock = $wallClock !== null && $wallClock !== '';
-    $lastTakenNicely = formatDateNicely($lastTaken);
+    // Never taken: no date (formatDateNicely(null) would show the 1970 epoch).
+    $lastTakenNicely = $lastTaken !== null ? formatDateNicely($lastTaken) : '';
 
     $secondsUntilDue = null;
     $nextDueLabel    = 'Not Yet Taken';
@@ -239,6 +240,7 @@ foreach ($rows as $row) {
         'medName'         => $medName,
         'frequency'       => $isPrn ? 'PRN' : ($hasCycle ? $frequency . " ({$cycleOn}d on/{$cycleOff}d off)" : $frequency),
         'lastTakenNicely' => $lastTakenNicely,
+        'warningText'     => $warningText,
         'nextDueLabel'    => $nextDueLabel,
         'nextDueDetail'   => $nextDueDetail,
         'secondsUntilDue' => ($isPrn || $isPaused || $isOffDay) ? null : $secondsUntilDue,
@@ -455,6 +457,8 @@ function renderTableRow($entry, $statusClass) {
     $html .= '<td>' . htmlspecialchars($entry['frequency']) . '</td>';
     $html .= '<td>' . htmlspecialchars($entry['lastTakenNicely']) . '</td>';
     $html .= '<td class="js-countdown"' . $dueAttr . '>' . $warningIcon . htmlspecialchars($entry['nextDueLabel']);
+    // The cadence-mismatch text is computed per schedule in the main loop.
+    $warningText = $entry['warningText'] ?? null;
     if ($warningText) {
         $html .= '<br><div class="alert alert-warning mt-1 mb-0 p-1 small"><strong>Cadence Mismatch:</strong> ' . htmlspecialchars($warningText) . '</div>';
     }
