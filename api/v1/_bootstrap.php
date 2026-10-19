@@ -23,7 +23,6 @@ require_once __DIR__ . '/../../includes/dbi4php.php';
 
 use HomeCare\Api\ApiAuth;
 use HomeCare\Api\ApiResponse;
-use HomeCare\Auth\ApiAuthResult;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\RateLimit\ApiRateLimiter;
 use HomeCare\Repository\UserRepository;
@@ -88,15 +87,20 @@ function api_parse_json_body(): array
 }
 
 /**
- * Authenticate the current request via Authorization: Bearer &lt;key&gt;.
+ * Authenticate the current request via Authorization: Bearer <key>.
+ * On failure, sends a JSON error with the right status and terminates.
  *
- * @return ApiAuthResult
+ * @return array<string,mixed> The hydrated UserRecord on success.
  */
-function api_try_authenticate(): ApiAuthResult
+function api_authenticate_or_exit(): array
 {
-  $users = new UserRepository(new DbiAdapter());
-  return (new ApiAuth($users))-&gt;authenticate($_SERVER);
-}
+    $users = new UserRepository(new DbiAdapter());
+    $result = (new ApiAuth($users))->authenticate($_SERVER);
+
+    if (!$result->success || $result->user === null) {
+        $status = \HomeCare\Auth\ApiKeyAuth::httpStatusFor($result);
+        api_send(ApiResponse::error((string) ($result->reason ?? 'unauthorized'), $status));
+    }
 
     return $result->user;
 }
