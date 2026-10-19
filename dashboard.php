@@ -56,7 +56,7 @@ $sql = "SELECT p.id AS patient_id, p.name AS patient_name,
             ON ms.patient_id = p.id
            AND ms.is_prn = 'N'
            AND ms.frequency IS NOT NULL
-           AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())
+           AND (ms.end_date IS NULL OR ms.end_date >= CURRENT_DATE)
      LEFT JOIN hc_medicines m ON ms.medicine_id = m.id
          WHERE p.is_active = 1
          ORDER BY p.name, ms.id";
@@ -242,10 +242,10 @@ $recentSql = "SELECT p.name AS patient_name, m.name AS medicine_name,
                 JOIN hc_medicine_schedules ms ON mi.schedule_id = ms.id
                 JOIN hc_medicines m ON ms.medicine_id = m.id
                 JOIN hc_patients p ON ms.patient_id = p.id
-               WHERE mi.taken_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+               WHERE mi.taken_time >= ?
                ORDER BY mi.taken_time DESC
                LIMIT 20";
-$recentRows = dbi_get_cached_rows($recentSql, []);
+$recentRows = dbi_get_cached_rows($recentSql, [date('Y-m-d H:i:s', time() - 86400)]);
 
 // Auto-refresh every 60 seconds. The ?t= cache-buster ensures the
 // browser doesn't serve a stale cached page.

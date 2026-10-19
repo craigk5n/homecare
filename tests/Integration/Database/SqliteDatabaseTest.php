@@ -14,7 +14,7 @@ final class SqliteDatabaseTest extends DatabaseTestCase
 {
     public function testSchemaCreatesAllHomeCareTables(): void
     {
-        $rows = $this->getDb()->query(
+        $rows = $this->getSqliteDb()->query(
             "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
         );
         $tables = array_map(static fn(array $row): string => (string) $row['name'], $rows);

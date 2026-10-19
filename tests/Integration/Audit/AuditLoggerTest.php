@@ -87,7 +87,7 @@ final class AuditLoggerTest extends DatabaseTestCase
     {
         // Drop the table to force the INSERT to fail. The logger must not
         // throw; it should error_log() and return normally.
-        $this->getSqliteDb()->pdo()->exec('DROP TABLE hc_audit_log');
+        $this->pdo()->exec('DROP TABLE hc_audit_log');
 
         $logger = new AuditLogger(
             $this->getDb(),

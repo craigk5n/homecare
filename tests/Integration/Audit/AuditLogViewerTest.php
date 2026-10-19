@@ -19,20 +19,8 @@ class AuditLogViewerTest extends DatabaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Ensure audit table exists (should be in schema)
-        $this->getDb()->execute(
-            'CREATE TABLE IF NOT EXISTS ' . self::AUDIT_TABLE . ' (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_login TEXT NOT NULL,
-                action TEXT NOT NULL,
-                entity_type TEXT,
-                entity_id INTEGER,
-                details TEXT,
-                ip_address TEXT NOT NULL,
-                created_at DATETIME NOT NULL
-            )',
-        );
+        // hc_audit_log comes from the schema fixture (SQLite) or
+        // tables-postgres.sql (PostgreSQL run).
     }
 
     /**
@@ -61,10 +49,10 @@ class AuditLogViewerTest extends DatabaseTestCase
     public function testNoFiltersReturnsAllEntries(): void
     {
         $this->getDb()->execute(
-            'INSERT INTO ' . self::AUDIT_TABLE . ' (user_login, action, ip_address, created_at) VALUES
-            ("admin", "user.login", "127.0.0.1", "2026-04-13 10:00:00"),
-            ("caregiver", "intake.recorded", "10.0.0.1", "2026-04-13 11:00:00"),
-            ("admin", "schedule.created", "127.0.0.1", "2026-04-13 12:00:00")',
+            'INSERT INTO ' . self::AUDIT_TABLE . " (user_login, action, ip_address, created_at) VALUES
+            ('admin', 'user.login', '127.0.0.1', '2026-04-13 10:00:00'),
+            ('caregiver', 'intake.recorded', '10.0.0.1', '2026-04-13 11:00:00'),
+            ('admin', 'schedule.created', '127.0.0.1', '2026-04-13 12:00:00')",
         );
 
         $repo = new \HomeCare\Repository\AuditRepository($this->getDb());

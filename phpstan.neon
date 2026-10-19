@@ -18,6 +18,8 @@ parameters:
     # includes/homecare.php defines global function wrappers that delegate to
     # ScheduleCalculator. scanFiles lets PHPStan see their signatures from
     # tests/Unit/Domain/LegacyWrapperTest.php without analysing the legacy
-    # dbi_* code that file also touches.
+    # dbi_* code that file also touches. dbi4php.php is scanned for the
+    # same reason (tests/Integration/Database/DbiPgsqlTest.php).
     scanFiles:
         - includes/homecare.php
+        - includes/dbi4php.php

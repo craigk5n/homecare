@@ -27,8 +27,8 @@ final class ApiRateLimiterTest extends DatabaseTestCase
             PRIMARY KEY (ip, bucket, window_start)
         )');
 
-        $this->getDb()->execute("INSERT OR IGNORE INTO hc_config (setting, value) VALUES ('api_rate_limit_rpm', '5')");
-        $this->getDb()->execute("INSERT OR IGNORE INTO hc_config (setting, value) VALUES ('api_rate_limit_authenticated_rpm', '10')");
+        $this->getDb()->execute("INSERT INTO hc_config (setting, value) VALUES ('api_rate_limit_rpm', '5')");
+        $this->getDb()->execute("INSERT INTO hc_config (setting, value) VALUES ('api_rate_limit_authenticated_rpm', '10')");
     }
 
     public function test_is_under_limit_when_no_row(): void

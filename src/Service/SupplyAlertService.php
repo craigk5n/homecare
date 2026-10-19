@@ -112,7 +112,7 @@ final class SupplyAlertService
                AND ms.frequency IS NOT NULL
                AND (ms.end_date IS NULL OR ms.end_date >= ?)
              GROUP BY ms.medicine_id
-             ORDER BY m.name ASC",
+             ORDER BY MIN(m.name) ASC",
             [$today, $today],
         );
 

@@ -21,7 +21,14 @@ require_once __DIR__ . '/../includes/dbi4php.php';
 
 do_config();
 
-global $db_host, $db_login, $db_password, $db_database;
+global $db_host, $db_login, $db_password, $db_database, $db_type;
+
+// HC-250: PostgreSQL has its own migrations directory (migrations/pgsql)
+// and loads tables-postgres.sql into an empty database on first run.
+if ($db_type === 'postgresql') {
+    require_once __DIR__ . '/../vendor/autoload.php';
+    exit(hc_migrate_pgsql(in_array('--dry-run', $argv, true)));
+}
 
 $c = @new \mysqli($db_host, $db_login, $db_password, $db_database);
 if ($c->connect_error) {
@@ -106,5 +113,73 @@ try {
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";
     exit(1);
+}
+
+/**
+ * PostgreSQL path (HC-250). db_host may carry a port as "host:port".
+ * Returns the process exit code.
+ */
+function hc_migrate_pgsql(bool $dryRun): int
+{
+    global $db_host, $db_login, $db_password, $db_database;
+
+    $host = (string) $db_host;
+    $port = '';
+    if (preg_match('/^(.+):(\d+)$/', $host, $m)) {
+        [, $host, $port] = $m;
+    }
+    $dsn = 'pgsql:dbname=' . $db_database
+        . ($host !== '' ? ';host=' . $host : '')
+        . ($port !== '' ? ';port=' . $port : '');
+
+    try {
+        $db = \HomeCare\Database\PgsqlDatabase::connect($dsn, $db_login, $db_password);
+    } catch (\PDOException $e) {
+        echo "Error: Cannot connect to database: {$e->getMessage()}\n";
+        return 1;
+    }
+
+    $root = dirname(__DIR__);
+    $runner = new \HomeCare\Database\MigrationRunner(
+        $db,
+        static fn(string $sql) => $db->pdo()->exec($sql),
+        \HomeCare\Database\MigrationRunner::directoryFor(\HomeCare\Database\Dialect::Postgres, $root),
+    );
+
+    try {
+        if ($runner->isEmpty()) {
+            if ($dryRun) {
+                echo "Empty database: would load tables-postgres.sql.\n";
+                return 0;
+            }
+            $runner->bootstrap($root . '/tables-postgres.sql');
+            echo "Loaded tables-postgres.sql into empty database.\n";
+        }
+        $runner->ensureTrackingTable();
+
+        $pending = $runner->pending();
+        if ($pending === []) {
+            echo "No pending migrations.\n";
+            return 0;
+        }
+
+        if ($dryRun) {
+            echo "Pending migrations (" . count($pending) . "):\n";
+            foreach ($pending as $name) {
+                echo "  - $name\n";
+            }
+            return 0;
+        }
+
+        foreach ($pending as $name) {
+            $runner->apply($name);
+            echo "Applied migration: $name\n";
+        }
+        echo "Successfully applied " . count($pending) . " migrations.\n";
+        return 0;
+    } catch (\Throwable $e) {
+        echo "Error: " . $e->getMessage() . "\n";
+        return 1;
+    }
 }
 ?>

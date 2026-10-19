@@ -95,6 +95,11 @@ final class SqliteDatabase implements DatabaseInterface
         }
     }
 
+    public function dialect(): Dialect
+    {
+        return Dialect::SQLite;
+    }
+
     /**
      * Expose the underlying PDO for test fixtures that need to run raw SQL
      * (e.g. loading a multi-statement schema dump).

@@ -28,22 +28,23 @@ if (empty($current_date)) {
     $current_date = $today;
 }
 $start_of_month = date('Y-m-01', strtotime($current_date));
-// The page itself queries by DATE_FORMAT(mi.taken_time, '%Y-%m') so it
-// shows the entire month. The export links must match — previously
+// The page itself queries the whole month [start_of_month, next month) so
+// it shows the entire month. The export links must match — previously
 // end_date was $current_date, which silently truncated the export to
 // just day-1 of the month when the user navigated via the prev/next
 // buttons (those set date=YYYY-MM-01). Use the actual last day of the
 // month instead.
 $end_of_month = date('Y-m-t', strtotime($current_date));
+$start_of_next_month = date('Y-m-d', strtotime($start_of_month . ' +1 month'));
 
 $sql = "SELECT mi.taken_time, m.name AS medicine_name, mi.note,
                mi.created_at, ms.id AS schedule_id, mi.id AS intake_id
         FROM hc_medicine_intake mi
         JOIN hc_medicine_schedules ms ON mi.schedule_id = ms.id
         JOIN hc_medicines m ON ms.medicine_id = m.id
-        WHERE ms.patient_id = ? AND DATE_FORMAT(mi.taken_time, '%Y-%m') = DATE_FORMAT(?, '%Y-%m')
+        WHERE ms.patient_id = ? AND mi.taken_time >= ? AND mi.taken_time < ?
         ORDER BY mi.taken_time $order";
-$res = dbi_execute($sql, [$patient_id, $start_of_month]);
+$res = dbi_execute($sql, [$patient_id, $start_of_month . ' 00:00:00', $start_of_next_month . ' 00:00:00']);
 
 // Materialize + group by identical taken_time so the same dose-event
 // (e.g. three pills swallowed at 8:00) renders as one row.

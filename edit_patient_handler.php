@@ -72,7 +72,7 @@ if (!empty($id)) {
         echo '<p>Error adding patient: ' . htmlspecialchars(dbi_error()) . '</p>';
         exit;
     }
-    $newId = (int) ($GLOBALS['phpdbiConnection']->insert_id ?? 0);
+    $newId = dbi_insert_id();
     audit_log('patient.created', 'patient', $newId ?: null, [
         'name' => $name,
         'species' => $species,

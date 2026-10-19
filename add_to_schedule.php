@@ -24,7 +24,7 @@ $medicine_id = getIntValue('medicine_id');
 $schedule_id = getIntValue('schedule_id');
 
 // Fetch patients
-$patientsSql = "SELECT id, name FROM hc_patients WHERE is_active = TRUE ORDER BY name ASC";
+$patientsSql = "SELECT id, name FROM hc_patients WHERE is_active = 1 ORDER BY name ASC";
 $patientsResult = dbi_query($patientsSql);
 
 // Fetch medications

@@ -74,17 +74,18 @@ $insertValues = [$patient_id, $medicine_id, $effective_date, $frequency, $unit_p
 if (!dbi_execute($insertSql, $insertValues)) {
     die_miserable_death('Error creating new schedule: ' . dbi_error());
 }
-$newScheduleId = (int) mysqli_insert_id($GLOBALS['c']);
+$newScheduleId = (int) dbi_insert_id();
 
 // Step 3: Reassign overlapping intakes if requested
 $reassigned = 0;
 if ($reassign_intakes === 'yes') {
     $reassignSql = "UPDATE hc_medicine_intake SET schedule_id = ?
         WHERE schedule_id = ? AND taken_time >= ?";
-    if (!dbi_execute($reassignSql, [$newScheduleId, $old_schedule_id, $effective_date . ' 00:00:00'])) {
+    $reassignRes = dbi_execute($reassignSql, [$newScheduleId, $old_schedule_id, $effective_date . ' 00:00:00']);
+    if (!$reassignRes) {
         die_miserable_death('Error reassigning intake records: ' . dbi_error());
     }
-    $reassigned = (int) mysqli_affected_rows($GLOBALS['c']);
+    $reassigned = (int) dbi_affected_rows($GLOBALS['c'], $reassignRes);
 }
 
 audit_log('dosage.adjusted', 'schedule', $newScheduleId, [

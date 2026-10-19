@@ -215,8 +215,8 @@ function getMedicationsForPatient($patient_id) {
             FROM hc_medicine_schedules ms 
             JOIN hc_medicines m ON m.id = ms.medicine_id 
             WHERE patient_id = ? 
-            AND ms.start_date <= CURDATE() 
-            AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())';
+            AND ms.start_date <= CURRENT_DATE 
+            AND (ms.end_date IS NULL OR ms.end_date >= CURRENT_DATE)';
     $params = [$patient_id];
     $rows = dbi_get_cached_rows($sql, $params);
     $ret = [];

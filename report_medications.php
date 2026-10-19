@@ -21,7 +21,7 @@ $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date, ms.medic
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
         WHERE ms.patient_id = ?"
-        . ($showCompleted ? "" : " AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())")
+        . ($showCompleted ? "" : " AND (ms.end_date IS NULL OR ms.end_date >= CURRENT_DATE)")
         . " ORDER BY last_taken ASC";
 $rawRows = dbi_get_cached_rows($sql, [$patient_id]);
 

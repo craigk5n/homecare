@@ -17,17 +17,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         default-mysql-client \
         libzip-dev \
         libsqlite3-dev \
+        libpq-dev \
         unzip \
         git \
     && rm -rf /var/lib/apt/lists/*
 
 # PHP extensions: mysqli for production DB; pdo_mysql + pdo_sqlite for
-# the abstraction layer; zip for Composer.
+# the abstraction layer; pgsql + pdo_pgsql for PostgreSQL
+# (docs/postgresql.md); zip for Composer.
 RUN docker-php-ext-install -j$(nproc) \
         mysqli \
         pdo \
         pdo_mysql \
         pdo_sqlite \
+        pgsql \
+        pdo_pgsql \
         zip
 
 # Apache: rewrite (so the api/v1 .htaccess works), AllowOverride All on

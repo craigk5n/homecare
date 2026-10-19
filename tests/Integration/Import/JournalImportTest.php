@@ -137,7 +137,7 @@ TXT;
         $this->assertTrue($plan->isValid());
 
         // Sabotage the table mid-commit so inserts blow up.
-        $this->getSqliteDb()->pdo()->exec(
+        $this->pdo()->exec(
             'ALTER TABLE hc_caregiver_notes RENAME COLUMN note TO notebody',
         );
 
@@ -145,7 +145,7 @@ TXT;
             $this->importer->commit($plan, $this->patientId);
             $this->fail('commit should have thrown');
         } catch (\Throwable) {
-            $this->getSqliteDb()->pdo()->exec(
+            $this->pdo()->exec(
                 'ALTER TABLE hc_caregiver_notes RENAME COLUMN notebody TO note',
             );
         }

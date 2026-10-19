@@ -41,7 +41,7 @@ foreach ($patients as $p) {
 
     $sql = "SELECT ms.id, m.name, m.dosage, ms.frequency, ms.unit_per_dose,
                    ms.start_date, ms.end_date,
-                   (SELECT GROUP_CONCAT(mi.taken_time ORDER BY mi.taken_time)
+                   (SELECT " . \HomeCare\Database\Dialect::fromDbType($GLOBALS['db_type'])->groupConcat('mi.taken_time', 'mi.taken_time') . "
                       FROM hc_medicine_intake mi
                      WHERE mi.schedule_id = ms.id AND DATE(mi.taken_time) = ?) AS taken_today
               FROM hc_medicine_schedules ms

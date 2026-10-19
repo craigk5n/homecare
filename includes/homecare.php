@@ -351,7 +351,7 @@ function getInventoryDashboardData() {
         // Calculate daily consumption from all active schedules for this medicine
         $dailyConsumption = 0;
         $schedSql = "SELECT unit_per_dose, frequency FROM hc_medicine_schedules
-                     WHERE medicine_id = ? AND (end_date IS NULL OR end_date >= CURDATE())";
+                     WHERE medicine_id = ? AND (end_date IS NULL OR end_date >= CURRENT_DATE)";
         $schedRows = dbi_get_cached_rows($schedSql, [$medicine_id]);
         foreach ($schedRows as $sched) {
             $upd = floatval($sched[0]);

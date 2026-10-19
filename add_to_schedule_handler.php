@@ -87,7 +87,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 echo "<p>Error adding schedule: " . dbi_error() . "</p>";
                 exit;
             }
-            $newId = (int) ($GLOBALS['phpdbiConnection']->insert_id ?? 0);
+            $newId = dbi_insert_id();
             audit_log('schedule.created', 'schedule', $newId ?: null, [
                 'patient_id' => (int) $patient_id,
                 'medicine_id' => (int) $medicine_id,

@@ -23,7 +23,7 @@ if (!dbi_execute($sql, [$medicine_id, $refill_quantity, $new_stock, $note])) {
     die_miserable_death('Error recording refill: ' . dbi_error());
 }
 
-$newId = (int) mysqli_insert_id($GLOBALS['c']);
+$newId = (int) dbi_insert_id();
 audit_log('inventory.refilled', 'inventory', $newId ?: null, [
     'kind' => 'refill',
     'source' => $refill_source,

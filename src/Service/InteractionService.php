@@ -41,14 +41,14 @@ final class InteractionService implements InteractionServiceInterface
         }
 
         $activeRows = $this->db->query(
-            "SELECT DISTINCT ms.medicine_id, m.name, m.drug_catalog_id
+            'SELECT DISTINCT ms.medicine_id, m.name, m.drug_catalog_id
              FROM hc_medicine_schedules ms
              JOIN hc_medicines m ON m.id = ms.medicine_id
              WHERE ms.patient_id = ?
                AND ms.medicine_id != ?
-               AND (ms.end_date IS NULL OR ms.end_date >= DATE('now'))
-               AND ms.start_date <= DATE('now')",
-            [$patientId, $newMedicineId],
+               AND (ms.end_date IS NULL OR ms.end_date >= ?)
+               AND ms.start_date <= ?',
+            [$patientId, $newMedicineId, date('Y-m-d'), date('Y-m-d')],
         );
 
         $results = [];
@@ -90,13 +90,13 @@ final class InteractionService implements InteractionServiceInterface
     public function checkAllForPatient(int $patientId): array
     {
         $activeRows = $this->db->query(
-            "SELECT DISTINCT ms.medicine_id, m.name, m.drug_catalog_id
+            'SELECT DISTINCT ms.medicine_id, m.name, m.drug_catalog_id
              FROM hc_medicine_schedules ms
              JOIN hc_medicines m ON m.id = ms.medicine_id
              WHERE ms.patient_id = ?
-               AND (ms.end_date IS NULL OR ms.end_date >= DATE('now'))
-               AND ms.start_date <= DATE('now')",
-            [$patientId],
+               AND (ms.end_date IS NULL OR ms.end_date >= ?)
+               AND ms.start_date <= ?',
+            [$patientId, date('Y-m-d'), date('Y-m-d')],
         );
 
         $medicineIngredients = [];

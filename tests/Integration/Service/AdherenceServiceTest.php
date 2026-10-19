@@ -289,7 +289,7 @@ final class AdherenceServiceTest extends DatabaseTestCase
         // 4,5,6,7 (off) = 3 on-days. At 8h freq (3 doses/day) → 9 expected.
         $db = $this->getDb();
         $patient = (new PatientFactory($db))->create();
-        $medicine = (new MedicineFactory($db))->create();
+        $medicine = (new MedicineFactory($db))->create(['name' => 'Cycled']);
         $cycledSched = (new ScheduleFactory($db))->create([
             'patient_id' => $patient['id'],
             'medicine_id' => $medicine['id'],
@@ -322,7 +322,7 @@ final class AdherenceServiceTest extends DatabaseTestCase
         // Query window falls entirely within the off period.
         $db = $this->getDb();
         $patient = (new PatientFactory($db))->create();
-        $medicine = (new MedicineFactory($db))->create();
+        $medicine = (new MedicineFactory($db))->create(['name' => 'Cycled']);
         $sched = (new ScheduleFactory($db))->create([
             'patient_id' => $patient['id'],
             'medicine_id' => $medicine['id'],

@@ -186,10 +186,11 @@ final class CaregiverNoteRepository
             $params[] = $endDate;
         }
         if ($query !== null && $query !== '') {
-            // Escape LIKE-special chars so they match literally. Both MySQL
-            // and SQLite accept an explicit ESCAPE clause.
-            $escaped = strtr($query, ['\\' => '\\\\', '%' => '\\%', '_' => '\\_']);
-            $sql .= " AND note LIKE ? ESCAPE '\\'";
+            // Escape LIKE-special chars so they match literally. MySQL,
+            // PostgreSQL and SQLite all accept an explicit ESCAPE clause;
+            // '!' avoids backslash, which MySQL treats as a string escape.
+            $escaped = strtr($query, ['!' => '!!', '%' => '!%', '_' => '!_']);
+            $sql .= ' AND note ' . $this->db->dialect()->caseInsensitiveLike() . " ? ESCAPE '!'";
             $params[] = '%' . $escaped . '%';
         }
 

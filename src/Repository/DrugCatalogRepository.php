@@ -37,7 +37,7 @@ final class DrugCatalogRepository implements DrugCatalogRepositoryInterface
         $rows = $this->db->query(
             'SELECT id, rxnorm_id, ndc, name, strength, dosage_form, ingredient_names, generic
              FROM hc_drug_catalog
-             WHERE name LIKE ?
+             WHERE name ' . $this->db->dialect()->caseInsensitiveLike() . ' ?
              ORDER BY name ASC
              LIMIT ?',
             ['%' . $query . '%', $limit],

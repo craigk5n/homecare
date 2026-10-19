@@ -30,7 +30,7 @@ foreach ($scheduleIds as $scheduleId) {
     // Verify the schedule exists and is active.
     $check = dbi_get_cached_rows(
         "SELECT ms.id, ms.patient_id FROM hc_medicine_schedules ms
-         WHERE ms.id = ? AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())",
+         WHERE ms.id = ? AND (ms.end_date IS NULL OR ms.end_date >= CURRENT_DATE)",
         [$scheduleId],
     );
     if (empty($check[0])) {
@@ -39,7 +39,7 @@ foreach ($scheduleIds as $scheduleId) {
 
     $sql = 'INSERT INTO hc_medicine_intake (schedule_id, taken_time, note) VALUES (?, ?, ?)';
     if (dbi_execute($sql, [$scheduleId, $now, 'Bulk catch-up from dashboard'])) {
-        $newId = (int) mysqli_insert_id($GLOBALS['c']);
+        $newId = (int) dbi_insert_id();
         audit_log('intake.recorded', 'intake', $newId ?: null, [
             'schedule_id' => $scheduleId,
             'patient_id' => (int) ($check[0][1] ?? 0),

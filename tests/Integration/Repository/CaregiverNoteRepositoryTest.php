@@ -144,6 +144,24 @@ final class CaregiverNoteRepositoryTest extends DatabaseTestCase
         $this->assertCount(1, $vomit);
     }
 
+    public function testSearchIgnoresCase(): void
+    {
+        // MySQL's *_ci collations match case-insensitively; PostgreSQL's
+        // LIKE does not, so the repository must ask for ILIKE there.
+        $this->repo->create($this->patientId, 'Vomit after cheese', '2026-04-15 09:00:00');
+
+        $this->assertCount(1, $this->repo->search($this->patientId, query: 'vOMIT'));
+    }
+
+    public function testSearchEscapesLikeUnderscoreAndEscapeChar(): void
+    {
+        $this->repo->create($this->patientId, 'dose_a given! twice', '2026-04-15 07:45:00');
+        $this->repo->create($this->patientId, 'doseXa given', '2026-04-15 09:00:00');
+
+        $this->assertCount(1, $this->repo->search($this->patientId, query: 'dose_a'));
+        $this->assertCount(1, $this->repo->search($this->patientId, query: 'given!'));
+    }
+
     public function testSearchEscapesLikeWildcards(): void
     {
         $this->repo->create($this->patientId, 'weight up 3% since last visit', '2026-04-15 07:45:00');

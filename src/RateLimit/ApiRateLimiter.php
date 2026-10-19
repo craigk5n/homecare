@@ -22,7 +22,7 @@ final class ApiRateLimiter
         $window = $this->getCurrentWindow();
 
         $rows = $this->db->query(
-            'SELECT `count` FROM hc_api_rate_limit WHERE ip = ? AND bucket = ? AND window_start = ? LIMIT 1',
+            'SELECT count FROM hc_api_rate_limit WHERE ip = ? AND bucket = ? AND window_start = ? LIMIT 1',
             [$ip, $bucket, $window],
         );
 
@@ -36,7 +36,7 @@ final class ApiRateLimiter
         $window = $this->getCurrentWindow();
 
         $rows = $this->db->query(
-            'SELECT `count` FROM hc_api_rate_limit WHERE ip = ? AND bucket = ? AND window_start = ? LIMIT 1',
+            'SELECT count FROM hc_api_rate_limit WHERE ip = ? AND bucket = ? AND window_start = ? LIMIT 1',
             [$ip, $bucket, $window],
         );
 
@@ -46,12 +46,12 @@ final class ApiRateLimiter
 
         if ($rows) {
             $this->db->execute(
-                'UPDATE hc_api_rate_limit SET `count` = ? WHERE ip = ? AND bucket = ? AND window_start = ?',
+                'UPDATE hc_api_rate_limit SET count = ? WHERE ip = ? AND bucket = ? AND window_start = ?',
                 [$new_count, $ip, $bucket, $window],
             );
         } else {
             $this->db->execute(
-                'INSERT INTO hc_api_rate_limit (ip, bucket, window_start, `count`) VALUES (?, ?, ?, ?)',
+                'INSERT INTO hc_api_rate_limit (ip, bucket, window_start, count) VALUES (?, ?, ?, ?)',
                 [$ip, $bucket, $window, $new_count],
             );
         }

@@ -29,7 +29,7 @@ $dueInNextHour = 1800; // 30 minutes in seconds
 
 // ── Fetch schedule data ──
 if (!$showCompleted) {
-    $includeCompletedSql = ' AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())';
+    $includeCompletedSql = ' AND (ms.end_date IS NULL OR ms.end_date >= CURRENT_DATE)';
 } else {
     $includeCompletedSql = '';
 }

@@ -26,7 +26,7 @@ if (!empty($delete) && $delete === 'yes' && !empty($inventory_id)) {
     if (!dbi_execute($insertSql, $params)) {
         echo "Error adding new inventory: " . dbi_error();
     } else {
-        $newId = (int) mysqli_insert_id($GLOBALS['c']);
+        $newId = (int) dbi_insert_id();
         audit_log('inventory.updated', 'inventory', $newId ?: null, [
             'kind' => 'insert',
             'medicine_id' => (int) $medicine_id,

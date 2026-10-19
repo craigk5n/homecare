@@ -16,7 +16,7 @@ final class SignedUrlTest extends DatabaseTestCase
         parent::setUp();
 
         // Clear secret cache by creating a fresh instance with a known secret
-        $this->getDb()->execute('DELETE FROM hc_config WHERE setting = "signing_secret"');
+        $this->getDb()->execute("DELETE FROM hc_config WHERE setting = 'signing_secret'");
 
         // Create instance using a known secret for deterministic tests
         $this->signed = new SignedUrl('integration-test-secret-2026');

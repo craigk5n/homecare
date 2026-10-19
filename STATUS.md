@@ -3249,6 +3249,40 @@ HC-073; add a narrower, explicit mode.
 
 ---
 
+### HC-250: PostgreSQL support (proposed contribution)
+
+**Status**: `DONE`
+**Type**: Story
+**Points**: 8
+**Depends on**: HC-003 (SQLite test harness)
+
+**Description**: Allow `db_type: postgresql` as an alternative to MySQL,
+which stays the default. Queries move to the SQL subset MySQL 8,
+PostgreSQL and SQLite share; the few unavoidable differences go through
+a small `Dialect` helper. See `docs/postgresql.md`.
+
+**Acceptance Criteria**:
+- [x] `tables-postgres.sql`: PostgreSQL port of the current schema
+      (identity columns, `TIMESTAMP(0)`, SMALLINT flags, `updated_at`
+      trigger, `hc_api_rate_limit`, `hc_migrations`)
+- [x] `bin/migrate.php` with `db_type: postgresql` loads the schema into
+      an empty database and applies `migrations/pgsql/*.sql`, each in a
+      transaction; MySQL path unchanged
+- [x] `dbi4php` postgresql driver binds via `pg_query_params()`, accepts
+      `host:port`, aligns the session time zone with PHP;
+      `dbi_insert_id()` replaces direct `mysqli_insert_id()` calls
+- [x] `DatabaseInterface::dialect()`, `Dialect` (ILIKE, GROUP_CONCAT /
+      STRING_AGG), `PgsqlDatabase` (PDO), `DbiAdapter` on PostgreSQL
+- [x] MySQL-only / SQLite-only SQL removed from `src/` and pages
+      (`datetime('now')`, `DATE('now')`, `CURDATE()`, `DATE_SUB`,
+      `DATE_FORMAT`, `GROUP_CONCAT`, backticks)
+- [x] Integration suite runs against PostgreSQL with
+      `HOMECARE_TEST_DB=pgsql`; SQLite stays the default
+- [x] CI job with a `postgres:17` service container
+- [x] Docs: `docs/postgresql.md`, README
+
+---
+
 ## Story Dependency Graph
 
 ```

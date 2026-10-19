@@ -161,8 +161,8 @@ final class EventStreamServiceTest extends DatabaseTestCase
     {
         $this->getDb()->execute(
             'INSERT INTO hc_audit_log (user_login, action, entity_type, entity_id, created_at)
-             VALUES (?, ?, ?, ?, datetime(\'now\'))',
-            [$user, $action, $entityType, $entityId],
+             VALUES (?, ?, ?, ?, ?)',
+            [$user, $action, $entityType, $entityId, date('Y-m-d H:i:s')],
         );
 
         return $this->getDb()->lastInsertId();

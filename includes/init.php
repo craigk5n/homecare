@@ -57,7 +57,7 @@ hc_validate();
 // 'Title' placeholder. Guarded because exempt entrypoints (CLI, login.php,
 // logout.php, schedule_ics.php, css_cacher.php) skip the hc_validate() DB
 // connect and manage their own bootstrap.
-if (!empty($GLOBALS['db_connection'])) {
+if (!empty($GLOBALS['db_connection']) || !empty($GLOBALS['postgresql_connection'])) {
     // load_global_settings() reads $GLOBALS['SERVER_TIMEZONE'] unguarded
     // (functions.php:396). When that key is absent from hc_config, PHP 8
     // emits an "Undefined global variable" warning to output *before* any
@@ -67,6 +67,13 @@ if (!empty($GLOBALS['db_connection'])) {
     // load_global_settings() overwrites it from hc_config when present.
     $GLOBALS['SERVER_TIMEZONE'] ??= '';
     load_global_settings();
+    if (!empty($GLOBALS['postgresql_connection'])) {
+        // load_global_settings() applies SERVER_TIMEZONE after the connection
+        // was opened; keep the PostgreSQL session (CURRENT_DATE, CURRENT_TIMESTAMP
+        // defaults) in the same zone as PHP.
+        pg_query_params($GLOBALS['postgresql_connection'], "SELECT set_config('TimeZone', $1, false)",
+            [date_default_timezone_get()]);
+    }
 }
 
 // Return the toplevel URL (no path) of the current URL.

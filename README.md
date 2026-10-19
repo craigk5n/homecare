@@ -59,8 +59,9 @@ Click any thumbnail to open the full-resolution image.
 - **PHP 8.1+** with [Composer](https://getcomposer.org/) for the
   namespaced `src/` code. No build step; Apache serves the top-level
   `*.php` files directly.
-- **MySQL 8** for production, **SQLite 3.35+** for the integration
-  test path.
+- **MySQL 8** for production (**PostgreSQL 12+** also supported, see
+  [`docs/postgresql.md`](docs/postgresql.md)), **SQLite 3.35+** for the
+  integration test path.
 - **Dompdf** for PDF rendering (vendored — no Composer install needed
   at deploy time).
 - **PHPUnit 10** (~300 tests) and **PHPStan at max level** gate every
@@ -146,6 +147,11 @@ mysql <your-db> < migrations/009_normalize_frequency_2d_to_12h.sql
 The application is served directly by Apache — no build, no PHP-FPM
 tuning, no Node toolchain.
 
+To run on PostgreSQL instead of MySQL, set `db_type: postgresql` in
+`includes/settings.php` and run `php bin/migrate.php`, which loads
+`tables-postgres.sql` into an empty database. See
+[`docs/postgresql.md`](docs/postgresql.md).
+
 ## Usage highlights
 
 ### Cron-driven monthly PDF archive
@@ -222,6 +228,7 @@ conventions).
 │   ├── Report/
 │   └── Service/
 ├── tables-mysql.sql       Canonical schema
+├── tables-postgres.sql    PostgreSQL port of the schema
 ├── tests/                 PHPUnit unit + integration suite
 ├── vendor/                Vendored runtime deps (Dompdf + friends)
 └── send_reminders.php     Cron: due-dose + low-supply notifications

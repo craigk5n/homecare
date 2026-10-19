@@ -18,6 +18,14 @@ set -euo pipefail
 
 SETTINGS_PATH=/var/www/html/includes/settings.php
 
+# The PostgreSQL driver takes the port as host:port (settings.php has no
+# port field); the MySQL path keeps the bare host as before.
+if [[ "${HC_DB_TYPE}" == "postgresql" ]]; then
+    HC_DB_HOST_SETTING="${HC_DB_HOST}:${HC_DB_PORT}"
+else
+    HC_DB_HOST_SETTING="${HC_DB_HOST}"
+fi
+
 # 1. Render settings.php from env. The legacy WebCalendar parser uses
 #    a key:value comment block at the top; we mirror that shape so
 #    nothing else has to change.
@@ -27,7 +35,7 @@ cat > "${SETTINGS_PATH}" <<EOF
    Re-rendered on every container start; do not edit by hand.
 db_database: ${HC_DB_NAME}
 db_debug: false
-db_host: ${HC_DB_HOST}
+db_host: ${HC_DB_HOST_SETTING}
 db_login: ${HC_DB_USER}
 db_password: ${HC_DB_PASSWORD}
 db_persistent: false
@@ -42,6 +50,33 @@ EOF
 chown www-data:www-data "${SETTINGS_PATH}"
 chmod 0640 "${SETTINGS_PATH}"
 echo "[entrypoint] Rendered ${SETTINGS_PATH}"
+
+# PostgreSQL (docs/postgresql.md): wait for the server with PHP's own
+# pdo_pgsql (no client package needed), then let bin/migrate.php load
+# tables-postgres.sql into an empty database and apply any pending
+# migrations/pgsql/*.sql. Safe on every start: applied migrations are
+# skipped. The MySQL path below is unchanged.
+if [[ "${HC_DB_TYPE}" == "postgresql" ]]; then
+    echo "[entrypoint] Waiting for PostgreSQL at ${HC_DB_HOST}:${HC_DB_PORT}..."
+    for i in $(seq 1 120); do
+        if php -r '
+            try {
+                new PDO(sprintf("pgsql:host=%s;port=%s;dbname=%s", getenv("HC_DB_HOST"), getenv("HC_DB_PORT"), getenv("HC_DB_NAME")),
+                        getenv("HC_DB_USER"), getenv("HC_DB_PASSWORD"), [PDO::ATTR_TIMEOUT => 3]);
+                exit(0);
+            } catch (Throwable $e) { exit(1); }' >/dev/null 2>&1; then
+            echo "[entrypoint] PostgreSQL is up and our user can authenticate."
+            break
+        fi
+        if [[ "$i" -eq 120 ]]; then
+            echo "[entrypoint] FATAL: PostgreSQL did not become reachable within 120s." >&2
+            exit 1
+        fi
+        sleep 1
+    done
+    (cd /var/www/html && php bin/migrate.php)
+    exec "$@"
+fi
 
 # 2. Wait for MySQL to (a) accept connections AND (b) finish creating
 #    our user. MySQL 8 reports healthy on root-ping before the

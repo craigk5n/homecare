@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'preview') {
 }
 
 // Fetch patients for dropdown
-$patientsSql = "SELECT id, name FROM hc_patients WHERE is_active = TRUE ORDER BY name ASC";
+$patientsSql = "SELECT id, name FROM hc_patients WHERE is_active = 1 ORDER BY name ASC";
 $patientsResult = dbi_query($patientsSql);
 $patients = [];
 while ($row = dbi_fetch_row($patientsResult)) {

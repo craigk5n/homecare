@@ -93,3 +93,64 @@ jobs:
         with:
           files: ./coverage.xml
           fail_ci_if_error: false
+
+  # HC-250: the same PHPUnit suite against a real PostgreSQL 17 server.
+  # DatabaseTestCase switches backends on HOMECARE_TEST_DB; tests that
+  # only make sense on SQLite skip themselves. Lint/analysis already run
+  # in the matrix job above, so this job only runs PHPUnit.
+  test-pgsql:
+    name: PHPUnit on PostgreSQL 17 (PHP 8.3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: homecare
+          POSTGRES_PASSWORD: homecare
+          POSTGRES_DB: homecare_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U homecare -d homecare_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      HOMECARE_TEST_DB: pgsql
+      HOMECARE_TEST_PG_DSN: pgsql:host=127.0.0.1;port=5432;dbname=homecare_test
+      HOMECARE_TEST_PG_USER: homecare
+      HOMECARE_TEST_PG_PASSWORD: homecare
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          # pdo_pgsql for PgsqlDatabase, pgsql for the dbi4php driver test.
+          extensions: mbstring, pdo, pdo_sqlite, sqlite3, mysqli, pdo_pgsql, pgsql, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Determine Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php8.3-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php8.3-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: PHPUnit (full suite, PostgreSQL)
+        run: composer test

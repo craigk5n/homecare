@@ -23,7 +23,7 @@ $patientName = $patient['name'];
 // HC-120: exclude PRN schedules — they have no cadence to render on a
 // daily timeline. PRN intakes are still visible in the history views.
 $sql = "SELECT ms.id, m.name, ms.frequency, ms.start_date, ms.end_date,
-        (SELECT GROUP_CONCAT(mi.taken_time ORDER BY mi.taken_time) FROM hc_medicine_intake mi
+        (SELECT " . \HomeCare\Database\Dialect::fromDbType($GLOBALS['db_type'])->groupConcat('mi.taken_time', 'mi.taken_time') . " FROM hc_medicine_intake mi
          WHERE mi.schedule_id = ms.id AND DATE(mi.taken_time) = ?) AS taken_times_today
         FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id

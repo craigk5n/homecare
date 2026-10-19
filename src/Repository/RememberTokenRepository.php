@@ -90,7 +90,8 @@ final class RememberTokenRepository
     public function deleteExpired(): int
     {
         $this->db->execute(
-            "DELETE FROM hc_remember_tokens WHERE expires_at < datetime('now')",
+            'DELETE FROM hc_remember_tokens WHERE expires_at < ?',
+            [date('Y-m-d H:i:s')],
         );
 
         return 0;
@@ -102,8 +103,8 @@ final class RememberTokenRepository
     public function touchLastUsed(int $id, ?string $ip = null): bool
     {
         return $this->db->execute(
-            "UPDATE hc_remember_tokens SET last_used_at = datetime('now'), last_ip = ? WHERE id = ?",
-            [$ip, $id],
+            'UPDATE hc_remember_tokens SET last_used_at = ?, last_ip = ? WHERE id = ?',
+            [date('Y-m-d H:i:s'), $ip, $id],
         );
     }
 }

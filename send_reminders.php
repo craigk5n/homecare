@@ -83,7 +83,7 @@ foreach ($patients as $patient) {
             WHERE ms.patient_id = ?
             AND ms.is_prn = 'N'
             AND ms.frequency IS NOT NULL
-            AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())";
+            AND (ms.end_date IS NULL OR ms.end_date >= CURRENT_DATE)";
     $schedules = dbi_get_cached_rows($sql, [$patient_id]);
 
     foreach ($schedules as $schedule) {

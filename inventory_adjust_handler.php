@@ -22,7 +22,7 @@ if (!dbi_execute($sql, [$medicine_id, $actual_count, $note])) {
     die_miserable_death('Error adjusting stock: ' . dbi_error());
 }
 
-$newId = (int) mysqli_insert_id($GLOBALS['c']);
+$newId = (int) dbi_insert_id();
 audit_log('inventory.updated', 'inventory', $newId ?: null, [
     'kind' => 'adjust',
     'medicine_id' => $medicine_id,

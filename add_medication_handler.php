@@ -26,7 +26,7 @@ if (!empty($existing)) {
 // unique constraint is reported gracefully rather than dumping a SQL error.
 $sql = "INSERT INTO hc_medicines (name, dosage, drug_catalog_id) VALUES (?, ?, ?)";
 if (dbi_execute($sql, [$name, $dosage, $drugCatalogId], false, false)) {
-    $newId = (int) ($GLOBALS['phpdbiConnection']->insert_id ?? 0);
+    $newId = dbi_insert_id();
     audit_log('medicine.created', 'medicine', $newId ?: null, [
         'name' => $name,
         'dosage' => $dosage,

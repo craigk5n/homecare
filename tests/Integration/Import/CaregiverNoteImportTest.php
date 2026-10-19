@@ -200,14 +200,14 @@ CSV;
         // a deliberate, low-effort way to trigger a commit-time error
         // that forces rollback. Done via raw PDO since DatabaseInterface
         // doesn't expose DDL.
-        $this->getSqliteDb()->pdo()->exec('ALTER TABLE hc_caregiver_notes RENAME COLUMN note TO notebody');
+        $this->pdo()->exec('ALTER TABLE hc_caregiver_notes RENAME COLUMN note TO notebody');
 
         try {
             $this->importer->commit($plan);
             $this->fail('commit should have thrown');
         } catch (\Throwable) {
             // Expected. Reset schema so the assertion below can read.
-            $this->getSqliteDb()->pdo()->exec(
+            $this->pdo()->exec(
                 'ALTER TABLE hc_caregiver_notes RENAME COLUMN notebody TO note',
             );
         }

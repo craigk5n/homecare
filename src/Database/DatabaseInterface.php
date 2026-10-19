@@ -58,4 +58,10 @@ interface DatabaseInterface
      * @return T
      */
     public function transactional(callable $fn): mixed;
+
+    /**
+     * SQL dialect of the underlying connection, for the few fragments
+     * that differ between MySQL, PostgreSQL and SQLite (see {@see Dialect}).
+     */
+    public function dialect(): Dialect;
 }
