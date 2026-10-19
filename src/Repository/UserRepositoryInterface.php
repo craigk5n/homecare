@@ -184,4 +184,23 @@ interface UserRepositoryInterface
      * @return list<array{login:string,email:string}>
      */
     public function getDigestSubscribers(): array;
+
+    /**
+     * Insert an enabled user created from reverse-proxy headers (HC-243).
+     * `passwd` is stored as NULL, which {@see \HomeCare\Auth\PasswordHasher::verify()}
+     * never accepts, so the account cannot sign in natively until an
+     * admin or the reset flow sets a real password.
+     */
+    public function createProxyUser(
+        string $login,
+        string $role,
+        ?string $firstname,
+        ?string $lastname,
+        ?string $email,
+    ): bool;
+
+    /**
+     * Change a user's role (admin / caregiver / viewer).
+     */
+    public function updateRole(string $login, string $role): bool;
 }

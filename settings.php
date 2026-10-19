@@ -241,10 +241,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($header === '') {
         $header = ReverseProxyConfig::DEFAULT_HEADER;
     }
-    $rpConfig->setAuthMode($mode);
-    $rpConfig->setHeader($header);
-    audit_log('auth_mode.config_updated', 'config', null, $rpConfig->getAll());
-    $flash = ['type' => 'success', 'text' => 'Authentication mode saved.'];
+    try {
+        // HC-243: opt-in auto-provisioning + group → role mapping. Saved
+        // before the mode so a rejected field leaves the mode unchanged.
+        $rpConfig->setAutoProvision(getPostValue('reverse_proxy_auto_provision') === 'Y');
+        $rpConfig->setSyncRole(getPostValue('reverse_proxy_sync_role') === 'Y');
+        $rpConfig->setGroupsHeader((string) getPostValue('reverse_proxy_groups_header'));
+        $rpConfig->setGroupsForRole('admin', (string) getPostValue('reverse_proxy_admin_groups'));
+        $rpConfig->setGroupsForRole('caregiver', (string) getPostValue('reverse_proxy_caregiver_groups'));
+        $rpConfig->setGroupsForRole('viewer', (string) getPostValue('reverse_proxy_viewer_groups'));
+        $rpConfig->setDefaultRole(trim((string) getPostValue('reverse_proxy_default_role')));
+        $rpConfig->setNameHeader((string) getPostValue('reverse_proxy_name_header'));
+        $rpConfig->setEmailHeader((string) getPostValue('reverse_proxy_email_header'));
+        $rpConfig->setAuthMode($mode);
+        $rpConfig->setHeader($header);
+        audit_log('auth_mode.config_updated', 'config', null, $rpConfig->getAll());
+        $flash = ['type' => 'success', 'text' => 'Authentication mode saved.'];
+    } catch (\InvalidArgumentException $e) {
+        // Fields before the rejected one are already saved; the mode is not.
+        $flash = ['type' => 'danger', 'text' => 'Authentication mode not saved: ' . $e->getMessage()];
+    }
 } elseif ($action === 'save_weight_unit' && $isAdmin) {
     $unit = trim((string) getPostValue('weight_unit'));
     if ($unit !== 'lb') {
@@ -764,6 +780,82 @@ foreach ($myChannels->defaultChannelNames() as $name) {
         The HTTP header your reverse proxy sets with the authenticated username.
         Common values: <code>X-Forwarded-User</code>, <code>Remote-User</code>,
         <code>X-Auth-User</code>.
+      </small>
+    </div>
+
+    <h5 class="mt-4">Auto-provisioning <small class="text-muted">— reverse-proxy mode only, optional</small></h5>
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" id="reverse_proxy_auto_provision"
+             name="reverse_proxy_auto_provision" value="Y"
+             <?= $rp['auto_provision'] ? 'checked' : '' ?>>
+      <label class="form-check-label" for="reverse_proxy_auto_provision">
+        Create HomeCare users automatically on first sign-in
+      </label>
+      <small class="form-text text-muted d-block">
+        Anyone your proxy lets through gets an account, with a role from the group mapping below.
+        Restrict access to HomeCare in the proxy itself (e.g. an Authentik policy or Authelia rule).
+        New accounts have no HomeCare password.
+      </small>
+    </div>
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="reverse_proxy_groups_header" class="form-label">Groups Header</label>
+      <input type="text" class="form-control" id="reverse_proxy_groups_header"
+             name="reverse_proxy_groups_header"
+             value="<?= htmlspecialchars($rp['groups_header']) ?>"
+             placeholder="<?= htmlspecialchars(ReverseProxyConfig::DEFAULT_GROUPS_HEADER) ?>">
+      <small class="form-text text-muted">
+        Authelia: <code>Remote-Groups</code> (comma-separated). Authentik:
+        <code>X-authentik-groups</code> (<code>|</code>-separated). Both separators are accepted.
+      </small>
+    </div>
+    <?php foreach (['admin' => 'Admin groups', 'caregiver' => 'Caregiver groups', 'viewer' => 'Viewer groups'] as $rpRole => $rpLabel): ?>
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="reverse_proxy_<?= $rpRole ?>_groups" class="form-label"><?= htmlspecialchars($rpLabel) ?></label>
+      <input type="text" class="form-control" id="reverse_proxy_<?= $rpRole ?>_groups"
+             name="reverse_proxy_<?= $rpRole ?>_groups" maxlength="<?= ReverseProxyConfig::MAX_VALUE_LENGTH ?>"
+             value="<?= htmlspecialchars($rp[$rpRole . '_groups']) ?>">
+    </div>
+    <?php endforeach; ?>
+    <small class="form-text text-muted d-block mb-3" style="max-width: 520px;">
+      Comma-separated group names, matched case-insensitively. A user in groups for several
+      roles gets the highest one.
+    </small>
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="reverse_proxy_default_role" class="form-label">When no group matches</label>
+      <select class="form-control" id="reverse_proxy_default_role" name="reverse_proxy_default_role">
+        <option value="viewer" <?= $rp['default_role'] === 'viewer' ? 'selected' : '' ?>>Give the viewer role</option>
+        <option value="caregiver" <?= $rp['default_role'] === 'caregiver' ? 'selected' : '' ?>>Give the caregiver role</option>
+        <option value="none" <?= $rp['default_role'] === ReverseProxyConfig::DEFAULT_ROLE_REFUSE ? 'selected' : '' ?>>Refuse sign-in</option>
+      </select>
+    </div>
+    <div class="form-check mb-3">
+      <input type="checkbox" class="form-check-input" id="reverse_proxy_sync_role"
+             name="reverse_proxy_sync_role" value="Y"
+             <?= $rp['sync_role'] ? 'checked' : '' ?>>
+      <label class="form-check-label" for="reverse_proxy_sync_role">
+        Update every user's role from their groups on each request
+      </label>
+      <small class="form-text text-muted d-block">
+        Off: the role is set once, when the account is created, and later changes made here stick.
+        On: groups are authoritative for all users, including existing ones.
+      </small>
+    </div>
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="reverse_proxy_name_header" class="form-label">Name Header <small class="text-muted">(optional)</small></label>
+      <input type="text" class="form-control" id="reverse_proxy_name_header"
+             name="reverse_proxy_name_header"
+             value="<?= htmlspecialchars($rp['name_header']) ?>"
+             placeholder="Remote-Name">
+    </div>
+    <div class="form-group mb-3" style="max-width: 520px;">
+      <label for="reverse_proxy_email_header" class="form-label">Email Header <small class="text-muted">(optional)</small></label>
+      <input type="text" class="form-control" id="reverse_proxy_email_header"
+             name="reverse_proxy_email_header"
+             value="<?= htmlspecialchars($rp['email_header']) ?>"
+             placeholder="Remote-Email">
+      <small class="form-text text-muted">
+        Used only to fill in name and email when an account is created.
+        Authentik: <code>X-authentik-name</code> / <code>X-authentik-email</code>.
       </small>
     </div>
     <button type="submit" class="btn btn-primary">Save authentication settings</button>

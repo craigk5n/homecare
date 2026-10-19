@@ -3249,6 +3249,57 @@ HC-073; add a narrower, explicit mode.
 
 ---
 
+### HC-243: Reverse-proxy auto-provisioning + group → role mapping
+
+**Status**: `DONE` *(proposed contribution — number chosen to avoid
+collisions with upstream story IDs)*
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-143, HC-013
+
+**Description**: HC-143 requires every proxy user to exist in `hc_user`
+first. Add an opt-in mode that creates the account on first request,
+taking its role from the IdP's groups header (Authentik
+`X-authentik-groups`, `|`-separated; Authelia `Remote-Groups`,
+`,`-separated).
+
+**Acceptance Criteria**:
+- [x] `hc_config` settings (migration 036 seeds the defaults; code
+      falls back to the same defaults when rows are missing):
+      `reverse_proxy_auto_provision` (default `N`),
+      `reverse_proxy_groups_header` (default `Remote-Groups`),
+      `reverse_proxy_{admin,caregiver,viewer}_groups`,
+      `reverse_proxy_default_role` (`viewer` default / `caregiver` /
+      `none` = refuse; admin not allowed),
+      `reverse_proxy_sync_role` (default `N`),
+      `reverse_proxy_name_header` / `reverse_proxy_email_header`
+      (optional)
+- [x] Off by default: unknown users still get
+      `reverse_proxy_user_not_found`, existing roles untouched
+- [x] Unknown, well-formed login (1–25 chars of `[A-Za-z0-9._@+-]`)
+      → enabled `hc_user` with `passwd` NULL (native login refuses
+      it), role = highest matching group, else the default role
+- [x] Malformed login → 401 `reverse_proxy_invalid_login`, nothing
+      created; no match + refuse → 401
+      `reverse_proxy_no_matching_group`, nothing created
+- [x] Group parsing accepts `|` and `,` separators and trims
+      whitespace; matching is case-insensitive
+- [x] Name / email headers fill firstname/lastname/email (clipped to
+      column widths; invalid email dropped)
+- [x] Creation audit-logged as `user.auto_provisioned`; role-sync
+      changes as `user.role_synced`
+- [x] Optional role sync on every request (default off so manual role
+      changes stick); disabled users are always refused and never
+      re-enabled
+- [x] Admin UI in `settings.php` alongside the auth-mode settings
+- [x] `docs/reverse-proxy-auth.md` updated (behaviour, security
+      caveats, Authentik example)
+- [x] Tests: `ProxyGroupMapperTest` (unit), `ReverseProxyConfigTest`,
+      `ReverseProxyAutoProvisionTest`,
+      `ReverseProxyAutoProvisionMigrationTest` (integration)
+
+---
+
 ## Story Dependency Graph
 
 ```
@@ -3338,6 +3389,7 @@ HC-140 (Real-time SSE)            <- HC-013
 HC-141 (Additional translations)  -- no dependencies
 HC-142 (E2E fixture seeding)      <- HC-078
 HC-143 (Reverse-proxy auth)       <- HC-010
+  └── HC-243 (Proxy auto-provision) <- HC-143, HC-013
 ```
 
 ---

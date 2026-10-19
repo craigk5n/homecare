@@ -27,6 +27,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+use HomeCare\Audit\AuditLogger;
 use HomeCare\Auth\AuthService;
 use HomeCare\Auth\PasswordHasher;
 use HomeCare\Auth\ReverseProxyAuth;
@@ -116,7 +117,17 @@ function hc_validate(): void
     $db = new DbiAdapter();
     $rpConfig = new ReverseProxyConfig($db);
     if ($rpConfig->isReverseProxyMode()) {
-        $rpAuth = new ReverseProxyAuth($rpConfig, new UserRepository($db));
+        // HC-243: auto-provision / role-sync events are audit-logged with
+        // no acting user (the proxy, not a HomeCare user, triggered them).
+        $rpAudit = new AuditLogger(
+            $db,
+            null,
+            static function (): ?string {
+                $ip = $_SERVER['REMOTE_ADDR'] ?? null;
+                return is_string($ip) && $ip !== '' ? $ip : null;
+            }
+        );
+        $rpAuth = new ReverseProxyAuth($rpConfig, new UserRepository($db), $rpAudit);
         $result = $rpAuth->authenticate($_SERVER);
         if (!$result->success || $result->user === null) {
             http_response_code(401);

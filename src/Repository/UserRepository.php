@@ -312,6 +312,28 @@ final class UserRepository implements UserRepositoryInterface
         );
     }
 
+    public function createProxyUser(
+        string $login,
+        string $role,
+        ?string $firstname,
+        ?string $lastname,
+        ?string $email,
+    ): bool {
+        return $this->db->execute(
+            "INSERT INTO hc_user (login, passwd, firstname, lastname, email, role, enabled)
+             VALUES (?, NULL, ?, ?, ?, ?, 'Y')",
+            [$login, $firstname, $lastname, $email, $role],
+        );
+    }
+
+    public function updateRole(string $login, string $role): bool
+    {
+        return $this->db->execute(
+            'UPDATE hc_user SET role = ? WHERE login = ?',
+            [$role, $login],
+        );
+    }
+
     /**
      * @param list<string> $hashes
      */
