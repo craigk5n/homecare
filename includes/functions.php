@@ -870,9 +870,7 @@ function rgb_luminance ( $rgb, $scale=5) {
 }
 
 function formatDateNicely($datetime) {
-  // Set the default timezone if needed (adjust accordingly to your location)
-  date_default_timezone_set('America/New_York');
-  
+  // Uses the timezone do_config() set from TIMEZONE / SERVER_TIMEZONE.
   // Convert the datetime string to a Unix timestamp
   $timestamp = strtotime($datetime);
 

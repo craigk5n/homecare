@@ -5,7 +5,6 @@ $schedule_id = getIntValue('schedule_id');
 $patient_id = getIntValue('patient_id');
 
 function formatDate($datetime) {
-  date_default_timezone_set('America/New_York');
   $timestamp = strtotime($datetime);
   $today = strtotime(date('Y-m-d 00:00:00'));
   $tomorrow = strtotime('+1 day', $today);
