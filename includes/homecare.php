@@ -18,11 +18,14 @@ use HomeCare\Audit\AuditLogger;
 use HomeCare\Auth\Authorization;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Domain\ScheduleCalculator;
+use HomeCare\Repository\IntakeRepository;
 use HomeCare\Repository\InventoryRepository;
 use HomeCare\Repository\PatientRepository;
 use HomeCare\Repository\ScheduleRepository;
 use HomeCare\Repository\StepRepository;
 use HomeCare\Service\InventoryService;
+use HomeCare\Service\PrnLimitService;
+use HomeCare\Service\PrnLimitStatus;
 
 /**
  * Look up the current user's role from hc_user.
@@ -131,6 +134,43 @@ function homecare_inventory_service(): InventoryService
     }
 
     return $service;
+}
+
+/**
+ * HC-238: PRN dose-limit service against the live connection.
+ */
+function homecare_prn_limit_service(): PrnLimitService
+{
+    static $service = null;
+    if ($service === null) {
+        $db = new DbiAdapter();
+        $service = new PrnLimitService(new ScheduleRepository($db), new IntakeRepository($db));
+    }
+
+    return $service;
+}
+
+/**
+ * HC-238: one-line allowance summary for a limited PRN schedule, e.g.
+ * "2 of 3 in last 24h · next allowed Today at 2:00 PM". Returns '' when
+ * no limits apply. Plain text -- the caller HTML-escapes.
+ */
+function prn_limit_summary(?PrnLimitStatus $status): string
+{
+    if ($status === null) {
+        return '';
+    }
+    $parts = [];
+    if ($status->maxDosesPer24h !== null) {
+        $parts[] = sprintf(translate('%1$d of %2$d in last 24h'), $status->dosesInWindow, $status->maxDosesPer24h);
+    }
+    if ($status->nextAllowedAt !== null) {
+        $parts[] = translate('next allowed') . ' ' . formatDateNicely($status->nextAllowedAt);
+    } elseif ($status->minHoursBetween !== null) {
+        $parts[] = sprintf(translate('at least %s h apart'), rtrim(rtrim(number_format($status->minHoursBetween, 2, '.', ''), '0'), '.'));
+    }
+
+    return implode(' · ', $parts);
 }
 
 /**

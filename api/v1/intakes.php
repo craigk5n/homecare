@@ -9,11 +9,15 @@ use HomeCare\Api\IntakesApi;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\IntakeRepository;
 use HomeCare\Repository\ScheduleRepository;
+use HomeCare\Service\PrnLimitService;
 
 $user = api_authenticate_or_exit();
 
 $db = new DbiAdapter();
-$api = new IntakesApi(new ScheduleRepository($db), new IntakeRepository($db));
+$schedules = new ScheduleRepository($db);
+$intakes = new IntakeRepository($db);
+// HC-238: report PRN daily limits (`warning` / `prn_limit` fields).
+$api = new IntakesApi($schedules, $intakes, null, new PrnLimitService($schedules, $intakes));
 
 $method = isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD'])
     ? strtoupper($_SERVER['REQUEST_METHOD'])
@@ -34,15 +38,22 @@ if ($method === 'POST') {
         $GLOBALS['login'] = $user['login'] ?? '';
         require_once __DIR__ . '/../../includes/homecare.php';
         $intakeId = $resp->data['id'];
+        $details = [
+            'source' => 'api',
+            'schedule_id' => $resp->data['schedule_id'] ?? null,
+            'taken_time' => $resp->data['taken_time'] ?? null,
+        ];
+        // HC-238: flag doses recorded past a PRN limit, same keys as
+        // record_intake_handler.php.
+        if (isset($resp->data['warning']) && is_string($resp->data['warning'])) {
+            $details['prn_over_limit'] = true;
+            $details['prn_warning'] = $resp->data['warning'];
+        }
         audit_log(
             'intake.recorded',
             'intake',
             is_int($intakeId) ? $intakeId : null,
-            [
-                'source' => 'api',
-                'schedule_id' => $resp->data['schedule_id'] ?? null,
-                'taken_time' => $resp->data['taken_time'] ?? null,
-            ]
+            $details
         );
     }
 

@@ -247,6 +247,38 @@ $recentSql = "SELECT p.name AS patient_name, m.name AS medicine_name,
                LIMIT 20";
 $recentRows = dbi_get_cached_rows($recentSql, []);
 
+// ── 4. As-needed (PRN) schedules with a dose limit (HC-238) ────────
+// Only limited PRN rows are listed: their "X of N in last 24h" status
+// is what a caregiver needs at a glance. Unlimited PRN rows stay on the
+// patient's schedule page, so dashboards without limits are unchanged.
+$prnSql = "SELECT p.id, p.name, ms.id, m.name, m.dosage
+             FROM hc_medicine_schedules ms
+             JOIN hc_patients p ON ms.patient_id = p.id
+             JOIN hc_medicines m ON ms.medicine_id = m.id
+            WHERE p.is_active = 1
+              AND ms.is_prn = 'Y'
+              AND (ms.max_doses_per_24h IS NOT NULL OR ms.min_hours_between IS NOT NULL)
+              AND ms.start_date <= CURDATE()
+              AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())
+            ORDER BY p.name, m.name";
+$prnItems = [];
+$nowStr = date('Y-m-d H:i:s');
+foreach (dbi_get_cached_rows($prnSql, []) as $pr) {
+    $status = homecare_prn_limit_service()->statusFor((int) $pr[2], $nowStr);
+    if ($status === null) {
+        continue;
+    }
+    $prnItems[] = [
+        'patient_id'    => (int) $pr[0],
+        'patient_name'  => (string) $pr[1],
+        'schedule_id'   => (int) $pr[2],
+        'medicine_name' => (string) $pr[3],
+        'dosage'        => (string) $pr[4],
+        'summary'       => prn_limit_summary($status),
+        'at_limit'      => $status->isWarning(),
+    ];
+}
+
 // Auto-refresh every 60 seconds. The ?t= cache-buster ensures the
 // browser doesn't serve a stale cached page.
 $refreshUrl = 'dashboard.php?t=' . time();
@@ -492,6 +524,41 @@ $caughtUp = getGetValue('caught_up');
 
     <!-- ── Right column: recent activity ──────────────────────── -->
     <div class="col-lg-5 mb-4">
+      <?php if (!empty($prnItems)): ?>
+      <!-- ── As-needed (PRN) with limits (HC-238) ─────────────── -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <strong><?php etranslate('As-Needed (PRN)'); ?></strong>
+          <small class="text-muted">— <?php etranslate('limits'); ?></small>
+        </div>
+        <div class="card-body p-0">
+          <?php foreach ($prnItems as $item): ?>
+            <div class="border-bottom px-3 py-2 d-flex justify-content-between align-items-center">
+              <div class="small">
+                <span class="font-weight-bold"><?php echo htmlspecialchars($item['medicine_name']); ?></span>
+                <span class="text-muted"><?php echo htmlspecialchars($item['dosage']); ?></span>
+                — <?php echo htmlspecialchars($item['patient_name']); ?>
+                <div class="<?php echo $item['at_limit'] ? 'text-warning' : 'text-muted'; ?>">
+                  <?php echo htmlspecialchars($item['summary']); ?>
+                </div>
+              </div>
+              <?php if (empty($readonly) || $readonly !== 'Y'): ?>
+                <form method="post" action="record_intake_handler.php" class="ml-2 js-prn-quick-dose">
+                  <?php print_form_key(); ?>
+                  <input type="hidden" name="schedule_id" value="<?php echo (int) $item['schedule_id']; ?>">
+                  <input type="hidden" name="patient_id" value="<?php echo (int) $item['patient_id']; ?>">
+                  <input type="hidden" name="return_to" value="dashboard">
+                  <button type="submit" class="btn btn-sm <?php echo $item['at_limit'] ? 'btn-outline-warning' : 'btn-outline-success'; ?>">
+                    <?php etranslate('Took a dose now'); ?>
+                  </button>
+                </form>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+
       <div class="card shadow-sm">
         <div class="card-header bg-white">
           <strong><?php etranslate('Recent Intakes'); ?></strong>
@@ -525,5 +592,19 @@ $caughtUp = getGetValue('caught_up');
     </div>
   </div>
 </div>
+
+<?php if (!empty($prnItems)): ?>
+<script nonce="<?= htmlspecialchars($GLOBALS['NONCE'] ?? '') ?>">
+// HC-238: guard the one-tap PRN button against a double tap logging two doses.
+document.querySelectorAll('form.js-prn-quick-dose').forEach(function(form) {
+  form.addEventListener('submit', function(e) {
+    if (form.dataset.sent) { e.preventDefault(); return; }
+    form.dataset.sent = '1';
+    var btn = form.querySelector('button');
+    if (btn) { btn.disabled = true; }
+  });
+});
+</script>
+<?php endif; ?>
 
 <?php echo print_trailer(); ?>

@@ -7,6 +7,7 @@ namespace HomeCare\Api;
 use HomeCare\Auth\Authorization;
 use HomeCare\Repository\IntakeRepositoryInterface;
 use HomeCare\Repository\ScheduleRepositoryInterface;
+use HomeCare\Service\PrnLimitService;
 use InvalidArgumentException;
 
 /**
@@ -16,6 +17,13 @@ use InvalidArgumentException;
  * The read path ({@see handle}) returns the last N days of intakes for
  * a schedule. The write path ({@see record}) creates a new intake row
  * from a JSON body; requires `caregiver` role or higher.
+ *
+ * HC-238: when a {@see PrnLimitService} is injected, the write path
+ * also reports PRN dose limits. Over-limit doses are still recorded
+ * (caregivers may have orders for an extra dose); the response gains
+ * a `warning` (string|null) and, for limited PRN schedules, a
+ * `prn_limit` block evaluated after the new dose. Existing fields are
+ * unchanged.
  */
 final class IntakesApi
 {
@@ -29,6 +37,7 @@ final class IntakesApi
         private readonly ScheduleRepositoryInterface $schedules,
         private readonly IntakeRepositoryInterface $intakes,
         ?callable $clock = null,
+        private readonly ?PrnLimitService $prnLimits = null,
     ) {
         $this->clock = $clock ?? static fn(): int => time();
     }
@@ -101,14 +110,34 @@ final class IntakesApi
             return ApiResponse::error('taken_time must be YYYY-MM-DD HH:MM:SS', 400);
         }
 
+        // HC-238: check limits BEFORE the insert so the new dose isn't
+        // counted against itself. An omitted taken_time means "now".
+        $doseAt = null;
+        $before = null;
+        if ($this->prnLimits !== null) {
+            /** @var callable():int $clock */
+            $clock = $this->clock;
+            $doseAt = $takenTime ?? date('Y-m-d H:i:s', ($clock)());
+            $before = $this->prnLimits->statusFor($scheduleId, $doseAt);
+        }
+
         $newId = $this->intakes->recordIntake($scheduleId, $takenTime, $note);
 
-        return ApiResponse::ok([
+        $data = [
             'id' => $newId,
             'schedule_id' => $scheduleId,
             'taken_time' => $takenTime,
             'note' => $note,
-        ], 201);
+        ];
+        if ($this->prnLimits !== null) {
+            $data['warning'] = $before?->warningMessage();
+            $after = $before === null ? null : $this->prnLimits->statusFor($scheduleId, $doseAt);
+            if ($after !== null) {
+                $data['prn_limit'] = $after->toArray();
+            }
+        }
+
+        return ApiResponse::ok($data, 201);
     }
 
     /**

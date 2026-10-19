@@ -24,7 +24,9 @@ use HomeCare\Database\DatabaseInterface;
  *     is_prn?:bool,
  *     dose_basis?:string,
  *     cycle_on_days?:?int,
- *     cycle_off_days?:?int
+ *     cycle_off_days?:?int,
+ *     max_doses_per_24h?:?int,
+ *     min_hours_between?:?float
  * }
  * @phpstan-type ScheduleRecord array{
  *     id:int,
@@ -37,7 +39,9 @@ use HomeCare\Database\DatabaseInterface;
  *     is_prn:bool,
  *     dose_basis:string,
  *     cycle_on_days:?int,
- *     cycle_off_days:?int
+ *     cycle_off_days:?int,
+ *     max_doses_per_24h:?int,
+ *     min_hours_between:?float
  * }
  */
 final class ScheduleFactory
@@ -60,6 +64,8 @@ final class ScheduleFactory
         $doseBasis = $overrides['dose_basis'] ?? 'fixed';
         $cycleOn = $overrides['cycle_on_days'] ?? null;
         $cycleOff = $overrides['cycle_off_days'] ?? null;
+        $maxPer24h = $overrides['max_doses_per_24h'] ?? null;
+        $minHours = $overrides['min_hours_between'] ?? null;
         $record = [
             'patient_id' => $overrides['patient_id'],
             'medicine_id' => $overrides['medicine_id'],
@@ -71,12 +77,14 @@ final class ScheduleFactory
             'dose_basis' => $doseBasis,
             'cycle_on_days' => $cycleOn,
             'cycle_off_days' => $cycleOff,
+            'max_doses_per_24h' => $maxPer24h,
+            'min_hours_between' => $minHours,
         ];
 
         $this->db->execute(
             'INSERT INTO hc_medicine_schedules
-                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, max_doses_per_24h, min_hours_between)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $record['patient_id'],
                 $record['medicine_id'],
@@ -88,6 +96,8 @@ final class ScheduleFactory
                 $doseBasis,
                 $cycleOn,
                 $cycleOff,
+                $maxPer24h,
+                $minHours,
             ],
         );
 

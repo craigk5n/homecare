@@ -3050,6 +3050,54 @@ continuity.
 
 ---
 
+### HC-238: PRN daily-limit warning + one-tap PRN dose
+
+**Status**: `DONE` (proposed contribution -- not yet reviewed upstream)
+**Type**: Story
+**Points**: 3
+**Depends on**: HC-120, HC-105
+
+**Description**: PRN labels usually carry a ceiling ("no more than 4
+doses in 24 hours", "at least 4 hours apart"). Nothing tracked it, and
+logging a PRN dose took two taps through the full intake form. Let a
+caregiver set the ceiling on the schedule, see "2 of 3 in last 24h,
+next allowed at 2:00 PM", log a dose in one tap, and get a clear
+warning -- never a hard block -- before going over.
+
+**Notes on implementation**:
+- Two nullable columns on `hc_medicine_schedules`; NULL = no limit,
+  so existing installs see no change until a limit is set.
+- `PrnLimitService::evaluate()` is pure: rolling 24h window ending at
+  the proposed dose, exclusive at the old end (a dose exactly 24h ago
+  has aged out); intakes after the proposed time are ignored. Counts
+  doses, not units -- intakes carry no quantity, each row is one
+  `unit_per_dose`.
+- Over-limit doses are recorded after a confirm page; the audit row
+  carries `prn_over_limit` + `prn_warning`. The REST API never blocks:
+  `POST /api/v1/intakes.php` gains `warning` and `prn_limit` fields.
+- `PrnLimitAlertService` runs from `send_reminders.php` like the
+  late-dose / supply alerts, so doses from any surface (form, one-tap,
+  API) notify on the next cron tick with no I/O on the request path.
+  `hc_prn_limit_alert_log` throttles to one alert per 24h episode plus
+  one reached -> exceeded escalation.
+
+**Acceptance Criteria**:
+- [x] Migration 038: `max_doses_per_24h INT NULL`,
+      `min_hours_between DECIMAL(5,2) NULL`, `hc_prn_limit_alert_log`
+- [x] Limits editable on add/edit schedule (PRN only)
+- [x] Service returns doses in window, remaining, next-allowed time,
+      would-exceed / too-soon; window boundaries tested
+- [x] "Took a dose now" one-tap button on PRN rows (schedule page) and
+      for limited PRN rows on the dashboard; status line shown
+- [x] Over-limit confirm step; audit flag on confirmed doses
+- [x] API returns a `warning` field; existing fields unchanged
+- [x] Notification on reaching / exceeding the limit via the channel
+      registry, de-duplicated via the alert log
+- [x] Tests: unit + integration for service, alert service, log, API,
+      migration
+
+---
+
 ## EPIC-13: Data Portability & Attachments
 
 **Goal**: Close the "data in, data out, data attached" loop. Export
@@ -3328,6 +3376,7 @@ HC-121 (Pulse / cycle dosing)     <- HC-002
 HC-122 (Step / taper)             <- HC-002
 HC-123 (Wall-clock times)         <- HC-002
 HC-124 (Pause / skip today)       -- no dependencies
+HC-238 (PRN daily limit)          <- HC-120, HC-105
 
 EPIC-13 Portability & Attachments (BACKLOG):
 HC-130 (Photo / doc attachments)  <- HC-011

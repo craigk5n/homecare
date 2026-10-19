@@ -86,6 +86,7 @@ foreach ($rows as $row) {
     $sortKey         = '0000-' . $medName;
     $statusGroup     = 'ok';
     $isCompleted     = false;
+    $prnAtLimit      = false;
 
     $remainingDoses = dosesRemaining($medicine_id, $schedule_id, $assumePastIntake, $start_date, $frequency);
 
@@ -124,6 +125,13 @@ foreach ($rows as $row) {
         // bucket so the list is stable regardless of last-intake time.
         $nextDueLabel = 'PRN — no schedule';
         $nextDueDetail = 'Take as needed';
+        // HC-238: limited PRN rows show "X of N in last 24h · next
+        // allowed …" in place of the generic hint.
+        $prnStatus = homecare_prn_limit_service()->statusFor((int) $schedule_id, date('Y-m-d H:i:s'));
+        if ($prnStatus !== null) {
+            $nextDueDetail = prn_limit_summary($prnStatus);
+            $prnAtLimit = $prnStatus->isWarning();
+        }
         $sortKey = 'PRN-' . strtolower($medName) . '-' . sprintf('%06d', $schedule_id);
         $statusGroup = 'prn';
         // Still honour end_date for PRN so an ended PRN schedule rolls
@@ -251,6 +259,7 @@ foreach ($rows as $row) {
         'statusGroup'     => $statusGroup,
         'isCompleted'     => $isCompleted,
         'isPrn'           => $isPrn,
+        'prnAtLimit'      => $prnAtLimit,
         'isPaused'        => $isPaused,
         'scheduleId'      => $schedule_id,
         'patientId'       => $patient_id,
@@ -429,8 +438,26 @@ function renderOverflowMenu($entry) {
     return $html;
 }
 
+// HC-238: one-tap PRN logging. Posts straight to the intake handler
+// with no time (handler uses "now"); an over-limit dose lands on the
+// handler's confirm step instead of being recorded.
+function renderPrnQuickDose($entry) {
+    if ($entry['isCompleted'] || empty($entry['isPrn'])) {
+        return '';
+    }
+    $btnClass = !empty($entry['prnAtLimit']) ? 'btn-outline-warning' : 'btn-outline-success';
+    return '<form method="POST" action="record_intake_handler.php" class="d-inline js-prn-quick-dose">'
+         . csrf_form_key()
+         . '<input type="hidden" name="schedule_id" value="' . (int) $entry['scheduleId'] . '">'
+         . '<input type="hidden" name="patient_id" value="' . htmlspecialchars((string) $entry['patientId']) . '">'
+         . '<button type="submit" class="btn btn-sm ' . $btnClass . '" title="' . htmlspecialchars(translate('Record a dose at the current time')) . '">'
+         . htmlspecialchars(translate('Took a dose now')) . '</button>'
+         . '</form> ';
+}
+
 function renderActionGroup($entry) {
     $html = '<div class="action-btn-group">';
+    $html .= renderPrnQuickDose($entry);
     if (!$entry['isCompleted']) {
         $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success" title="Record Intake">';
         $html .= '<img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a>';
@@ -486,6 +513,7 @@ function renderCard($entry, $statusClass) {
     $html .= '<div class="d-flex justify-content-between align-items-start">';
     $html .= '<span class="card-med-name">' . htmlspecialchars($entry['medName']) . '</span>';
     $html .= '<div class="action-btn-group">';
+    $html .= renderPrnQuickDose($entry);
     if (!$entry['isCompleted']) {
         $html .= '<a href="' . htmlspecialchars($entry['recordUrl']) . '" class="btn btn-sm btn-success" title="Record Intake">';
         $html .= '<img src="images/bootstrap-icons/journal-medical.svg" alt="" class="button-icon-inverse"> Record</a>';
@@ -505,6 +533,10 @@ function renderCard($entry, $statusClass) {
         $html .= '<span class="text-muted">Paused</span>';
     } elseif (!empty($entry['isPrn'])) {
         $html .= htmlspecialchars($entry['nextDueLabel']);
+        // HC-238: limit summary ("2 of 3 in last 24h · …") on mobile too.
+        if ($entry['nextDueDetail']) {
+            $html .= ' <small class="text-muted">(' . htmlspecialchars($entry['nextDueDetail']) . ')</small>';
+        }
     } else {
         $html .= htmlspecialchars($entry['nextDueLabel'] === 'Overdue' ? 'Overdue' : 'Due in ' . $entry['nextDueLabel']);
         if ($entry['nextDueDetail']) {
@@ -633,6 +665,15 @@ echo '</div>';
 // Toggle URL parameter and reload (wired via data-toggle-param)
 document.querySelectorAll('[data-toggle-param]').forEach(function(el) {
   el.addEventListener('change', function() { toggleParam(this, this.getAttribute('data-toggle-param')); });
+});
+// HC-238: guard the one-tap PRN button against a double tap logging two doses.
+document.querySelectorAll('form.js-prn-quick-dose').forEach(function(form) {
+  form.addEventListener('submit', function(e) {
+    if (form.dataset.sent) { e.preventDefault(); return; }
+    form.dataset.sent = '1';
+    var btn = form.querySelector('button');
+    if (btn) { btn.disabled = true; }
+  });
 });
 function toggleParam(el, param) {
     var url = new URL(window.location.href);

@@ -25,6 +25,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($is_prn) {
         $frequency = null;
     }
+    // HC-238: optional advisory PRN limits (blank = no limit; always
+    // NULL for fixed-cadence rows).
+    $prnLimits = \HomeCare\Service\PrnLimitService::normaliseLimits(
+        $is_prn,
+        getPostValue('max_doses_per_24h'),
+        getPostValue('min_hours_between'),
+    );
+    $max_doses_per_24h = $prnLimits['max_doses_per_24h'];
+    $min_hours_between = $prnLimits['min_hours_between'];
     // HC-113: dose_basis — 'fixed' (default) or 'per_kg' (weight-based).
     $dose_basis = getPostValue('dose_basis');
     if ($dose_basis !== 'per_kg') {
@@ -58,9 +67,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (!empty($schedule_id)) {
             // Updating schedule
             $sql = "UPDATE hc_medicine_schedules SET " .
-                "patient_id = ?, medicine_id = ?, start_date = ?, end_date = ?, frequency = ?, unit_per_dose = ?, is_prn = ?, dose_basis = ?, cycle_on_days = ?, cycle_off_days = ?, wall_clock_times = ? " .
+                "patient_id = ?, medicine_id = ?, start_date = ?, end_date = ?, frequency = ?, unit_per_dose = ?, is_prn = ?, dose_basis = ?, cycle_on_days = ?, cycle_off_days = ?, wall_clock_times = ?, max_doses_per_24h = ?, min_hours_between = ? " .
                 "WHERE id = ?";
-            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $dose_basis, $cycle_on_days, $cycle_off_days, $wall_clock_times, $schedule_id];
+            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $dose_basis, $cycle_on_days, $cycle_off_days, $wall_clock_times, $max_doses_per_24h, $min_hours_between, $schedule_id];
             if (!dbi_execute($sql, $values)) {
                 echo "<p>Error updating schedule: " . dbi_error() . "</p>";
                 exit;
@@ -74,15 +83,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'dose_basis' => $dose_basis,
                 'cycle_on_days' => $cycle_on_days,
                 'cycle_off_days' => $cycle_off_days,
+                'max_doses_per_24h' => $max_doses_per_24h,
+                'min_hours_between' => $min_hours_between,
                 'start_date' => $start_date,
                 'end_date' => $end_date,
             ]);
         } else {
             // Adding schedule
             $sql = "INSERT INTO hc_medicine_schedules " .
-                "(patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times) " .
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $dose_basis, $cycle_on_days, $cycle_off_days, $wall_clock_times];
+                "(patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times, max_doses_per_24h, min_hours_between) " .
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            $values = [$patient_id, $medicine_id, $start_date, $end_date, $frequency, $unit_per_dose, $prnFlag, $dose_basis, $cycle_on_days, $cycle_off_days, $wall_clock_times, $max_doses_per_24h, $min_hours_between];
             if (!dbi_execute($sql, $values)) {
                 echo "<p>Error adding schedule: " . dbi_error() . "</p>";
                 exit;
@@ -97,6 +108,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 'dose_basis' => $dose_basis,
                 'cycle_on_days' => $cycle_on_days,
                 'cycle_off_days' => $cycle_off_days,
+                'max_doses_per_24h' => $max_doses_per_24h,
+                'min_hours_between' => $min_hours_between,
                 'start_date' => $start_date,
                 'end_date' => $end_date,
             ]);

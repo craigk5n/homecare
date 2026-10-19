@@ -13,11 +13,15 @@ use HomeCare\Notification\EmailChannel;
 use HomeCare\Notification\NotificationMessage;
 use HomeCare\Notification\NtfyChannel;
 use HomeCare\Notification\WebhookChannel;
+use HomeCare\Repository\IntakeRepository;
 use HomeCare\Repository\InventoryRepository;
 use HomeCare\Repository\ScheduleRepository;
 use HomeCare\Service\InventoryService;
 use HomeCare\Service\LateDoseAlertLog;
 use HomeCare\Service\LateDoseAlertService;
+use HomeCare\Service\PrnLimitAlertLog;
+use HomeCare\Service\PrnLimitAlertService;
+use HomeCare\Service\PrnLimitService;
 use HomeCare\Service\SupplyAlertLog;
 use HomeCare\Service\SupplyAlertService;
 
@@ -219,6 +223,54 @@ if ($lateThreshold > 0) {
         echo "Late-dose alert sent for schedule {$lateAlert->scheduleId}: {$body}\n";
         $lateService->recordSent($lateAlert->scheduleId, $lateAlert->dueAt);
     }
+}
+
+// ── HC-238: PRN daily-limit alerts ───────────────────────────────────
+// Only PRN schedules with max_doses_per_24h set participate, so this is
+// a no-op until a caregiver configures a limit. Throttled per-schedule
+// (one alert per 24h episode, plus one escalation reached → exceeded).
+
+$prnAlertService = new PrnLimitAlertService(
+    $db,
+    new PrnLimitService(new ScheduleRepository($db), new IntakeRepository($db)),
+    new PrnLimitAlertLog($db),
+);
+foreach ($prnAlertService->findPendingAlerts() as $prnAlert) {
+    $body = $prnAlert->message();
+    $title = $prnAlert->title();
+    if ($dryRun) {
+        echo "Dry run: Would send PRN-limit alert for schedule "
+           . "{$prnAlert->scheduleId}: {$body}\n";
+        continue;
+    }
+
+    // Topic fan-out (ntfy, webhook) + per-user email, same as late-dose.
+    $tags = $prnAlert->isExceeded() ? ['warning', 'pill'] : ['pill'];
+    $accepted = $channels->dispatch(new NotificationMessage(
+        title:    $title,
+        body:     $body,
+        priority: $prnAlert->priority(),
+        tags:     $tags,
+    ), ['ntfy', 'webhook']);
+    foreach ($emailSubscribers as $address) {
+        $perUser = new NotificationMessage(
+            title:     $title,
+            body:      $body,
+            priority:  $prnAlert->priority(),
+            tags:      $tags,
+            recipient: $address,
+        );
+        if ($channels->dispatch($perUser, ['email']) > 0) {
+            $accepted++;
+        }
+    }
+
+    if ($accepted === 0) {
+        echo "Skipped (no channel ready): {$body}\n";
+        continue;
+    }
+    echo "PRN-limit alert sent for schedule {$prnAlert->scheduleId}: {$body}\n";
+    $prnAlertService->recordSent($prnAlert);
 }
 
 /**

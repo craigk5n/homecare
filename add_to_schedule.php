@@ -34,7 +34,7 @@ $medicationsResult = dbi_query($medicationsSql);
 // If medicine id specified, load that
 if (!empty($medicine_id) && !empty($schedule_id)) {
   echo "<h2>Edit Medication to Patient Schedule</h2>\n";
-  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times FROM hc_medicine_schedules ' .
+  $sql = 'SELECT id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times, max_doses_per_24h, min_hours_between FROM hc_medicine_schedules ' .
     'WHERE patient_id = ? and medicine_id = ? AND id = ?';
   $rows = dbi_get_cached_rows($sql, [$patient_id, $medicine_id, $schedule_id]);
   $start_date = $rows[0][1];
@@ -46,6 +46,8 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
   $cycle_on_days = $rows[0][7] ?? '';
   $cycle_off_days = $rows[0][8] ?? '';
   $wall_clock_times = $rows[0][9] ?? '';
+  $max_doses_per_24h = $rows[0][10] ?? '';
+  $min_hours_between = $rows[0][11] ?? '';
 } else {
   echo "<h2>Add Medication to Patient Schedule</h2>\n";
   $start_date = $end_date = '';
@@ -56,6 +58,8 @@ if (!empty($medicine_id) && !empty($schedule_id)) {
   $cycle_on_days = '';
   $cycle_off_days = '';
   $wall_clock_times = '';
+  $max_doses_per_24h = '';
+  $min_hours_between = '';
 }
 
 echo "<div class='container mt-3'>\n";
@@ -132,6 +136,31 @@ echo "<label class='form-check-label' for='is_prn'>Take as needed (PRN) "
   . "&mdash; no schedule, no reminders</label>\n";
 echo "</div>\n";
 
+// HC-238: optional advisory limits for PRN rows. Shown only while the
+// PRN box is checked; blank = no limit. Recording past a limit asks
+// for confirmation rather than blocking.
+$minHoursDisplay = $min_hours_between !== '' && $min_hours_between !== null
+  ? rtrim(rtrim(number_format((float) $min_hours_between, 2, '.', ''), '0'), '.')
+  : '';
+echo "<fieldset class='border p-2 mb-3' id='prn-limits-group'" . ($is_prn ? '' : " style='display:none'") . ">\n";
+echo "<legend class='w-auto px-2' style='font-size:1rem'>" . translate('As-needed limits (optional)') . "</legend>\n";
+echo "<div class='form-row'>\n";
+echo "<div class='form-group col-md-6'>\n";
+echo "<label for='max_doses_per_24h'>" . translate('Max doses per 24 hours') . ":</label>\n";
+echo "<input type='number' min='1' max='99' step='1' name='max_doses_per_24h' id='max_doses_per_24h' class='form-control' placeholder='e.g. 4'"
+    . ($max_doses_per_24h !== '' && $max_doses_per_24h !== null ? " value='" . htmlspecialchars((string) $max_doses_per_24h, ENT_QUOTES, 'UTF-8') . "'" : '')
+    . ">\n";
+echo "</div>\n";
+echo "<div class='form-group col-md-6'>\n";
+echo "<label for='min_hours_between'>" . translate('Min hours between doses') . ":</label>\n";
+echo "<input type='number' min='0.25' max='168' step='0.25' name='min_hours_between' id='min_hours_between' class='form-control' placeholder='e.g. 4'"
+    . ($minHoursDisplay !== '' ? " value='" . htmlspecialchars($minHoursDisplay, ENT_QUOTES, 'UTF-8') . "'" : '')
+    . ">\n";
+echo "</div>\n";
+echo "</div>\n";
+echo "<small class='form-text text-muted'>" . translate('Counted over a rolling 24 hours. Going over asks for confirmation and sends a notification; it never blocks a dose.') . "</small>\n";
+echo "</fieldset>\n";
+
 echo "<div class='form-group' id='frequency-group'" . ($is_prn ? " style='display:none'" : '') . ">\n";
 echo "<label for='frequency'>Frequency:</label>\n";
 echo "<select name='frequency' id='frequency' class='form-control'>\n";
@@ -167,15 +196,18 @@ echo <<<HTML
   var freqWrap = document.getElementById('frequency-group');
   var wcWrap = document.getElementById('wall-clock-group');
   var sel = document.getElementById('frequency');
+  var limitsWrap = document.getElementById('prn-limits-group');
   if (!box || !freqWrap || !sel) return;
   function sync() {
     if (box.checked) {
       freqWrap.style.display = 'none';
       if (wcWrap) wcWrap.style.display = 'none';
+      if (limitsWrap) limitsWrap.style.display = '';
       sel.removeAttribute('name');
     } else {
       freqWrap.style.display = '';
       if (wcWrap) wcWrap.style.display = '';
+      if (limitsWrap) limitsWrap.style.display = 'none';
       sel.setAttribute('name', 'frequency');
     }
   }

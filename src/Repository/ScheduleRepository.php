@@ -28,6 +28,8 @@ use InvalidArgumentException;
  *     cycle_on_days:?int,
  *     cycle_off_days:?int,
  *     wall_clock_times:?string,
+ *     max_doses_per_24h:?int,
+ *     min_hours_between:?float,
  *     created_at:?string
  * }
  *
@@ -42,7 +44,9 @@ use InvalidArgumentException;
  *     dose_basis?:string,
  *     cycle_on_days?:?int,
  *     cycle_off_days?:?int,
- *     wall_clock_times?:?string
+ *     wall_clock_times?:?string,
+ *     max_doses_per_24h?:?int,
+ *     min_hours_between?:?float
  * }
  */
 final class ScheduleRepository implements ScheduleRepositoryInterface
@@ -114,11 +118,15 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
         $cycleOn = $data['cycle_on_days'] ?? null;
         $cycleOff = $data['cycle_off_days'] ?? null;
         $wallClock = $data['wall_clock_times'] ?? null;
+        // HC-238: advisory dose ceilings only apply to PRN rows; a fixed
+        // cadence already bounds the dose count.
+        $maxPer24h = $isPrn ? ($data['max_doses_per_24h'] ?? null) : null;
+        $minHours = $isPrn ? ($data['min_hours_between'] ?? null) : null;
 
         $this->db->execute(
             'INSERT INTO hc_medicine_schedules
-                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (patient_id, medicine_id, start_date, end_date, frequency, unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, wall_clock_times, max_doses_per_24h, min_hours_between)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $data['patient_id'],
                 $data['medicine_id'],
@@ -131,6 +139,8 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
                 $cycleOn,
                 $cycleOff,
                 $wallClock,
+                $maxPer24h,
+                $minHours,
             ],
         );
 
@@ -141,7 +151,8 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
     {
         return 'SELECT id, patient_id, medicine_id, start_date, end_date, frequency, '
             . 'unit_per_dose, is_prn, dose_basis, cycle_on_days, cycle_off_days, '
-            . 'wall_clock_times, created_at FROM hc_medicine_schedules';
+            . 'wall_clock_times, max_doses_per_24h, min_hours_between, created_at '
+            . 'FROM hc_medicine_schedules';
     }
 
     /**
@@ -167,6 +178,8 @@ final class ScheduleRepository implements ScheduleRepositoryInterface
             'cycle_on_days' => $row['cycle_on_days'] === null ? null : (int) $row['cycle_on_days'],
             'cycle_off_days' => $row['cycle_off_days'] === null ? null : (int) $row['cycle_off_days'],
             'wall_clock_times' => $row['wall_clock_times'] === null ? null : (string) $row['wall_clock_times'],
+            'max_doses_per_24h' => $row['max_doses_per_24h'] === null ? null : (int) $row['max_doses_per_24h'],
+            'min_hours_between' => $row['min_hours_between'] === null ? null : (float) $row['min_hours_between'],
             'created_at' => $row['created_at'] === null ? null : (string) $row['created_at'],
         ];
     }

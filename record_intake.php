@@ -50,15 +50,17 @@ if (!empty($id)) {
 }
 
 // Fetch schedule and patient details
-$scheduleSql = "SELECT ms.id, ms.medicine_id, m.name AS medicine_name "
+$scheduleSql = "SELECT ms.id, ms.medicine_id, m.name AS medicine_name, ms.is_prn "
   . "FROM hc_medicine_schedules ms JOIN hc_medicines m ON ms.medicine_id = m.id WHERE ms.id = ?";
 $scheduleResult = dbi_execute($scheduleSql, [$schedule_id]);
 $medicineName = '';
 $medicine_id = -1;
+$isPrn = false;
 // Medication details (non-editable)
 if ($row = dbi_fetch_row($scheduleResult)) {
   $medicineName = $row[2];
   $medicine_id = $row[1];
+  $isPrn = ($row[3] ?? 'N') === 'Y';
 }
 
 
@@ -125,7 +127,9 @@ echo "<div class='form-group'>\n";
 echo "<label for='taken_time'>Time of Intake:</label>\n";
 echo "<input type='datetime-local' name='taken_time' id='taken_time' class='form-control' required value='" . $formattedDateTime . "'>\n";
 echo "<br>";
-$timeSupposedToTake = getDueDateTimeInSeconds($patient_id, $schedule_id, $medicine_id, $schedule_id, true);
+// HC-120/HC-238: PRN rows have no due time (and their NULL frequency
+// would throw in the due-time math once a first dose is recorded).
+$timeSupposedToTake = $isPrn ? null : getDueDateTimeInSeconds($patient_id, $schedule_id, $medicine_id, $schedule_id, true);
 if (!empty($timeSupposedToTake)) {
   $when = time() + $timeSupposedToTake;
   $dates = [];
@@ -172,6 +176,16 @@ $nice = formatDateNicely($lessThan5);
 echo "<button type='button' class='btn btn-secondary' data-copy-time='$lessThan5'>" . $nice . "</button>\n";
 
 echo "</div>\n";
+
+// HC-238: PRN allowance right now, so the caregiver sees the limit
+// before submitting. The handler re-checks at the chosen time.
+if ($isPrn && !$editing) {
+  $prnStatus = homecare_prn_limit_service()->statusFor((int) $schedule_id, date('Y-m-d H:i:s'));
+  if ($prnStatus !== null) {
+    $prnClass = $prnStatus->isWarning() ? 'alert-warning' : 'alert-info';
+    echo "<div class='alert $prnClass'>" . htmlspecialchars(translate('As-needed limit') . ': ' . prn_limit_summary($prnStatus)) . "</div>\n";
+  }
+}
 
 echo "<div class='form-group'>\n";
 echo "<label for='note'>Notes:</label>\n";

@@ -179,6 +179,8 @@ CREATE TABLE `hc_medicine_schedules` (
   `cycle_on_days` INT NULL,
   `cycle_off_days` INT NULL,
   `wall_clock_times` VARCHAR(128) NULL,
+  `max_doses_per_24h` INT NULL,
+  `min_hours_between` DECIMAL(5, 2) NULL,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`patient_id`) REFERENCES `hc_patients`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`medicine_id`) REFERENCES `hc_medicines`(`id`) ON DELETE CASCADE
@@ -223,6 +225,16 @@ CREATE TABLE hc_late_dose_alert_log (
   schedule_id INT NOT NULL PRIMARY KEY,
   last_due_at DATETIME NOT NULL,
   sent_at     DATETIME NOT NULL
+);
+
+/* PRN daily-limit alert throttle (HC-238). One row per schedule;
+ * `last_dose_at` is the dose that triggered the last alert and
+ * `last_level` is 'reached' or 'exceeded'. */
+CREATE TABLE hc_prn_limit_alert_log (
+  schedule_id  INT NOT NULL PRIMARY KEY,
+  last_dose_at DATETIME NOT NULL,
+  last_level   VARCHAR(10) NOT NULL,
+  sent_at      DATETIME NOT NULL
 );
 
 /* Step / taper dosing (HC-122). Models dose-level changes within a

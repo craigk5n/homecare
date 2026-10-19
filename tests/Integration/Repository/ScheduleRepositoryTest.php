@@ -189,6 +189,60 @@ final class ScheduleRepositoryTest extends DatabaseTestCase
         $this->assertNull($rows[0]['frequency']);
     }
 
+    public function testPrnLimitsDefaultToNull(): void
+    {
+        $id = $this->repo->createSchedule([
+            'patient_id' => $this->patientId,
+            'medicine_id' => $this->medicineId,
+            'start_date' => '2026-03-01',
+            'unit_per_dose' => 1.0,
+            'is_prn' => true,
+        ]);
+
+        $row = $this->repo->getScheduleById($id);
+        $this->assertNotNull($row);
+        $this->assertNull($row['max_doses_per_24h']);
+        $this->assertNull($row['min_hours_between']);
+    }
+
+    public function testCreatePrnScheduleStoresDailyLimitAndMinInterval(): void
+    {
+        $id = $this->repo->createSchedule([
+            'patient_id' => $this->patientId,
+            'medicine_id' => $this->medicineId,
+            'start_date' => '2026-03-01',
+            'unit_per_dose' => 1.0,
+            'is_prn' => true,
+            'max_doses_per_24h' => 4,
+            'min_hours_between' => 4.5,
+        ]);
+
+        $row = $this->repo->getScheduleById($id);
+        $this->assertNotNull($row);
+        $this->assertSame(4, $row['max_doses_per_24h']);
+        $this->assertSame(4.5, $row['min_hours_between']);
+    }
+
+    public function testFixedCadenceScheduleDiscardsPrnLimits(): void
+    {
+        // Limits only mean something for as-needed schedules; a fixed
+        // cadence already bounds the dose count.
+        $id = $this->repo->createSchedule([
+            'patient_id' => $this->patientId,
+            'medicine_id' => $this->medicineId,
+            'start_date' => '2026-03-01',
+            'frequency' => '8h',
+            'unit_per_dose' => 1.0,
+            'max_doses_per_24h' => 3,
+            'min_hours_between' => 6.0,
+        ]);
+
+        $row = $this->repo->getScheduleById($id);
+        $this->assertNotNull($row);
+        $this->assertNull($row['max_doses_per_24h']);
+        $this->assertNull($row['min_hours_between']);
+    }
+
     private function seedPatient(string $name = 'Daisy'): int
     {
         $db = $this->getDb();
