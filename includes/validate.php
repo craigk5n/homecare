@@ -88,6 +88,17 @@ function hc_validate(): void
 
     $script = basename((string) ($_SERVER['PHP_SELF'] ?? ''));
 
+    // CLI / cron scripts (send_reminders.php, bin/*) skip authentication
+    // below but still need the DB connection that dbi_* and DbiAdapter
+    // rely on.
+    if (PHP_SAPI === 'cli' && empty($c)) {
+        $c = @dbi_connect($db_host, $db_login, $db_password, $db_database);
+        if (!$c) {
+            fwrite(STDERR, 'Error connecting to database: ' . dbi_error() . "\n");
+            exit(1);
+        }
+    }
+
     // Public / exempt entrypoints.
     if (PHP_SAPI === 'cli' || in_array(
         $script,
