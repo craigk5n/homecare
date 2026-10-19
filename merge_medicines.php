@@ -1,6 +1,9 @@
 <?php
 require_once 'includes/init.php';
 
+// HC-237: merging rewrites every patient's schedules for the medicine.
+require_unrestricted_patient_scope();
+
 print_header();
 
 $merged = getGetValue('merged');

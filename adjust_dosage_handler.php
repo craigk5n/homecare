@@ -22,6 +22,10 @@ if (empty($patient_id) || empty($old_schedule_id) || empty($medicine_id) ||
     die_miserable_death('Missing required fields. Please go back and try again.');
 }
 
+// HC-237
+require_patient_access($patient_id);
+require_schedule_access($old_schedule_id);
+
 // Verify the old schedule exists and belongs to this patient
 $checkSql = "SELECT id FROM hc_medicine_schedules WHERE id = ? AND patient_id = ?";
 $checkRows = dbi_get_cached_rows($checkSql, [$old_schedule_id, $patient_id]);

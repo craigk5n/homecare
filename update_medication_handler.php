@@ -12,6 +12,9 @@ if (empty($id) || empty($name) || empty($dosage)) {
   die_miserable_death('All fields are required.');
 }
 
+// HC-237: renaming affects every patient on this medicine.
+require_medicine_access($id);
+
 // Block an edit that would collide with a different existing medicine
 // (uq_medicines_name_dosage). Friendly message instead of a SQL error.
 $clash = dbi_get_cached_rows(

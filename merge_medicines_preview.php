@@ -1,6 +1,9 @@
 <?php
 require_once 'includes/init.php';
 
+// HC-237: merging rewrites every patient's schedules for the medicine.
+require_unrestricted_patient_scope();
+
 $primary_id = getPostValue('primary_id');
 $duplicate_ids = isset($_POST['duplicate_ids']) ? $_POST['duplicate_ids'] : [];
 

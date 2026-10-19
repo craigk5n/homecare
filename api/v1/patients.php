@@ -8,7 +8,7 @@ use HomeCare\Api\PatientsApi;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\PatientRepository;
 
-api_authenticate_or_exit();
+$user = api_authenticate_or_exit();
 
-$api = new PatientsApi(new PatientRepository(new DbiAdapter()));
+$api = new PatientsApi(new PatientRepository(new DbiAdapter()), api_patient_scope($user));
 api_send($api->handle($_GET));

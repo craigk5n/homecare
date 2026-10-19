@@ -15,6 +15,9 @@ if (empty($id) || !patientExistsById((int) $id)) {
     exit;
 }
 
+// HC-237
+require_patient_access((int) $id);
+
 $_SESSION['active_patient_id'] = (int) $id;
 
 do_redirect('list_schedule.php?patient_id=' . urlencode((string) (int) $id));

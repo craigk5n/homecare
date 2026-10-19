@@ -3249,6 +3249,51 @@ HC-073; add a narrower, explicit mode.
 
 ---
 
+### HC-237: Per-patient access control
+
+**Status**: `DONE` (proposed contribution, not yet reviewed upstream)
+**Type**: Story
+**Points**: 5
+**Depends on**: HC-010 (roles), HC-013 (audit log)
+
+**Description**: A household with paid support workers (or a vet
+practice with several owners' animals) needs a caregiver or viewer to
+see only the patients they look after. Add an optional per-user
+allow-list on top of the role hierarchy.
+
+**Semantics**:
+- Admins always see every patient (assignments are ignored).
+- A caregiver/viewer with **no** assignments sees every patient — the
+  pre-HC-237 behaviour, so existing installs are unchanged.
+- A caregiver/viewer with one or more assignments sees only those.
+- CLI/cron jobs (reminders, digests, exporters) have no login and are
+  never filtered.
+- Medicines are a shared catalog: a restricted user sees a medicine's
+  inventory when it is scheduled for one of their patients or for
+  nobody yet. Merging medicines needs an unrestricted user.
+
+**Acceptance Criteria**:
+- [x] `hc_user_patients (user_login, patient_id)` with composite PK and
+      `ON DELETE CASCADE` from `hc_patients` (migration 037,
+      `tables-mysql.sql`, SQLite fixture)
+- [x] `PatientAccess` service + `PatientScope` value object:
+      `allowedPatientIds()` (null = all), `canAccess()`, list filters,
+      schedule / intake / note / attachment / medicine checks via
+      `PatientLinkRepository`
+- [x] `getPatients()`, `getActivePatientId()`, the nav patient picker
+      and the dashboard list only allowed patients
+- [x] Every patient-scoped page and handler refuses (403, standard
+      access-denied page) out-of-scope patients, including ids reached
+      indirectly (schedule, intake, note, attachment, step, inventory)
+- [x] v1 API: lists filtered, single resources 404 when out of scope
+- [x] Exports and the SSE event stream honour the allow-list
+- [x] Admin "Patient Access" page (checkboxes per user), CSRF-protected
+      handler, `user.patients_assigned` audit entry
+- [x] Unit + integration tests for the service, repositories, indirect
+      lookups, admin save path, migration and API filtering
+
+---
+
 ## Story Dependency Graph
 
 ```

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace HomeCare\Api;
 
+use HomeCare\Auth\PatientScope;
 use HomeCare\Service\InteractionServiceInterface;
 
 /**
@@ -14,9 +15,14 @@ use HomeCare\Service\InteractionServiceInterface;
  */
 final class InteractionsApi
 {
+    private readonly PatientScope $scope;
+
     public function __construct(
         private readonly InteractionServiceInterface $service,
-    ) {}
+        ?PatientScope $scope = null,
+    ) {
+        $this->scope = $scope ?? PatientScope::unrestricted();
+    }
 
     /**
      * @param array<string, string> $params GET parameters
@@ -28,6 +34,10 @@ final class InteractionsApi
 
         if ($patientId < 1 || $medicineId < 1) {
             return ApiResponse::error('patient_id and medicine_id are required', 400);
+        }
+        // HC-237: same answer as a missing patient.
+        if (!$this->scope->allows($patientId)) {
+            return ApiResponse::error('patient not found', 404);
         }
 
         $results = $this->service->checkForPatient($patientId, $medicineId);

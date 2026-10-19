@@ -16,6 +16,8 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
 
 use HomeCare\Audit\AuditLogger;
 use HomeCare\Auth\Authorization;
+use HomeCare\Auth\PatientAccess;
+use HomeCare\Auth\PatientScope;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Domain\ScheduleCalculator;
 use HomeCare\Repository\InventoryRepository;
@@ -78,6 +80,241 @@ function require_role(string $minimumRole): void
             . translate('role')
         );
     }
+}
+
+/**
+ * HC-237 per-patient access control, wired against the live connection.
+ */
+function homecare_patient_access(): PatientAccess
+{
+    static $access = null;
+    if ($access === null) {
+        $access = PatientAccess::create(new DbiAdapter());
+    }
+
+    return $access;
+}
+
+/**
+ * Login whose patient allow-list applies, or '' for system contexts.
+ *
+ * System contexts have no logged-in user: CLI/cron scripts such as
+ * send_reminders.php and the digests, and the token-signed feeds. They
+ * are unrestricted -- per-patient limits apply to people, not jobs.
+ */
+function patient_access_login(): string
+{
+    $login = $GLOBALS['login'] ?? null;
+
+    return is_string($login) ? $login : '';
+}
+
+/**
+ * Patients the current user may see.
+ */
+function current_patient_scope(): PatientScope
+{
+    $login = patient_access_login();
+    if ($login === '') {
+        return PatientScope::unrestricted();
+    }
+
+    return homecare_patient_access()->scopeFor($login);
+}
+
+/**
+ * @return list<int>|null null = every patient
+ */
+function allowed_patient_ids(): ?array
+{
+    return current_patient_scope()->patientIds();
+}
+
+function can_access_patient(int $patientId): bool
+{
+    return current_patient_scope()->allows($patientId);
+}
+
+/**
+ * Stop the request with the standard access-denied page (HTTP 403).
+ */
+function patient_access_denied(): never
+{
+    if (!headers_sent()) {
+        http_response_code(403);
+    }
+    die_miserable_death(
+        translate('Access denied') . ': '
+        . translate('you are not assigned to this patient')
+    );
+    exit;
+}
+
+/**
+ * Guard a page or handler on a patient id from the request. Call before
+ * reading or writing anything patient-scoped.
+ *
+ * @param int|string|null $patientId
+ */
+function require_patient_access($patientId): void
+{
+    if (!can_access_patient((int) $patientId)) {
+        patient_access_denied();
+    }
+}
+
+/**
+ * Run an indirect-id check for the current user; no-op for system contexts.
+ *
+ * @param callable(PatientAccess,string):bool $check
+ */
+function require_resolved_patient_access(callable $check): void
+{
+    $login = patient_access_login();
+    if ($login === '') {
+        return;
+    }
+    if (!$check(homecare_patient_access(), $login)) {
+        patient_access_denied();
+    }
+}
+
+/** @param int|string|null $scheduleId */
+function require_schedule_access($scheduleId): void
+{
+    require_resolved_patient_access(
+        static fn(PatientAccess $a, string $l): bool => $a->canAccessSchedule($l, (int) $scheduleId)
+    );
+}
+
+/** @param int|string|null $intakeId */
+function require_intake_access($intakeId): void
+{
+    require_resolved_patient_access(
+        static fn(PatientAccess $a, string $l): bool => $a->canAccessIntake($l, (int) $intakeId)
+    );
+}
+
+/** @param int|string|null $noteId */
+function require_note_access($noteId): void
+{
+    require_resolved_patient_access(
+        static fn(PatientAccess $a, string $l): bool => $a->canAccessNote($l, (int) $noteId)
+    );
+}
+
+/** @param int|string|null $attachmentId */
+function require_attachment_access($attachmentId): void
+{
+    require_resolved_patient_access(
+        static fn(PatientAccess $a, string $l): bool => $a->canAccessAttachment($l, (int) $attachmentId)
+    );
+}
+
+/** @param int|string|null $ownerId */
+function require_attachment_owner_access(string $ownerType, $ownerId): void
+{
+    require_resolved_patient_access(
+        static fn(PatientAccess $a, string $l): bool => $a->canAccessAttachmentOwner($l, $ownerType, (int) $ownerId)
+    );
+}
+
+/**
+ * Medicines are a shared catalog; see PatientAccess for the visibility rule.
+ */
+function can_access_medicine(int $medicineId): bool
+{
+    $login = patient_access_login();
+
+    return $login === '' || homecare_patient_access()->canAccessMedicine($login, $medicineId);
+}
+
+/** @param int|string|null $medicineId */
+function require_medicine_access($medicineId): void
+{
+    if (!can_access_medicine((int) $medicineId)) {
+        patient_access_denied();
+    }
+}
+
+/**
+ * Guard an hc_medicine_inventory row by its own medicine (not a posted
+ * medicine_id). Missing rows pass so the caller's not-found path runs.
+ *
+ * @param int|string|null $inventoryId
+ */
+function require_inventory_access($inventoryId): void
+{
+    $rows = dbi_get_cached_rows(
+        'SELECT medicine_id FROM hc_medicine_inventory WHERE id = ?',
+        [(int) $inventoryId]
+    );
+    if (!empty($rows)) {
+        require_medicine_access((int) $rows[0][0]);
+    }
+}
+
+/**
+ * Guard catalog-wide operations that rewrite other patients' data (e.g.
+ * merging medicines): only users who can see every patient may run them.
+ */
+function require_unrestricted_patient_scope(): void
+{
+    if (!current_patient_scope()->isUnrestricted()) {
+        patient_access_denied();
+    }
+}
+
+/**
+ * Drop rows (keyed by a patient id column) the current user may not see.
+ *
+ * @param list<array<array-key,mixed>> $rows
+ *
+ * @return list<array<array-key,mixed>>
+ */
+function filter_patient_rows(array $rows, string $key = 'id'): array
+{
+    return current_patient_scope()->filter($rows, $key);
+}
+
+/**
+ * Drop medicine rows whose inventory the current user may not see.
+ *
+ * @param list<array<array-key,mixed>> $rows
+ *
+ * @return list<array<array-key,mixed>>
+ */
+function filter_medicine_rows(array $rows, string $key = 'medicine_id'): array
+{
+    $login = patient_access_login();
+    if ($login === '') {
+        return $rows;
+    }
+
+    return homecare_patient_access()->filterMedicines($login, $rows, $key);
+}
+
+/**
+ * SQL fragment limiting `$column` to the current user's patients, for
+ * legacy pages that list across patients with raw dbi_* queries.
+ *
+ * Returns ['', []] when unrestricted, otherwise
+ * [' AND <column> IN (?,...)', ids] (or ' AND 1 = 0' when nothing is
+ * allowed). `$column` must be a trusted literal, never request input.
+ *
+ * @return array{0:string,1:list<int>}
+ */
+function patient_scope_sql(string $column): array
+{
+    $ids = allowed_patient_ids();
+    if ($ids === null) {
+        return ['', []];
+    }
+    if ($ids === []) {
+        return [' AND 1 = 0', []];
+    }
+
+    return [' AND ' . $column . ' IN (' . implode(',', array_fill(0, count($ids), '?')) . ')', $ids];
 }
 
 /**
@@ -215,6 +452,8 @@ function getDueDateTimeInSeconds($patient_id, $schedule_id, $medicine_id, $show_
 
 function getPatient($patientId)
 {
+    // HC-237: every page that loads a patient by id goes through here.
+    require_patient_access($patientId);
     $sql = 'SELECT id, name, species, weight_kg, weight_as_of, created_at, updated_at, is_active FROM hc_patients WHERE id = ?';
     $rows = dbi_get_cached_rows($sql, [$patientId]);
     if ($rows) {
@@ -248,23 +487,27 @@ function getPatient($patientId)
  *   4. `0` when no patients exist (fresh install).
  *
  * Only verifies that the patient row exists; `is_active=0` is still
- * a valid target so historical views keep working.
+ * a valid target so historical views keep working. Patients outside the
+ * user's HC-237 allow-list are skipped at every step.
  */
 function getActivePatientId(): int
 {
     $fromUrl = getIntValue('patient_id');
-    if (!empty($fromUrl) && patientExistsById((int) $fromUrl)) {
+    if (!empty($fromUrl) && patientExistsById((int) $fromUrl) && can_access_patient((int) $fromUrl)) {
         $_SESSION['active_patient_id'] = (int) $fromUrl;
         return (int) $fromUrl;
     }
 
     $fromSession = $_SESSION['active_patient_id'] ?? null;
-    if (is_int($fromSession) && $fromSession > 0 && patientExistsById($fromSession)) {
+    if (is_int($fromSession) && $fromSession > 0 && patientExistsById($fromSession)
+        && can_access_patient($fromSession)) {
         return $fromSession;
     }
 
+    [$scopeSql, $scopeParams] = patient_scope_sql('id');
     $rows = dbi_get_cached_rows(
-        'SELECT id FROM hc_patients WHERE is_active = 1 ORDER BY name ASC LIMIT 1'
+        'SELECT id FROM hc_patients WHERE is_active = 1' . $scopeSql . ' ORDER BY name ASC LIMIT 1',
+        $scopeParams
     );
     if (!empty($rows) && isset($rows[0][0])) {
         $id = (int) $rows[0][0];
@@ -287,12 +530,17 @@ function patientExistsById(int $id): bool
     return !empty($rows);
 }
 
+/**
+ * Patients for pickers and lists, limited to the current user's HC-237
+ * allow-list (system contexts with no login see everyone).
+ */
 function getPatients($includeDisabled = false)
 {
+    [$scopeSql, $scopeParams] = patient_scope_sql('id');
     $sql = $includeDisabled
-        ? 'SELECT name, id FROM hc_patients ORDER BY name ASC'
-        : 'SELECT name, id FROM hc_patients WHERE is_active = 1 ORDER BY name ASC';
-    $rows = dbi_get_cached_rows($sql);
+        ? 'SELECT name, id FROM hc_patients WHERE 1 = 1' . $scopeSql . ' ORDER BY name ASC'
+        : 'SELECT name, id FROM hc_patients WHERE is_active = 1' . $scopeSql . ' ORDER BY name ASC';
+    $rows = dbi_get_cached_rows($sql, $scopeParams);
     $ret = [];
     foreach ($rows as $row) {
         $patient = [

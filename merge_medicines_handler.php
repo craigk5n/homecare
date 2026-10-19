@@ -1,6 +1,8 @@
 <?php
 require_once 'includes/init.php';
 require_role('caregiver');
+// HC-237: merging rewrites every patient's schedules for the medicine.
+require_unrestricted_patient_scope();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: merge_medicines.php');

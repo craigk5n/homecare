@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace HomeCare\Api;
 
 use HomeCare\Auth\Authorization;
+use HomeCare\Auth\PatientScope;
 use HomeCare\Repository\IntakeRepositoryInterface;
 use HomeCare\Repository\ScheduleRepositoryInterface;
 use InvalidArgumentException;
@@ -15,7 +16,8 @@ use InvalidArgumentException;
  *
  * The read path ({@see handle}) returns the last N days of intakes for
  * a schedule. The write path ({@see record}) creates a new intake row
- * from a JSON body; requires `caregiver` role or higher.
+ * from a JSON body; requires `caregiver` role or higher. Schedules of
+ * patients outside the API user's HC-237 scope answer 404 on both paths.
  */
 final class IntakesApi
 {
@@ -25,12 +27,16 @@ final class IntakesApi
     /** @var callable():int */
     private readonly mixed $clock;
 
+    private readonly PatientScope $scope;
+
     public function __construct(
         private readonly ScheduleRepositoryInterface $schedules,
         private readonly IntakeRepositoryInterface $intakes,
         ?callable $clock = null,
+        ?PatientScope $scope = null,
     ) {
         $this->clock = $clock ?? static fn(): int => time();
+        $this->scope = $scope ?? PatientScope::unrestricted();
     }
 
     /**
@@ -43,7 +49,7 @@ final class IntakesApi
             return ApiResponse::error('schedule_id is required (positive integer)', 400);
         }
 
-        if ($this->schedules->getScheduleById($scheduleId) === null) {
+        if (!$this->scheduleVisible($scheduleId)) {
             return ApiResponse::error('schedule not found', 404);
         }
 
@@ -90,7 +96,7 @@ final class IntakesApi
             return ApiResponse::error('schedule_id is required (positive integer)', 400);
         }
 
-        if ($this->schedules->getScheduleById($scheduleId) === null) {
+        if (!$this->scheduleVisible($scheduleId)) {
             return ApiResponse::error('schedule not found', 404);
         }
 
@@ -109,6 +115,16 @@ final class IntakesApi
             'taken_time' => $takenTime,
             'note' => $note,
         ], 201);
+    }
+
+    /**
+     * Exists and belongs to a patient within the scope.
+     */
+    private function scheduleVisible(int $scheduleId): bool
+    {
+        $schedule = $this->schedules->getScheduleById($scheduleId);
+
+        return $schedule !== null && $this->scope->allows($schedule['patient_id']);
     }
 
     /**

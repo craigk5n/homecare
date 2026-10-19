@@ -6,6 +6,10 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
+// HC-237
+require_patient_access(getPostValue('patient_id'));
+require_schedule_access(getPostValue('old_schedule_id'));
+
 print_header();
 
 $patient_id = getPostValue('patient_id');

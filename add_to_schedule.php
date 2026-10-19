@@ -1,6 +1,15 @@
 <?php
 require_once 'includes/init.php';
 
+// HC-237: the pre-selected patient and the schedule being edited must
+// both be within the user's patient allow-list.
+if (!empty(getIntValue('patient_id'))) {
+    require_patient_access(getIntValue('patient_id'));
+}
+if (!empty(getIntValue('schedule_id'))) {
+    require_schedule_access(getIntValue('schedule_id'));
+}
+
 print_header();
 
 // CSP nonce stamped on every inline <script> below. The page's CSP is
@@ -24,8 +33,9 @@ $medicine_id = getIntValue('medicine_id');
 $schedule_id = getIntValue('schedule_id');
 
 // Fetch patients
-$patientsSql = "SELECT id, name FROM hc_patients WHERE is_active = TRUE ORDER BY name ASC";
-$patientsResult = dbi_query($patientsSql);
+[$scopeSql, $scopeParams] = patient_scope_sql('id');
+$patientsSql = "SELECT id, name FROM hc_patients WHERE is_active = TRUE" . $scopeSql . " ORDER BY name ASC";
+$patientsResult = dbi_execute($patientsSql, $scopeParams);
 
 // Fetch medications
 $medicationsSql = "SELECT id, name FROM hc_medicines ORDER BY name ASC";

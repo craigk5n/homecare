@@ -36,6 +36,10 @@ foreach ($scheduleIds as $scheduleId) {
     if (empty($check[0])) {
         continue;
     }
+    // HC-237: skip schedules outside the user's patient allow-list.
+    if (!can_access_patient((int) $check[0][1])) {
+        continue;
+    }
 
     $sql = 'INSERT INTO hc_medicine_intake (schedule_id, taken_time, note) VALUES (?, ?, ?)';
     if (dbi_execute($sql, [$scheduleId, $now, 'Bulk catch-up from dashboard'])) {

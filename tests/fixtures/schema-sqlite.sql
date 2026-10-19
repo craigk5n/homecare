@@ -247,3 +247,12 @@ CREATE TABLE hc_weight_history (
   FOREIGN KEY (patient_id) REFERENCES hc_patients(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_hc_weight_history_patient ON hc_weight_history (patient_id, recorded_at DESC);
+
+CREATE TABLE hc_user_patients (
+  user_login VARCHAR(25) NOT NULL,
+  patient_id INTEGER NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_login, patient_id),
+  FOREIGN KEY (patient_id) REFERENCES hc_patients(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_hc_user_patients_patient ON hc_user_patients (patient_id);

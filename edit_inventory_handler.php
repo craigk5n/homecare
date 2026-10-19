@@ -9,6 +9,13 @@ $note = getPostValue('note');
 $inventory_id = getPostValue('id');
 $delete = getPostValue('delete');
 
+// HC-237: existing rows are guarded by their own medicine.
+if (!empty($inventory_id)) {
+    require_inventory_access($inventory_id);
+} else {
+    require_medicine_access($medicine_id);
+}
+
 if (!empty($delete) && $delete === 'yes' && !empty($inventory_id)) {
     // Delete the inventory record
     $deleteSql = "DELETE FROM hc_medicine_inventory WHERE id = ?";

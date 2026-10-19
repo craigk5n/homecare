@@ -20,6 +20,12 @@ if (empty($patient_id)) {
 }
 $patient_id = (int) $patient_id;
 
+// HC-237: the posted patient and (on edit/delete) the note's own patient.
+require_patient_access($patient_id);
+if ($note_id !== null) {
+    require_note_access($note_id);
+}
+
 $repo = new CaregiverNoteRepository(new DbiAdapter());
 
 if ($action === 'delete') {

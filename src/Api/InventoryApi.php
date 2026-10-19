@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace HomeCare\Api;
 
+use HomeCare\Auth\PatientScope;
 use HomeCare\Database\DatabaseInterface;
 use HomeCare\Domain\ScheduleCalculator;
 use HomeCare\Repository\InventoryRepositoryInterface;
+use HomeCare\Repository\PatientLinkRepository;
 
 /**
  * GET /api/v1/inventory.php?medicine_id=N
@@ -14,18 +16,27 @@ use HomeCare\Repository\InventoryRepositoryInterface;
  * Returns the latest stock checkpoint for a medicine plus a projected
  * days-of-supply based on the aggregate daily consumption of all
  * currently-active schedules using that medicine.
+ *
+ * HC-237: for a restricted API user the medicine must be scheduled for
+ * one of their patients (or for nobody yet), otherwise 404. Stock is
+ * shared, so the projection still counts every consumer, but only the
+ * user's own patients appear in `active_schedules`.
  */
 final class InventoryApi
 {
     /** @var callable():string */
     private readonly mixed $clock;
 
+    private readonly PatientScope $scope;
+
     public function __construct(
         private readonly DatabaseInterface $db,
         private readonly InventoryRepositoryInterface $inventory,
         ?callable $clock = null,
+        ?PatientScope $scope = null,
     ) {
         $this->clock = $clock ?? static fn(): string => date('Y-m-d');
+        $this->scope = $scope ?? PatientScope::unrestricted();
     }
 
     /**
@@ -40,6 +51,10 @@ final class InventoryApi
 
         $name = $this->inventory->getMedicineName($medicineId);
         if ($name === null) {
+            return ApiResponse::error('medicine not found', 404);
+        }
+        if (!$this->scope->isUnrestricted()
+            && !$this->scope->allowsShared((new PatientLinkRepository($this->db))->patientIdsForMedicine($medicineId))) {
             return ApiResponse::error('medicine not found', 404);
         }
 
@@ -79,6 +94,10 @@ final class InventoryApi
                     continue;
                 }
                 $totalDaily += $dailyForSched;
+            }
+
+            if (!$this->scope->allows((int) $r['patient_id'])) {
+                continue;
             }
 
             $schedules[] = [

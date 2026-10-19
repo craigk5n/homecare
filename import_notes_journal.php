@@ -36,6 +36,11 @@ $content = (string) (getPostValue('journal_text') ?? '');
 $patientIdRaw = (string) (getPostValue('patient_id') ?? getGetValue('patient_id') ?? '');
 $patientId = ($patientIdRaw !== '' && ctype_digit($patientIdRaw)) ? (int) $patientIdRaw : 0;
 
+// HC-237
+if ($patientId > 0) {
+    require_patient_access($patientId);
+}
+
 $formErrors = [];
 if ($action === 'preview' || $action === 'commit') {
     if ($patientId <= 0 || !patientExistsById($patientId)) {

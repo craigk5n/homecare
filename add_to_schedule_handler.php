@@ -8,6 +8,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $patient_id = getPostValue('patient_id');
     $medicine_id = getPostValue('medicine_id');
     $schedule_id = getPostValue('schedule_id'); // Update instead of add
+
+    // HC-237: the target patient and (on update) the existing schedule
+    // must both be within the user's patient allow-list.
+    require_patient_access($patient_id);
+    if (!empty($schedule_id)) {
+        require_schedule_access($schedule_id);
+    }
     $start_date = getPostValue('start_date');
     $end_date = getPostValue('end_date');
     if (empty($end_date)) {

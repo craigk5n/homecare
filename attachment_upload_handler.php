@@ -15,6 +15,9 @@ if (empty($ownerType) || $ownerId < 1) {
     die_miserable_death('Missing owner_type or owner_id');
 }
 
+// HC-237: the patient / schedule / note being attached to.
+require_attachment_owner_access((string) $ownerType, $ownerId);
+
 if (!isset($_FILES['attachment']) || $_FILES['attachment']['error'] === UPLOAD_ERR_NO_FILE) {
     die_miserable_death('No file uploaded');
 }

@@ -17,6 +17,12 @@ require_once __DIR__ . '/includes/init.php';
 $patientId = (int) (getIntValue('patient_id') ?? 0);
 $sinceId = (int) (getIntValue('since_id') ?? 0);
 
+// HC-237: a restricted user may only follow one of their own patients;
+// the unfiltered (patient_id=0) stream would show every patient's events.
+if ($patientId > 0 || !current_patient_scope()->isUnrestricted()) {
+    require_patient_access($patientId);
+}
+
 if (isset($_SERVER['HTTP_LAST_EVENT_ID']) && $_SERVER['HTTP_LAST_EVENT_ID'] !== '') {
     $sinceId = max($sinceId, (int) $_SERVER['HTTP_LAST_EVENT_ID']);
 }

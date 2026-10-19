@@ -9,6 +9,18 @@ $edit_id = getPostValue('id');
 $note = getPostValue('note');
 $delete = getPostValue('delete');
 
+// HC-237: the schedule, the patient used for the redirect and the intake
+// being edited or deleted must all be within the user's allow-list.
+if (!empty($schedule_id)) {
+    require_schedule_access($schedule_id);
+}
+if (!empty($patient_id)) {
+    require_patient_access($patient_id);
+}
+if (!empty($edit_id)) {
+    require_intake_access($edit_id);
+}
+
 if (!empty($delete) && $delete === 'yes') {
   // Delete the intake record
   $deleteSql = "DELETE FROM hc_medicine_intake WHERE id = ?";

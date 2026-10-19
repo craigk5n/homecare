@@ -7,7 +7,7 @@ require __DIR__ . '/_bootstrap.php';
 use HomeCare\Api\SchedulesApi;
 use HomeCare\Database\DbiAdapter;
 
-api_authenticate_or_exit();
+$user = api_authenticate_or_exit();
 
-$api = new SchedulesApi(new DbiAdapter());
+$api = new SchedulesApi(new DbiAdapter(), null, api_patient_scope($user));
 api_send($api->handle($_GET));

@@ -7,7 +7,11 @@ $medicine_id = isset($_POST['medicine_id']) ? intval($_POST['medicine_id']) : 0;
 // Initialize the response array
 $response = array();
 
-if ($medicine_id > 0) {
+if ($medicine_id > 0 && !can_access_medicine($medicine_id)) {
+    // HC-237: medicine only used by patients outside the allow-list.
+    http_response_code(403);
+    $response['error'] = "Access denied";
+} elseif ($medicine_id > 0) {
     // Prepare SQL to fetch the most recent inventory entry for the given medication
     $sql = "SELECT quantity, current_stock, note 
             FROM hc_medicine_inventory 

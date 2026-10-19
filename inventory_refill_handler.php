@@ -13,6 +13,9 @@ $new_stock = getPostValue('new_stock');
 $note = getPostValue('note');
 $refill_source = getPostValue('refill_source') ?: 'manual';
 
+// HC-237
+require_medicine_access($medicine_id);
+
 if (empty($medicine_id) || $refill_quantity === '' || $new_stock === '') {
     die_miserable_death('Missing required fields.');
 }

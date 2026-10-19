@@ -21,6 +21,10 @@ if ($schedule_id <= 0 || $patient_id <= 0 || empty($start_date)) {
     exit;
 }
 
+// HC-237
+require_patient_access($patient_id);
+require_schedule_access($schedule_id);
+
 if (empty($end_date)) {
     $end_date = null;
 }

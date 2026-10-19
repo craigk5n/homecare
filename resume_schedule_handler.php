@@ -18,6 +18,10 @@ if ($schedule_id <= 0 || $patient_id <= 0) {
     exit;
 }
 
+// HC-237
+require_patient_access($patient_id);
+require_schedule_access($schedule_id);
+
 $today = date('Y-m-d');
 
 $db = new \HomeCare\Database\DbiAdapter();

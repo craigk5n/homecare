@@ -8,8 +8,8 @@ use HomeCare\Api\InventoryApi;
 use HomeCare\Database\DbiAdapter;
 use HomeCare\Repository\InventoryRepository;
 
-api_authenticate_or_exit();
+$user = api_authenticate_or_exit();
 
 $db = new DbiAdapter();
-$api = new InventoryApi($db, new InventoryRepository($db));
+$api = new InventoryApi($db, new InventoryRepository($db), null, api_patient_scope($user));
 api_send($api->handle($_GET));

@@ -25,6 +25,9 @@ if ($attachment === null) {
     exit('Attachment not found');
 }
 
+// HC-237: the attachment's patient (directly, or via its schedule/note).
+require_attachment_access($id);
+
 if ($thumb) {
     $path = $service->getThumbnailPath($attachment['storage_path'], $attachment['mime_type']);
     if ($path === null) {

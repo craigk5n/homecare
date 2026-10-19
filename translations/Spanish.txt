@@ -118,3 +118,20 @@ Wed: Mié
 Thu: Jue
 Fri: Vie
 Sat: Sáb
+
+# Patient access (HC-237)
+you are not assigned to this patient: no tiene asignado este paciente
+Patient Access: Acceso a pacientes
+Limit a caregiver or viewer to the patients they look after. A user with no patients ticked sees every patient. Admins always see every patient.: Limite a un cuidador o lector a los pacientes que atiende. Un usuario sin pacientes marcados ve a todos los pacientes. Los administradores siempre ven a todos los pacientes.
+Patient access saved.: Acceso a pacientes guardado.
+User: Usuario
+Role: Rol
+Patients: Pacientes
+All patients: Todos los pacientes
+assigned: asignados
+Edit: Editar
+Patients for: Pacientes de
+No patients yet.: Aún no hay pacientes.
+Leave every box unticked to let this user see all patients.: Deje todas las casillas sin marcar para que este usuario vea a todos los pacientes.
+Save: Guardar
+Cancel: Cancelar

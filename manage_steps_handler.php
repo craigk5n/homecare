@@ -19,6 +19,10 @@ if ($schedule_id <= 0 || $patient_id <= 0) {
     exit;
 }
 
+// HC-237
+require_patient_access($patient_id);
+require_schedule_access($schedule_id);
+
 $db = new \HomeCare\Database\DbiAdapter();
 $stepRepo = new \HomeCare\Repository\StepRepository($db);
 
@@ -61,6 +65,12 @@ if ($action === 'add') {
     if ($step_id <= 0) {
         header('Location: index.php');
         exit;
+    }
+
+    // HC-237: the step must belong to the (already checked) schedule.
+    $stepRows = dbi_get_cached_rows('SELECT schedule_id FROM hc_schedule_steps WHERE id = ?', [$step_id]);
+    if (!empty($stepRows) && (int) $stepRows[0][0] !== $schedule_id) {
+        patient_access_denied();
     }
 
     $stepRepo->delete($step_id);

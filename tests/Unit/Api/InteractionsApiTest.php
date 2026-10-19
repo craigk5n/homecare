@@ -6,6 +6,7 @@ namespace HomeCare\Tests\Unit\Api;
 
 use HomeCare\Api\ApiResponse;
 use HomeCare\Api\InteractionsApi;
+use HomeCare\Auth\PatientScope;
 use HomeCare\Service\InteractionServiceInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -44,6 +45,18 @@ final class InteractionsApiTest extends TestCase
 
         $this->assertSame(ApiResponse::STATUS_OK, $response->status);
         $this->assertSame([], $response->data);
+    }
+
+    public function testOutOfScopePatientIs404WithoutQueryingService(): void
+    {
+        // HC-237: a restricted API user can't check another patient's meds.
+        $service = $this->createMock(InteractionServiceInterface::class);
+        $service->expects($this->never())->method('checkForPatient');
+
+        $api = new InteractionsApi($service, PatientScope::only([5]));
+        $response = $api->handle(['patient_id' => '1', 'medicine_id' => '2']);
+
+        $this->assertSame(404, $response->httpStatus);
     }
 
     public function testHandleReturns400WhenMissingParams(): void

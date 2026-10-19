@@ -29,6 +29,9 @@ if ($patient_id <= 0) {
     die_miserable_death('Missing or invalid patient_id.');
 }
 
+// HC-237
+require_patient_access($patient_id);
+
 $db = new DbiAdapter();
 $report = new MedicationSummaryReport(
     $db,

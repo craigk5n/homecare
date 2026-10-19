@@ -4,6 +4,17 @@ require_once 'includes/init.php';
 $schedule_id = getIntValue('schedule_id');
 $patient_id = getIntValue('patient_id');
 
+// HC-237: the schedule, the (optional) patient and the intake being edited.
+if (!empty($schedule_id)) {
+    require_schedule_access($schedule_id);
+}
+if (!empty($patient_id)) {
+    require_patient_access($patient_id);
+}
+if (!empty(getIntValue('id'))) {
+    require_intake_access(getIntValue('id'));
+}
+
 function formatDate($datetime) {
   date_default_timezone_set('America/New_York');
   $timestamp = strtotime($datetime);

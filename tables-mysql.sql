@@ -296,3 +296,14 @@ CREATE TABLE hc_weight_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE INDEX idx_hc_weight_history_patient ON hc_weight_history (patient_id, recorded_at DESC);
 
+
+/* HC-237: optional per-user patient allow-list. Admins ignore it; a
+   non-admin with no rows sees every patient; with rows, only those. */
+CREATE TABLE hc_user_patients (
+  user_login VARCHAR(25) NOT NULL,
+  patient_id INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (user_login, patient_id),
+  FOREIGN KEY (patient_id) REFERENCES hc_patients(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE INDEX idx_hc_user_patients_patient ON hc_user_patients (patient_id);

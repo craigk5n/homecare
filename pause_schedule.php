@@ -13,6 +13,10 @@ if ($schedule_id <= 0 || $patient_id <= 0) {
     exit;
 }
 
+// HC-237
+require_patient_access($patient_id);
+require_schedule_access($schedule_id);
+
 $sql = 'SELECT m.name FROM hc_medicine_schedules ms
         JOIN hc_medicines m ON ms.medicine_id = m.id
         WHERE ms.id = ?';

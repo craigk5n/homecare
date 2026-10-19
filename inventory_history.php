@@ -1,6 +1,11 @@
 <?php
 require_once 'includes/init.php';
 
+// HC-237: medicine must be scheduled for an allowed patient (or nobody).
+if (!empty(getIntValue('medicine_id'))) {
+    require_medicine_access(getIntValue('medicine_id'));
+}
+
 print_header();
 
 $medicine_id = getIntValue('medicine_id');

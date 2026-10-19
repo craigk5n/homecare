@@ -1,6 +1,10 @@
 <?php
 require_once 'includes/init.php';
 
+// HC-237
+require_patient_access(getIntValue('patient_id'));
+require_schedule_access(getIntValue('schedule_id'));
+
 print_header();
 
 $frequencies = [

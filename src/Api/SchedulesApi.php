@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace HomeCare\Api;
 
+use HomeCare\Auth\PatientScope;
 use HomeCare\Database\DatabaseInterface;
 
 /**
@@ -11,7 +12,8 @@ use HomeCare\Database\DatabaseInterface;
  *
  * Returns a patient's active medication schedules joined with each
  * medication's name and dosage. "Active" = start_date <= today AND
- * (end_date IS NULL OR end_date >= today).
+ * (end_date IS NULL OR end_date >= today). A patient outside the API
+ * user's HC-237 scope answers 404, the same as a missing one.
  *
  * Response shape per row:
  *   {
@@ -31,11 +33,15 @@ final class SchedulesApi
     /** @var callable():string */
     private readonly mixed $clock;
 
+    private readonly PatientScope $scope;
+
     public function __construct(
         private readonly DatabaseInterface $db,
         ?callable $clock = null,
+        ?PatientScope $scope = null,
     ) {
         $this->clock = $clock ?? static fn(): string => date('Y-m-d');
+        $this->scope = $scope ?? PatientScope::unrestricted();
     }
 
     /**
@@ -49,7 +55,7 @@ final class SchedulesApi
         }
 
         $patient = $this->db->query('SELECT id FROM hc_patients WHERE id = ?', [$patientId]);
-        if ($patient === []) {
+        if ($patient === [] || !$this->scope->allows($patientId)) {
             return ApiResponse::error('patient not found', 404);
         }
 

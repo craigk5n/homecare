@@ -3,7 +3,8 @@ require_once 'includes/init.php';
 
 print_header();
 
-$data = getInventoryDashboardData();
+// HC-237: hide medicines used only by patients outside the allow-list.
+$data = filter_medicine_rows(getInventoryDashboardData());
 
 echo "<h2>Inventory Dashboard</h2>\n";
 echo "<div class='container mt-3'>\n";

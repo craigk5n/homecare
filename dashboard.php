@@ -58,10 +58,13 @@ $sql = "SELECT p.id AS patient_id, p.name AS patient_name,
            AND ms.frequency IS NOT NULL
            AND (ms.end_date IS NULL OR ms.end_date >= CURDATE())
      LEFT JOIN hc_medicines m ON ms.medicine_id = m.id
-         WHERE p.is_active = 1
+         WHERE p.is_active = 1";
+// HC-237: only the user's allowed patients.
+[$scopeSql, $scopeParams] = patient_scope_sql('p.id');
+$sql .= $scopeSql . "
          ORDER BY p.name, ms.id";
 
-$rows = dbi_get_cached_rows($sql, []);
+$rows = dbi_get_cached_rows($sql, $scopeParams);
 
 $patientStats = [];
 foreach ($patients as $p) {
@@ -227,7 +230,7 @@ foreach ($expectedRows as $er) {
 }
 
 // ── 2. Low-supply medicines ─────────────────────────────────────────
-$inventoryData = getInventoryDashboardData();
+$inventoryData = filter_medicine_rows(getInventoryDashboardData());
 $lowSupply = [];
 foreach ($inventoryData as $item) {
     if ($item['days_supply'] !== null && $item['days_supply'] < 7) {
@@ -242,10 +245,11 @@ $recentSql = "SELECT p.name AS patient_name, m.name AS medicine_name,
                 JOIN hc_medicine_schedules ms ON mi.schedule_id = ms.id
                 JOIN hc_medicines m ON ms.medicine_id = m.id
                 JOIN hc_patients p ON ms.patient_id = p.id
-               WHERE mi.taken_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+               WHERE mi.taken_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)"
+    . $scopeSql . "
                ORDER BY mi.taken_time DESC
                LIMIT 20";
-$recentRows = dbi_get_cached_rows($recentSql, []);
+$recentRows = dbi_get_cached_rows($recentSql, $scopeParams);
 
 // Auto-refresh every 60 seconds. The ?t= cache-buster ensures the
 // browser doesn't serve a stale cached page.

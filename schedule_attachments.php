@@ -9,6 +9,8 @@ if ($schedule_id < 1 || $patient_id < 1) {
 }
 
 $patient = getPatient($patient_id);
+// HC-237: the schedule's own patient, not just the one in the URL.
+require_schedule_access($schedule_id);
 $patientName = $patient['name'];
 
 $sql = "SELECT m.name FROM hc_medicine_schedules ms

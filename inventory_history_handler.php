@@ -12,6 +12,8 @@ $medicine_id = intval(getPostValue('medicine_id'));
 $delete = getPostValue('delete');
 
 if ($delete === 'yes' && !empty($inventory_id)) {
+    // HC-237: guard on the row's own medicine, not the posted one.
+    require_inventory_access($inventory_id);
     $sql = "DELETE FROM hc_medicine_inventory WHERE id = ?";
     if (!dbi_execute($sql, [$inventory_id])) {
         die_miserable_death('Error deleting inventory entry: ' . dbi_error());

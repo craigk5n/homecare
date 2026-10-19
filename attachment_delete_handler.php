@@ -29,6 +29,9 @@ if ($attachment === null) {
     die_miserable_death('Attachment not found');
 }
 
+// HC-237
+require_attachment_access($attachmentId);
+
 $isOwner = ($attachment['uploaded_by'] === ($GLOBALS['login'] ?? ''));
 $isAdmin = !empty($GLOBALS['is_admin']) && $GLOBALS['is_admin'] === 'Y';
 

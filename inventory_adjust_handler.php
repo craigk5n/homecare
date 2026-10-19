@@ -11,6 +11,9 @@ $medicine_id = intval(getPostValue('medicine_id'));
 $actual_count = getPostValue('actual_count');
 $note = getPostValue('note');
 
+// HC-237
+require_medicine_access($medicine_id);
+
 if (empty($medicine_id) || $actual_count === '') {
     die_miserable_death('Missing required fields.');
 }

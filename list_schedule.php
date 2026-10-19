@@ -12,6 +12,9 @@ if (!is_numeric($patient_id) || (int) $patient_id <= 0) {
     exit;
 }
 
+// HC-237
+require_patient_access((int) $patient_id);
+
 print_header();
 
 $patient = getPatient($patient_id);

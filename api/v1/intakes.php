@@ -13,7 +13,7 @@ use HomeCare\Repository\ScheduleRepository;
 $user = api_authenticate_or_exit();
 
 $db = new DbiAdapter();
-$api = new IntakesApi(new ScheduleRepository($db), new IntakeRepository($db));
+$api = new IntakesApi(new ScheduleRepository($db), new IntakeRepository($db), null, api_patient_scope($user));
 
 $method = isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD'])
     ? strtoupper($_SERVER['REQUEST_METHOD'])
